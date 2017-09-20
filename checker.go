@@ -31,6 +31,11 @@ type Checker interface {
 //
 //     c.Assert(answer, qt.Equals, 42)
 //
+// Note that the following will fail:
+//
+//     c.Assert((*sometype)(nil), qt.Equals, nil)
+//
+// Use the IsNil checker below for this kind of nil checks.
 var Equals Checker = &equalsChecker{
 	numArgs: 1,
 }
@@ -133,14 +138,14 @@ func (c *errorMatchesChecker) Check(got interface{}, args []interface{}) error {
 	if err, ok := got.(error); ok {
 		return match(err, pattern, "error message mismatch")
 	}
-	return Problemf("did not get an error, got %T instead", got)
+	return BadCheckf("did not get an error, got %T instead", got)
 }
 
 // Negate implements Checker.Negate by checking that got is either nil or
 // an error whose String() does not match args[0].
 func (c *errorMatchesChecker) Negate(got interface{}, args []interface{}) error {
 	err := c.Check(got, args)
-	if IsProblem(err) {
+	if IsBadCheck(err) {
 		return err
 	}
 	if err != nil {
@@ -169,10 +174,11 @@ type panicMatchesChecker struct {
 func (c *panicMatchesChecker) Check(got interface{}, args []interface{}) (err error) {
 	f := reflect.ValueOf(got)
 	if f.Kind() != reflect.Func {
-		return Problemf("did not get a function, got %T instead", got)
+		return BadCheckf("expected a function, got %T instead", got)
 	}
-	if numIn := f.Type().NumIn(); numIn != 0 {
-		return Problemf("the function must have no arguments, got %d instead", numIn)
+	ftype := f.Type()
+	if ftype.NumIn() != 0 {
+		return BadCheckf("expected a function accepting no arguments, got %T instead", got)
 	}
 
 	defer func() {
@@ -197,7 +203,7 @@ func (c *panicMatchesChecker) Check(got interface{}, args []interface{}) (err er
 // not panic with the given message.
 func (c *panicMatchesChecker) Negate(got interface{}, args []interface{}) error {
 	err := c.Check(got, args)
-	if IsProblem(err) {
+	if IsBadCheck(err) {
 		return err
 	}
 	if err != nil {
@@ -279,14 +285,14 @@ func (n numArgs) NumArgs() int {
 func match(got error, pattern interface{}, msg string) error {
 	regex, ok := pattern.(string)
 	if !ok {
-		return Problemf("the regular expression pattern must be a string, got %T instead", pattern)
+		return BadCheckf("the regular expression pattern must be a string, got %T instead", pattern)
 	}
 	if got == nil {
 		return fmt.Errorf("error is nil, therefore it does not match %q", pattern)
 	}
 	matches, err := regexp.MatchString("^("+regex+")$", got.Error())
 	if err != nil {
-		return Problemf("cannot compile regular expression %q: %s\n", regex, err)
+		return BadCheckf("cannot compile regular expression %q: %s\n", regex, err)
 	}
 	if matches {
 		return nil

@@ -4,24 +4,24 @@ package quicktest
 
 import "fmt"
 
-// Problemf returns an execution error, used to report a problem with the
-// testing execution itself (like wrong number or type of arguments) rather
-// than a real Check or Assert failure.
-func Problemf(format string, a ...interface{}) *problem {
-	e := problem(fmt.Sprintf(format, a...))
+// BadCheckf returns an error used to report a problem with the checker
+// invocation or testing execution itself (like wrong number or type of
+// arguments) rather than a real Check or Assert failure.
+func BadCheckf(format string, a ...interface{}) error {
+	e := badCheck(fmt.Sprintf(format, a...))
 	return &e
 }
 
-// IsProblem reports whether the given error is an testing execution problem.
-func IsProblem(err error) bool {
-	_, ok := err.(*problem)
+// IsBadCheck reports whether the given error is an bad test problem.
+func IsBadCheck(err error) bool {
+	_, ok := err.(*badCheck)
 	return ok
 }
 
-type problem string
+type badCheck string
 
 // Error implements the error interface.
-func (e *problem) Error() string {
+func (e *badCheck) Error() string {
 	return string(*e)
 }
 

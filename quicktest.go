@@ -52,11 +52,6 @@ func (c *C) Assert(got interface{}, checker Checker, args ...interface{}) bool {
 	return check(c.t.Fatal, checker, got, args)
 }
 
-// T returns the testing object provided when instantiating the checker.
-func (c *C) T() T {
-	return c.t
-}
-
 // Run runs f as a subtest of t called name. It's a wrapper around
 // *testing.T.Run that provides the quick test checker to f. For instance:
 //
@@ -76,17 +71,22 @@ func (c *C) Run(name string, f func(c *C)) bool {
 	})
 }
 
+// T returns the testing object provided when instantiating the checker.
+func (c *C) T() T {
+	return c.t
+}
+
 // check performs the actual check by calling the provided fail function.
 func check(fail func(...interface{}), checker Checker, got interface{}, args []interface{}) bool {
 	// Ensure that we have a checker.
 	if checker == nil {
-		fail(report("nil checker provided"))
+		fail(report("cannot run test: nil checker provided"))
 		return false
 	}
 	// Validate that we have the correct number of arguments.
 	gotNumArgs, wantNumArgs := len(args), checker.NumArgs()
 	if gotNumArgs < wantNumArgs {
-		fail(report(fmt.Sprintf("invalid number of arguments: got %d, want %d", gotNumArgs, wantNumArgs)))
+		fail(report(fmt.Sprintf("invalid number of arguments provided to checker: got %d, want %d", gotNumArgs, wantNumArgs)))
 		return false
 	}
 	args, a := args[:wantNumArgs], args[wantNumArgs:]
