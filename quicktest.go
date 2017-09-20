@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-// New returns a new quick test checker, that is used to call Assert and Check.
-// The checker is instantiated passing the *testing.T value for the current
-// test or subtest. For instance:
+// New returns a new checker instance that uses tb to fail the test when checks
+// fail. It only ever calls the Fatal, Error and (when available) Run methods
+// of tb. For instance.
 //
 //     func TestFoo(t *testing.T) {
 //         t.Run("A=42", func(t *testing.T) {
@@ -18,18 +18,19 @@ import (
 //         })
 //     }
 //
-// The library provides the Equals, CmpEquals, DeepEquals, ErrorMatches,
-// PanicMatches, IsNil and Not checkers. More can be added by implementing the
-// Checker interface.
-func New(t T) *C {
+// The library already provides some base checkers, and more can be added by
+// implementing the Checker interface.
+func New(tb testing.TB) *C {
 	return &C{
-		t: t,
+		TB: tb,
 	}
 }
 
-// C is a quick test checker used to call Assert and Check.
+// C is a quicktest checker. It embeds a testing.TB value and provides
+// additional checking functionality. If an Assert or Check operation fails, it
+// uses the wrapped TB value to fail the test appropriately.
 type C struct {
-	t T
+	testing.TB
 }
 
 // Check runs the given check and continues execution in case of failure.
@@ -38,8 +39,10 @@ type C struct {
 //     c.Check(answer, qt.Equals, 42)
 //     c.Check(got, qt.IsNil, "the value we got is not nil")
 //
+// Additional args (not consumed by the checker), when provided, are included
+// as comments in the failure output when the check fails.
 func (c *C) Check(got interface{}, checker Checker, args ...interface{}) bool {
-	return check(c.t.Error, checker, got, args)
+	return check(c.TB.Error, checker, got, args)
 }
 
 // Assert runs the given check and stops execution in case of failure.
@@ -48,32 +51,32 @@ func (c *C) Check(got interface{}, checker Checker, args ...interface{}) bool {
 //     c.Assert(got, qt.DeepEquals, []int{42, 47})
 //     c.Check(got, qt.ErrorMatches, "bad wolf .*", "test bad wolf")
 //
+// Additional args (not consumed by the checker), when provided, are included
+// as comments in the failure output when the check fails.
 func (c *C) Assert(got interface{}, checker Checker, args ...interface{}) bool {
-	return check(c.t.Fatal, checker, got, args)
+	return check(c.TB.Fatal, checker, got, args)
 }
 
 // Run runs f as a subtest of t called name. It's a wrapper around
-// *testing.T.Run that provides the quick test checker to f. For instance:
+// *testing.T.Run that provides the quicktest checker to f. For instance:
 //
 //     func TestFoo(t *testing.T) {
 //         c := qt.New(t)
 //         c.Run("A=42", func(c *qt.C) {
 //             // This assertion only stops the current subtest.
 //             c.Assert(a, qt.Equals, 42)
-//             // The *testing.T object is still available.
-//             c.T().Log("bad wolf")
 //         })
 //     }
 //
+// A panic is raised when Run is called and the embedded concrete type does not
+// implement Run, for instance if TB's concrete type is a benchmark.
 func (c *C) Run(name string, f func(c *C)) bool {
-	return c.t.Run(name, func(t *testing.T) {
-		f(New(t))
-	})
-}
-
-// T returns the testing object provided when instantiating the checker.
-func (c *C) T() T {
-	return c.t
+	if r, ok := c.TB.(runner); ok {
+		return r.Run(name, func(t *testing.T) {
+			f(New(t))
+		})
+	}
+	panic(fmt.Sprintf("cannot execute Run with underlying concrete type %T", c.TB))
 }
 
 // check performs the actual check by calling the provided fail function.
@@ -98,9 +101,6 @@ func check(fail func(...interface{}), checker Checker, got interface{}, args []i
 	return true
 }
 
-// T represents the type passed to tests function and to the quick test
-// checker.
-type T interface {
-	testing.TB
-	Run(name string, f func(t *testing.T)) bool
+type runner interface {
+	Run(string, func(*testing.T)) bool
 }

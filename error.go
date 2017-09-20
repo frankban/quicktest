@@ -12,7 +12,7 @@ func BadCheckf(format string, a ...interface{}) error {
 	return &e
 }
 
-// IsBadCheck reports whether the given error is an bad test problem.
+// IsBadCheck reports whether the given error has been created by BadCheckf.
 func IsBadCheck(err error) bool {
 	_, ok := err.(*badCheck)
 	return ok

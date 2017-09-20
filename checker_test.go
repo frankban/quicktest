@@ -4,49 +4,12 @@ package quicktest_test
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	qt "github.com/frankban/quicktest"
 )
-
-var numArgsTests = []struct {
-	checker         qt.Checker
-	expectedNumArgs int
-}{{
-	checker:         qt.Equals,
-	expectedNumArgs: 1,
-}, {
-	checker:         qt.CmpEquals(),
-	expectedNumArgs: 1,
-}, {
-	checker:         qt.DeepEquals,
-	expectedNumArgs: 1,
-}, {
-	checker:         qt.ErrorMatches,
-	expectedNumArgs: 1,
-}, {
-	checker:         qt.PanicMatches,
-	expectedNumArgs: 1,
-}, {
-	checker: qt.IsNil,
-}, {
-	checker:         qt.Not(qt.Equals),
-	expectedNumArgs: 1,
-}}
-
-func TestNumArgs(t *testing.T) {
-	for _, test := range numArgsTests {
-		t.Run(fmt.Sprintf("%T", test.checker), func(t *testing.T) {
-			numArgs := test.checker.NumArgs()
-			if numArgs != test.expectedNumArgs {
-				t.Fatalf("num args: got %d, want %d", numArgs, test.expectedNumArgs)
-			}
-		})
-	}
-}
 
 var sameInts = cmpopts.SortSlices(func(x, y int) bool {
 	return x < y
@@ -97,6 +60,11 @@ var checkerTests = []struct {
 		Ints: []int{42, 47},
 	}},
 	expectedCheckFailure: "runtime error: comparing uncomparable type",
+}, {
+	about:                 "Equals: not enough arguments",
+	checker:               qt.Equals,
+	expectedCheckFailure:  "invalid number of arguments provided to checker: got 0, want 1\n",
+	expectedNegateFailure: "invalid number of arguments provided to checker: got 0, want 1\n",
 }, {
 	about:   "CmpEquals: same values",
 	checker: qt.CmpEquals(),
@@ -150,6 +118,11 @@ var checkerTests = []struct {
 	},
 	expectedCheckFailure: "values are not equal:\n(-got +want)\nSort({[]int}).([]int)[2]:\n\t-: 4\n\t+: 3\n",
 }, {
+	about:                 "CmpEquals: not enough arguments",
+	checker:               qt.CmpEquals(),
+	expectedCheckFailure:  "invalid number of arguments provided to checker: got 0, want 1\n",
+	expectedNegateFailure: "invalid number of arguments provided to checker: got 0, want 1\n",
+}, {
 	about:   "DeepEquals: same values",
 	checker: qt.DeepEquals,
 	got:     []int{1, 2, 3},
@@ -165,6 +138,11 @@ var checkerTests = []struct {
 		[]int{3, 2, 1},
 	},
 	expectedCheckFailure: "values are not equal:\n(-got +want)\n{[]int}[0]:\n\t-: 1\n\t+: 3\n{[]int}[2]:\n\t-: 3\n\t+: 1\n",
+}, {
+	about:                 "DeepEquals: not enough arguments",
+	checker:               qt.DeepEquals,
+	expectedCheckFailure:  "invalid number of arguments provided to checker: got 0, want 1\n",
+	expectedNegateFailure: "invalid number of arguments provided to checker: got 0, want 1\n",
 }, {
 	about:   "ErrorMatches: perfect match",
 	checker: qt.ErrorMatches,
@@ -223,6 +201,11 @@ var checkerTests = []struct {
 	args:                  []interface{}{".*"},
 	expectedCheckFailure:  "did not get an error, got <nil> instead",
 	expectedNegateFailure: "did not get an error, got <nil> instead",
+}, {
+	about:                 "ErrorMatches: not enough arguments",
+	checker:               qt.ErrorMatches,
+	expectedCheckFailure:  "invalid number of arguments provided to checker: got 0, want 1\n",
+	expectedNegateFailure: "invalid number of arguments provided to checker: got 0, want 1\n",
 }, {
 	about:   "PanicMatches: perfect match",
 	checker: qt.PanicMatches,
@@ -294,6 +277,11 @@ var checkerTests = []struct {
 	args:                 []interface{}{".*"},
 	expectedCheckFailure: "the function did not panic",
 }, {
+	about:                 "PanicMatches: not enough arguments",
+	checker:               qt.PanicMatches,
+	expectedCheckFailure:  "invalid number of arguments provided to checker: got 0, want 1\n",
+	expectedNegateFailure: "invalid number of arguments provided to checker: got 0, want 1\n",
+}, {
 	about:   "IsNil: nil",
 	checker: qt.IsNil,
 	got:     nil,
@@ -333,35 +321,14 @@ var checkerTests = []struct {
 	checker:              qt.Not(qt.IsNil),
 	got:                  nil,
 	expectedCheckFailure: "the value is nil, but should not",
+}, {
+	about:                 "Not: not enough arguments",
+	checker:               qt.Not(qt.PanicMatches),
+	expectedCheckFailure:  "invalid number of arguments provided to checker: got 0, want 1\n",
+	expectedNegateFailure: "invalid number of arguments provided to checker: got 0, want 1\n",
 }}
 
-func TestCheck(t *testing.T) {
-	for _, test := range checkerTests {
-		t.Run(test.about, func(t *testing.T) {
-			err := test.checker.Check(test.got, test.args)
-			if test.expectedCheckFailure != "" {
-				assertErrHasPrefix(t, err, test.expectedCheckFailure)
-				return
-			}
-			assertErrIsNil(t, err)
-		})
-	}
-}
-
-func TestNegate(t *testing.T) {
-	for _, test := range checkerTests {
-		t.Run(test.about, func(t *testing.T) {
-			err := test.checker.Negate(test.got, test.args)
-			if test.expectedNegateFailure != "" {
-				assertErrHasPrefix(t, err, test.expectedNegateFailure)
-				return
-			}
-			assertErrIsNil(t, err)
-		})
-	}
-}
-
-func TestCCheck(t *testing.T) {
+func TestCheckers(t *testing.T) {
 	for _, test := range checkerTests {
 		t.Run(test.about, func(t *testing.T) {
 			tt := &testingT{}
@@ -369,12 +336,7 @@ func TestCCheck(t *testing.T) {
 			ok := c.Check(test.got, test.checker, test.args...)
 			checkResult(t, ok, tt.errorString(), test.expectedCheckFailure)
 		})
-	}
-}
-
-func TestCNegate(t *testing.T) {
-	for _, test := range checkerTests {
-		t.Run(test.about, func(t *testing.T) {
+		t.Run("Not "+test.about, func(t *testing.T) {
 			tt := &testingT{}
 			c := qt.New(tt)
 			ok := c.Check(test.got, qt.Not(test.checker), test.args...)

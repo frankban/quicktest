@@ -74,7 +74,7 @@ func TestCAssertCheck(t *testing.T) {
 	}
 }
 
-func TestCRun(t *testing.T) {
+func TestCRunSuccess(t *testing.T) {
 	tt := &testingT{}
 	c := qt.New(tt)
 	var run bool
@@ -84,8 +84,8 @@ func TestCRun(t *testing.T) {
 		if innerC == c {
 			t.Fatal("subtest C: same instance provided")
 		}
-		if got := innerC.T(); got != tt.subTestT {
-			t.Fatalf("subtest testing object: got %p, want %p", got, tt.subTestT)
+		if innerC.TB != tt.subTestT {
+			t.Fatalf("subtest testing object: got %p, want %p", innerC.TB, tt.subTestT)
 		}
 		if tt.subTestName != subTestName {
 			t.Fatalf("subtest name: got %q, want %q", tt.subTestName, subTestName)
@@ -94,17 +94,23 @@ func TestCRun(t *testing.T) {
 	assertBool(t, run, true)
 	assertBool(t, ok, false)
 
+	// Simulate a test success.
 	tt.subTestResult = true
 	ok = c.Run(subTestName, func(innerC *qt.C) {})
 	assertBool(t, ok, true)
 }
 
-func TestCT(t *testing.T) {
-	tt := &testingT{}
-	c := qt.New(tt)
-	if got := c.T(); got != tt {
-		t.Fatalf("testing object: got %p, want %p", got, tt)
-	}
+func TestCRunPanic(t *testing.T) {
+	c := qt.New(&testing.B{})
+	var run bool
+	defer func() {
+		r := recover()
+		if r != "cannot execute Run with underlying concrete type *testing.B" {
+			t.Fatalf("unexpected panic recover: %v", r)
+		}
+	}()
+	c.Run("panic", func(innerC *qt.C) {})
+	assertBool(t, run, true)
 }
 
 func checkResult(t *testing.T, ok bool, got, want string) {
@@ -121,7 +127,7 @@ func checkResult(t *testing.T, ok bool, got, want string) {
 
 // testingT can be passed to qt.New for testing purposes.
 type testingT struct {
-	*testing.T
+	testing.TB
 
 	errorBuf bytes.Buffer
 	fatalBuf bytes.Buffer

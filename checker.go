@@ -35,7 +35,7 @@ type Checker interface {
 //
 //     c.Assert((*sometype)(nil), qt.Equals, nil)
 //
-// Use the IsNil checker below for this kind of nil checks.
+// Use the IsNil checker below for this kind of nil check.
 var Equals Checker = &equalsChecker{
 	numArgs: 1,
 }
@@ -47,13 +47,12 @@ type equalsChecker struct {
 // Check implements Checker.Check by checking that got == args[0].
 func (c *equalsChecker) Check(got interface{}, args []interface{}) (err error) {
 	defer func() {
-		// A panic is raised in case the provided values are not comparable.
+		// A panic is raised when the provided values are not comparable.
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%s", r)
 		}
 	}()
-	want := args[0]
-	if got != want {
+	if want := args[0]; got != want {
 		return &notEqualError{
 			msg:  "not equal",
 			got:  got,

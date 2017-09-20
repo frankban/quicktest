@@ -8,7 +8,7 @@ To install the package, run `go get github.com/frankban/quicktest`.
 
 ## Usage
 
-Quick test helpers can be easily integrated inside regular Go tests, for
+Quicktest helpers can be easily integrated inside regular Go tests, for
 instance:
 ```go
 import qt "github.com/frankban/quicktest"
