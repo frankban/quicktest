@@ -34,7 +34,7 @@ type mismatchError struct {
 
 // Error implements the error interface.
 func (e *mismatchError) Error() string {
-	return fmt.Sprintf("%s:\n(-error +pattern)\n\t-: %q\n\t+: %q\n", e.msg, e.got, e.pattern)
+	return fmt.Sprintf("%s:\n(-text +pattern)\n\t-: %q\n\t+: %q\n", e.msg, e.got, e.pattern)
 }
 
 // notEqualError is an error that simplifies printing "(-got +want)" messages.
