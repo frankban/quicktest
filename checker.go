@@ -92,7 +92,15 @@ type cmpEqualsChecker struct {
 
 // Check implements Checker.Check by checking that got == args[0] according to
 // the compare options stored in the checker.
-func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}) error {
+func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}) (err error) {
+	defer func() {
+		// A panic is raised in some cases, for instance when trying to compare
+		// structs with unexported fields and neither AllowUnexported nor
+		// cmpopts.IgnoreUnexported are provided.
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%s", r)
+		}
+	}()
 	want := args[0]
 	if diff := cmp.Diff(got, want, c.opts...); diff != "" {
 		return fmt.Errorf("values are not equal:\n%s%s", notEqualErrorPrefix, diff)

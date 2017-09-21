@@ -118,6 +118,30 @@ var checkerTests = []struct {
 	},
 	expectedCheckFailure: "values are not equal:\n(-got +want)\nSort({[]int}).([]int)[2]:\n\t-: 4\n\t+: 3\n",
 }, {
+	about:   "CmpEquals: structs with unexported fields not allowed",
+	checker: qt.CmpEquals(),
+	got: struct{ answer int }{
+		answer: 42,
+	},
+	args: []interface{}{
+		struct{ answer int }{
+			answer: 42,
+		},
+	},
+	expectedCheckFailure: "cannot handle unexported field: root.answer\nconsider using AllowUnexported or cmpopts.IgnoreUnexported\n",
+}, {
+	about:   "CmpEquals: structs with unexported fields ignored",
+	checker: qt.CmpEquals(cmpopts.IgnoreUnexported(struct{ answer int }{})),
+	got: struct{ answer int }{
+		answer: 42,
+	},
+	args: []interface{}{
+		struct{ answer int }{
+			answer: 42,
+		},
+	},
+	expectedNegateFailure: "both values deeply equal struct { answer int }{answer:42}, but should not\n",
+}, {
 	about:                 "CmpEquals: not enough arguments",
 	checker:               qt.CmpEquals(),
 	expectedCheckFailure:  "invalid number of arguments provided to checker: got 0, want 1\n",

@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-// New returns a new checker instance that uses tb to fail the test when checks
+// New returns a new checker instance that uses t to fail the test when checks
 // fail. It only ever calls the Fatal, Error and (when available) Run methods
-// of tb. For instance.
+// of t. For instance.
 //
 //     func TestFoo(t *testing.T) {
 //         t.Run("A=42", func(t *testing.T) {
@@ -20,9 +20,9 @@ import (
 //
 // The library already provides some base checkers, and more can be added by
 // implementing the Checker interface.
-func New(tb testing.TB) *C {
+func New(t testing.TB) *C {
 	return &C{
-		TB: tb,
+		TB: t,
 	}
 }
 
