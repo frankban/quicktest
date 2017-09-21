@@ -27,8 +27,10 @@ func TestFoo(t *testing.T) {
     })
 }
 ```
-The library provides the Equals, CmpEquals, DeepEquals, Matches, ErrorMatches,
-PanicMatches, IsNil and Not checkers. More can be added by implementing the
-Checker interface. See the
+The library provides some base checkers like Equals, DeepEquals, Matches,
+ErrorMatches, IsNil and others. More can be added by implementing the Checker
+interface.
+
+See the
 [go documentation](https://godoc.org/github.com/frankban/quicktest) for this
 library.
