@@ -1,3 +1,5 @@
+[![GoDoc](https://godoc.org/github.com/frankban/quicktest?status.svg)](https://godoc.org/github.com/frankban/quicktest)
+
 # quicktest
 
 A collection of Go helpers for writing tests.
