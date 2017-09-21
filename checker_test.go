@@ -3,6 +3,7 @@
 package quicktest_test
 
 import (
+	"bytes"
 	"errors"
 	"testing"
 
@@ -168,35 +169,103 @@ var checkerTests = []struct {
 	expectedCheckFailure:  "invalid number of arguments provided to checker: got 0, want 1\n",
 	expectedNegateFailure: "invalid number of arguments provided to checker: got 0, want 1\n",
 }, {
+	about:   "Matches: perfect match",
+	checker: qt.Matches,
+	got:     "exterminate",
+	args:    []interface{}{"exterminate"},
+	expectedNegateFailure: `"exterminate" matches "exterminate", but should not`,
+}, {
+	about:   "Matches: match",
+	checker: qt.Matches,
+	got:     "these are the voyages",
+	args:    []interface{}{"these are the .*"},
+	expectedNegateFailure: `"these are the voyages" matches "these are the .*", but should not`,
+}, {
+	about:   "Matches: match with stringer",
+	checker: qt.Matches,
+	got:     bytes.NewBufferString("resistance is futile"),
+	args:    []interface{}{"resistance is (futile|useful)"},
+	expectedNegateFailure: `"resistance is futile" matches "resistance is (futile|useful)", but should not`,
+}, {
+	about:                "Matches: mismatch",
+	checker:              qt.Matches,
+	got:                  "voyages",
+	args:                 []interface{}{"these are the voyages"},
+	expectedCheckFailure: "string mismatch:\n(-text +pattern)\n\t-: \"voyages\"\n\t+: \"these are the voyages\"\n",
+}, {
+	about:                "Matches: mismatch with stringer",
+	checker:              qt.Matches,
+	got:                  bytes.NewBufferString("voyages"),
+	args:                 []interface{}{"these are the voyages"},
+	expectedCheckFailure: "fmt.Stringer mismatch:\n(-text +pattern)\n\t-: \"voyages\"\n\t+: \"these are the voyages\"\n",
+}, {
+	about:                "Matches: empty pattern",
+	checker:              qt.Matches,
+	got:                  "these are the voyages",
+	args:                 []interface{}{""},
+	expectedCheckFailure: "string mismatch:\n(-text +pattern)\n\t-: \"these are the voyages\"\n\t+: \"\"\n",
+}, {
+	about:   "Matches: complex pattern",
+	checker: qt.Matches,
+	got:     bytes.NewBufferString("end of the universe"),
+	args:    []interface{}{"bad wolf|end of the .*"},
+	expectedNegateFailure: `"end of the universe" matches "bad wolf|end of the .*", but should not`,
+}, {
+	about:                 "Matches: invalid pattern",
+	checker:               qt.Matches,
+	got:                   "voyages",
+	args:                  []interface{}{"("},
+	expectedCheckFailure:  "cannot compile regular expression \"(\": error parsing regexp: missing closing ): `^(()$`\n",
+	expectedNegateFailure: "cannot compile regular expression \"(\": error parsing regexp: missing closing ): `^(()$`\n",
+}, {
+	about:                 "Matches: pattern not a string",
+	checker:               qt.Matches,
+	got:                   "",
+	args:                  []interface{}{[]int{42}},
+	expectedCheckFailure:  "the regular expression pattern must be a string, got []int instead",
+	expectedNegateFailure: "the regular expression pattern must be a string, got []int instead",
+}, {
+	about:                 "Matches: not an string or as stringer",
+	checker:               qt.Matches,
+	got:                   42,
+	args:                  []interface{}{".*"},
+	expectedCheckFailure:  "did not get an string or a fmt.Stringer, got int instead",
+	expectedNegateFailure: "did not get an string or a fmt.Stringer, got int instead",
+}, {
+	about:                 "Matches: not enough arguments",
+	checker:               qt.Matches,
+	expectedCheckFailure:  "invalid number of arguments provided to checker: got 0, want 1\n",
+	expectedNegateFailure: "invalid number of arguments provided to checker: got 0, want 1\n",
+}, {
 	about:   "ErrorMatches: perfect match",
 	checker: qt.ErrorMatches,
 	got:     errors.New("error: bad wolf"),
 	args:    []interface{}{"error: bad wolf"},
-	expectedNegateFailure: `error matches "error: bad wolf", but should not`,
+	expectedNegateFailure: `error "error: bad wolf" matches "error: bad wolf", but should not`,
 }, {
 	about:   "ErrorMatches: match",
 	checker: qt.ErrorMatches,
 	got:     errors.New("error: bad wolf"),
 	args:    []interface{}{"error: .*"},
-	expectedNegateFailure: `error matches "error: .*", but should not`,
+	expectedNegateFailure: `error "error: bad wolf" matches "error: .*", but should not`,
 }, {
 	about:                "ErrorMatches: mismatch",
 	checker:              qt.ErrorMatches,
 	got:                  errors.New("error: bad wolf"),
 	args:                 []interface{}{"error: exterminate"},
-	expectedCheckFailure: "error message mismatch:\n(-error +pattern)\n\t-: \"error: bad wolf\"\n\t+: \"error: exterminate\"\n",
+	expectedCheckFailure: "error message mismatch:\n(-text +pattern)\n\t-: \"error: bad wolf\"\n\t+: \"error: exterminate\"\n",
 }, {
 	about:                "ErrorMatches: empty pattern",
 	checker:              qt.ErrorMatches,
 	got:                  errors.New("error: bad wolf"),
 	args:                 []interface{}{""},
-	expectedCheckFailure: "error message mismatch:\n(-error +pattern)\n\t-: \"error: bad wolf\"\n\t+: \"\"\n",
+	expectedCheckFailure: "error message mismatch:\n(-text +pattern)\n\t-: \"error: bad wolf\"\n\t+: \"\"\n",
 }, {
 	about:   "ErrorMatches: complex pattern",
 	checker: qt.ErrorMatches,
 	got:     errors.New("bad wolf"),
 	args:    []interface{}{"bad wolf|end of the universe"},
-	expectedNegateFailure: `error matches "bad wolf|end of the universe", but should not`,
+	expectedNegateFailure: `error "bad wolf" matches "bad wolf|end of the universe", but should not`,
 }, {
 	about:                 "ErrorMatches: invalid pattern",
 	checker:               qt.ErrorMatches,
@@ -247,13 +316,13 @@ var checkerTests = []struct {
 	checker:              qt.PanicMatches,
 	got:                  func() { panic("error: bad wolf") },
 	args:                 []interface{}{"error: exterminate"},
-	expectedCheckFailure: "panic message mismatch:\n(-error +pattern)\n\t-: \"error: bad wolf\"\n\t+: \"error: exterminate\"\n",
+	expectedCheckFailure: "panic message mismatch:\n(-text +pattern)\n\t-: \"error: bad wolf\"\n\t+: \"error: exterminate\"\n",
 }, {
 	about:                "PanicMatches: empty pattern",
 	checker:              qt.PanicMatches,
 	got:                  func() { panic("error: bad wolf") },
 	args:                 []interface{}{""},
-	expectedCheckFailure: "panic message mismatch:\n(-error +pattern)\n\t-: \"error: bad wolf\"\n\t+: \"\"\n",
+	expectedCheckFailure: "panic message mismatch:\n(-text +pattern)\n\t-: \"error: bad wolf\"\n\t+: \"\"\n",
 }, {
 	about:   "PanicMatches: complex pattern",
 	checker: qt.PanicMatches,

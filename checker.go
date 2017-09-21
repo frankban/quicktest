@@ -124,6 +124,49 @@ func (c *cmpEqualsChecker) Negate(got interface{}, args []interface{}) error {
 //
 var DeepEquals = CmpEquals()
 
+// Matches is a Checker checking that the provided string, or the string
+// representation of the provided value, matches the provided regular
+// expression pattern.
+// For instance:
+//
+//     c.Assert("these are the voyages", qt.Matches, "these are .*")
+//     c.Assert(net.ParseIP("1.2.3.4"), qt.Matches, "1.*")
+//
+var Matches Checker = &matchesChecker{
+	numArgs: 1,
+}
+
+type matchesChecker struct {
+	numArgs
+}
+
+// Check implements Checker.Check by checking that got is a string or a
+// fmt.Stringer and that it matches args[0].
+func (c *matchesChecker) Check(got interface{}, args []interface{}) error {
+	pattern := args[0]
+	switch v := got.(type) {
+	case string:
+		return match(v, pattern, "string mismatch")
+	case fmt.Stringer:
+		return match(v.String(), pattern, "fmt.Stringer mismatch")
+	}
+	return BadCheckf("did not get an string or a fmt.Stringer, got %T instead", got)
+}
+
+// Negate implements Checker.Negate by checking that got is a string or a
+// fmt.Stringer and that it does not match args[0].
+func (c *matchesChecker) Negate(got interface{}, args []interface{}) error {
+	err := c.Check(got, args)
+	if IsBadCheck(err) {
+		return err
+	}
+	if err != nil {
+		return nil
+	}
+	pattern := args[0]
+	return fmt.Errorf("%q matches %q, but should not", got, pattern)
+}
+
 // ErrorMatches is a Checker checking that the provided value is an error whose
 // message matches the provided regular expression pattern.
 // For instance:
@@ -139,13 +182,17 @@ type errorMatchesChecker struct {
 }
 
 // Check implements Checker.Check by checking that got is an error whose
-// String() matches args[0].
+// Error() matches args[0].
 func (c *errorMatchesChecker) Check(got interface{}, args []interface{}) error {
 	pattern := args[0]
-	if err, ok := got.(error); ok {
-		return match(err, pattern, "error message mismatch")
+	err, ok := got.(error)
+	if !ok {
+		return BadCheckf("did not get an error, got %T instead", got)
 	}
-	return BadCheckf("did not get an error, got %T instead", got)
+	if err == nil {
+		return fmt.Errorf("error is nil, therefore it does not match %q", pattern)
+	}
+	return match(err.Error(), pattern, "error message mismatch")
 }
 
 // Negate implements Checker.Negate by checking that got is either nil or
@@ -159,7 +206,7 @@ func (c *errorMatchesChecker) Negate(got interface{}, args []interface{}) error 
 		return nil
 	}
 	pattern := args[0]
-	return fmt.Errorf("error matches %q, but should not", pattern)
+	return fmt.Errorf("error %q matches %q, but should not", got, pattern)
 }
 
 // PanicMatches is a Checker checking that the provided function panics with a
@@ -194,12 +241,14 @@ func (c *panicMatchesChecker) Check(got interface{}, args []interface{}) (err er
 			err = fmt.Errorf("the function did not panic")
 			return
 		}
-		panicErr, ok := r.(error)
-		if !ok {
-			panicErr = fmt.Errorf("%s", r)
+		var msg string
+		if panicErr, ok := r.(error); ok {
+			msg = panicErr.Error()
+		} else {
+			msg = fmt.Sprintf("%s", r)
 		}
 		pattern := args[0]
-		err = match(panicErr, pattern, "panic message mismatch")
+		err = match(msg, pattern, "panic message mismatch")
 	}()
 
 	f.Call(nil)
@@ -289,15 +338,12 @@ func (n numArgs) NumArgs() int {
 }
 
 // match checks that the given error message matches the given pattern.
-func match(got error, pattern interface{}, msg string) error {
+func match(got string, pattern interface{}, msg string) error {
 	regex, ok := pattern.(string)
 	if !ok {
 		return BadCheckf("the regular expression pattern must be a string, got %T instead", pattern)
 	}
-	if got == nil {
-		return fmt.Errorf("error is nil, therefore it does not match %q", pattern)
-	}
-	matches, err := regexp.MatchString("^("+regex+")$", got.Error())
+	matches, err := regexp.MatchString("^("+regex+")$", got)
 	if err != nil {
 		return BadCheckf("cannot compile regular expression %q: %s\n", regex, err)
 	}
@@ -306,7 +352,7 @@ func match(got error, pattern interface{}, msg string) error {
 	}
 	return &mismatchError{
 		msg:     msg,
-		got:     got.Error(),
+		got:     got,
 		pattern: regex,
 	}
 }
