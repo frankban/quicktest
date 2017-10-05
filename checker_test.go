@@ -101,7 +101,7 @@ var checkerTests = []struct {
 		Strings: []interface{}{"who", "dalek"},
 		Ints:    []int{42},
 	}},
-	expectedCheckFailure: "values are not equal:\n(-got +want)\nroot.Ints[1->?]:\n\t-: 47\n\t+: <non-existent>\n",
+	expectedCheckFailure: "values are not equal:\n(-got +want)\nroot.Ints:\n\t-: []int{42, 47}\n\t+: []int{42}\n",
 }, {
 	about:   "CmpEquals: same values with options",
 	checker: qt.CmpEquals(sameInts),
@@ -117,7 +117,7 @@ var checkerTests = []struct {
 	args: []interface{}{
 		[]int{3, 2, 1},
 	},
-	expectedCheckFailure: "values are not equal:\n(-got +want)\nSort({[]int}).([]int)[2]:\n\t-: 4\n\t+: 3\n",
+	expectedCheckFailure: "values are not equal:\n(-got +want)\nSort({[]int})[2]:\n\t-: 4\n\t+: 3\n",
 }, {
 	about:   "CmpEquals: structs with unexported fields not allowed",
 	checker: qt.CmpEquals(),
@@ -162,7 +162,7 @@ var checkerTests = []struct {
 	args: []interface{}{
 		[]int{3, 2, 1},
 	},
-	expectedCheckFailure: "values are not equal:\n(-got +want)\n{[]int}[0]:\n\t-: 1\n\t+: 3\n{[]int}[2]:\n\t-: 3\n\t+: 1\n",
+	expectedCheckFailure: "values are not equal:\n(-got +want)\n{[]int}:\n\t-: []int{1, 2, 3}\n\t+: []int{3, 2, 1}\n",
 }, {
 	about:                 "DeepEquals: not enough arguments",
 	checker:               qt.DeepEquals,
