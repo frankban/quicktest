@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"text/tabwriter"
 )
 
@@ -22,7 +21,7 @@ func report(err error, c Comment) string {
 	if comment := c.String(); comment != "" {
 		fmt.Fprintln(&buf, comment)
 	}
-	fmt.Fprintln(&buf, strings.TrimSuffix(err.Error(), "\n"))
+	fmt.Fprintln(&buf, err.Error())
 	writeInvocation(&buf)
 	return buf.String()
 }

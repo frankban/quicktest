@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"strings"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -103,7 +104,7 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}) (err error
 	}()
 	want := args[0]
 	if diff := cmp.Diff(got, want, c.opts...); diff != "" {
-		return fmt.Errorf("values are not equal:\n%s%s", notEqualErrorPrefix, diff)
+		return fmt.Errorf("values are not equal:\n%s%s", notEqualErrorPrefix, strings.TrimSuffix(diff, "\n"))
 	}
 	return nil
 }
@@ -347,7 +348,7 @@ func match(got string, pattern interface{}, msg string) error {
 	}
 	matches, err := regexp.MatchString("^("+regex+")$", got)
 	if err != nil {
-		return BadCheckf("cannot compile regular expression %q: %s\n", regex, err)
+		return BadCheckf("cannot compile regular expression %q: %s", regex, err)
 	}
 	if matches {
 		return nil

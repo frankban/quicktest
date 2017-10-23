@@ -5,11 +5,12 @@ package quicktest
 import "fmt"
 
 // Commentf returns a test comment whose output is formatted according to
-// the given format specifier and args. For instance:
+// the given format specifier and args. It may be provided as the last argument
+// to any check or assertion and will be displayed if the check or assertion
+// fails. For instance:
 //
 //     c.Assert(a, qt.Equals, 42, qt.Commentf("answer is not %d", 42))
 //
-// The provided extra information if printed when the test fails.
 func Commentf(format string, args ...interface{}) Comment {
 	return Comment{
 		format: format,
@@ -17,8 +18,8 @@ func Commentf(format string, args ...interface{}) Comment {
 	}
 }
 
-// Comment represents a comment on a test failure, and is used to provide extra
-// information to checks and assertions.
+// Comment represents additional information on a check or an assertion which is
+// displayed when the check or assertion fails.
 type Comment struct {
 	format string
 	args   []interface{}
