@@ -15,14 +15,12 @@ import (
 )
 
 // report generates a failure report for the given error, optionally including
-// the comment provided by the given commenter.
-func report(err error, c Commenter) string {
+// the in the output the given comment
+func report(err error, c Comment) string {
 	var buf bytes.Buffer
 	buf.WriteString("\n")
-	if c != nil {
-		if comment := c.Comment(err); comment != "" {
-			fmt.Fprintln(&buf, comment)
-		}
+	if comment := c.String(); comment != "" {
+		fmt.Fprintln(&buf, comment)
 	}
 	fmt.Fprintln(&buf, strings.TrimSuffix(err.Error(), "\n"))
 	writeInvocation(&buf)

@@ -84,33 +84,32 @@ func (c *C) Run(name string, f func(c *C)) bool {
 func check(fail func(...interface{}), checker Checker, got interface{}, args []interface{}) bool {
 	// Ensure that we have a checker.
 	if checker == nil {
-		fail(report(BadCheckf("cannot run test: nil checker provided"), nil))
+		fail(report(BadCheckf("cannot run test: nil checker provided"), Comment{}))
 		return false
 	}
 	// Extract a comment if it has been provided.
-	gotNumArgs, wantNumArgs := len(args), checker.NumArgs()
-	var c Commenter
-	if gotNumArgs > 0 {
-		if commenter, ok := args[gotNumArgs-1].(Commenter); ok {
-			c = commenter
-			gotNumArgs--
-			args = args[:gotNumArgs]
+	wantNumArgs := checker.NumArgs()
+	var c Comment
+	if len(args) > 0 {
+		if comment, ok := args[len(args)-1].(Comment); ok {
+			c = comment
+			args = args[:len(args)-1]
 		}
 	}
 	// Validate that we have the correct number of arguments.
-	if gotNumArgs < wantNumArgs {
-		err := BadCheckf("not enough arguments provided to checker: got %d, want %d", gotNumArgs, wantNumArgs)
+	if len(args) < wantNumArgs {
+		err := BadCheckf("not enough arguments provided to checker: got %d, want %d", len(args), wantNumArgs)
 		fail(report(err, c))
 		return false
 	}
-	if gotNumArgs > wantNumArgs {
-		unexpected := make([]string, gotNumArgs-wantNumArgs)
+	if len(args) > wantNumArgs {
+		unexpected := make([]string, len(args)-wantNumArgs)
 		for i, a := range args[wantNumArgs:] {
 			unexpected[i] = fmt.Sprintf("%v", a)
 		}
 		err := BadCheckf(
 			"too many arguments provided to checker: got %d, want %d: unexpected %s",
-			gotNumArgs, wantNumArgs, strings.Join(unexpected, ", "))
+			len(args), wantNumArgs, strings.Join(unexpected, ", "))
 		fail(report(err, c))
 		return false
 	}

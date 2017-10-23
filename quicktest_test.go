@@ -85,12 +85,6 @@ var cTests = []struct {
 	got:             42,
 	args:            []interface{}{nil, qt.Commentf("these are the voyages")},
 	expectedFailure: "these are the voyages\ntoo many arguments provided to checker: got 1, want 0: unexpected <nil>",
-}, {
-	about:           "comment including the original error",
-	checker:         qt.IsNil,
-	got:             true,
-	args:            []interface{}{upperCommenter{}},
-	expectedFailure: "TRUE IS NOT NIL\ntrue is not nil\n",
 }}
 
 func TestCAssertCheck(t *testing.T) {
@@ -165,14 +159,6 @@ func checkResult(t *testing.T, ok bool, got, want string) {
 		t.Fatalf("output:\ngot  %q\nwant empty", got)
 	}
 	assertBool(t, ok, true)
-}
-
-// upperCommenter is a Commenter used for testing purposes.
-type upperCommenter struct{}
-
-// Comment implements Commenter by returning the original error in upper case.
-func (c upperCommenter) Comment(err error) string {
-	return strings.ToUpper(err.Error())
 }
 
 // testingT can be passed to qt.New for testing purposes.
