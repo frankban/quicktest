@@ -64,8 +64,14 @@ var checkerTests = []struct {
 }, {
 	about:                 "Equals: not enough arguments",
 	checker:               qt.Equals,
-	expectedCheckFailure:  "invalid number of arguments provided to checker: got 0, want 1\n",
-	expectedNegateFailure: "invalid number of arguments provided to checker: got 0, want 1\n",
+	expectedCheckFailure:  "not enough arguments provided to checker: got 0, want 1\n",
+	expectedNegateFailure: "not enough arguments provided to checker: got 0, want 1\n",
+}, {
+	about:                 "Equals: too many arguments",
+	checker:               qt.Equals,
+	args:                  []interface{}{nil, 47},
+	expectedCheckFailure:  "too many arguments provided to checker: got 2, want 1: unexpected 47\n",
+	expectedNegateFailure: "too many arguments provided to checker: got 2, want 1: unexpected 47\n",
 }, {
 	about:   "CmpEquals: same values",
 	checker: qt.CmpEquals(),
@@ -145,8 +151,15 @@ var checkerTests = []struct {
 }, {
 	about:                 "CmpEquals: not enough arguments",
 	checker:               qt.CmpEquals(),
-	expectedCheckFailure:  "invalid number of arguments provided to checker: got 0, want 1\n",
-	expectedNegateFailure: "invalid number of arguments provided to checker: got 0, want 1\n",
+	expectedCheckFailure:  "not enough arguments provided to checker: got 0, want 1\n",
+	expectedNegateFailure: "not enough arguments provided to checker: got 0, want 1\n",
+}, {
+	about:                 "CmpEquals: too many arguments",
+	checker:               qt.CmpEquals(),
+	got:                   []int{42},
+	args:                  []interface{}{[]int{42}, "bad wolf"},
+	expectedCheckFailure:  "too many arguments provided to checker: got 2, want 1: unexpected bad wolf\n",
+	expectedNegateFailure: "too many arguments provided to checker: got 2, want 1: unexpected bad wolf\n",
 }, {
 	about:   "DeepEquals: same values",
 	checker: qt.DeepEquals,
@@ -166,8 +179,14 @@ var checkerTests = []struct {
 }, {
 	about:                 "DeepEquals: not enough arguments",
 	checker:               qt.DeepEquals,
-	expectedCheckFailure:  "invalid number of arguments provided to checker: got 0, want 1\n",
-	expectedNegateFailure: "invalid number of arguments provided to checker: got 0, want 1\n",
+	expectedCheckFailure:  "not enough arguments provided to checker: got 0, want 1\n",
+	expectedNegateFailure: "not enough arguments provided to checker: got 0, want 1\n",
+}, {
+	about:                 "DeepEquals: too many arguments",
+	checker:               qt.DeepEquals,
+	args:                  []interface{}{nil, nil},
+	expectedCheckFailure:  "too many arguments provided to checker: got 2, want 1: unexpected <nil>\n",
+	expectedNegateFailure: "too many arguments provided to checker: got 2, want 1: unexpected <nil>\n",
 }, {
 	about:   "Matches: perfect match",
 	checker: qt.Matches,
@@ -234,8 +253,15 @@ var checkerTests = []struct {
 }, {
 	about:                 "Matches: not enough arguments",
 	checker:               qt.Matches,
-	expectedCheckFailure:  "invalid number of arguments provided to checker: got 0, want 1\n",
-	expectedNegateFailure: "invalid number of arguments provided to checker: got 0, want 1\n",
+	expectedCheckFailure:  "not enough arguments provided to checker: got 0, want 1\n",
+	expectedNegateFailure: "not enough arguments provided to checker: got 0, want 1\n",
+}, {
+	about:                 "Matches: too many arguments",
+	checker:               qt.Matches,
+	got:                   "these are the voyages",
+	args:                  []interface{}{"these are the .*", nil},
+	expectedCheckFailure:  "too many arguments provided to checker: got 2, want 1: unexpected <nil>\n",
+	expectedNegateFailure: "too many arguments provided to checker: got 2, want 1: unexpected <nil>\n",
 }, {
 	about:   "ErrorMatches: perfect match",
 	checker: qt.ErrorMatches,
@@ -297,8 +323,15 @@ var checkerTests = []struct {
 }, {
 	about:                 "ErrorMatches: not enough arguments",
 	checker:               qt.ErrorMatches,
-	expectedCheckFailure:  "invalid number of arguments provided to checker: got 0, want 1\n",
-	expectedNegateFailure: "invalid number of arguments provided to checker: got 0, want 1\n",
+	expectedCheckFailure:  "not enough arguments provided to checker: got 0, want 1\n",
+	expectedNegateFailure: "not enough arguments provided to checker: got 0, want 1\n",
+}, {
+	about:                 "ErrorMatches: too many arguments",
+	checker:               qt.ErrorMatches,
+	got:                   errors.New("error: bad wolf"),
+	args:                  []interface{}{"error: bad wolf", []string{"bad", "wolf"}},
+	expectedCheckFailure:  "too many arguments provided to checker: got 2, want 1: unexpected [bad wolf]\n",
+	expectedNegateFailure: "too many arguments provided to checker: got 2, want 1: unexpected [bad wolf]\n",
 }, {
 	about:   "PanicMatches: perfect match",
 	checker: qt.PanicMatches,
@@ -372,8 +405,15 @@ var checkerTests = []struct {
 }, {
 	about:                 "PanicMatches: not enough arguments",
 	checker:               qt.PanicMatches,
-	expectedCheckFailure:  "invalid number of arguments provided to checker: got 0, want 1\n",
-	expectedNegateFailure: "invalid number of arguments provided to checker: got 0, want 1\n",
+	expectedCheckFailure:  "not enough arguments provided to checker: got 0, want 1\n",
+	expectedNegateFailure: "not enough arguments provided to checker: got 0, want 1\n",
+}, {
+	about:                 "PanicMatches: too many arguments",
+	checker:               qt.PanicMatches,
+	got:                   func() { panic("error: bad wolf") },
+	args:                  []interface{}{"error: bad wolf", 42},
+	expectedCheckFailure:  "too many arguments provided to checker: got 2, want 1: unexpected 42\n",
+	expectedNegateFailure: "too many arguments provided to checker: got 2, want 1: unexpected 42\n",
 }, {
 	about:   "IsNil: nil",
 	checker: qt.IsNil,
@@ -405,6 +445,12 @@ var checkerTests = []struct {
 	got:                  42,
 	expectedCheckFailure: "42 is not nil",
 }, {
+	about:                 "IsNil: too many arguments",
+	checker:               qt.IsNil,
+	args:                  []interface{}{"not nil"},
+	expectedCheckFailure:  "too many arguments provided to checker: got 1, want 0: unexpected not nil\n",
+	expectedNegateFailure: "too many arguments provided to checker: got 1, want 0: unexpected not nil\n",
+}, {
 	about:   "Not: success",
 	checker: qt.Not(qt.IsNil),
 	got:     42,
@@ -417,8 +463,14 @@ var checkerTests = []struct {
 }, {
 	about:                 "Not: not enough arguments",
 	checker:               qt.Not(qt.PanicMatches),
-	expectedCheckFailure:  "invalid number of arguments provided to checker: got 0, want 1\n",
-	expectedNegateFailure: "invalid number of arguments provided to checker: got 0, want 1\n",
+	expectedCheckFailure:  "not enough arguments provided to checker: got 0, want 1\n",
+	expectedNegateFailure: "not enough arguments provided to checker: got 0, want 1\n",
+}, {
+	about:                 "Not: too many arguments",
+	checker:               qt.Not(qt.Equals),
+	args:                  []interface{}{42, nil},
+	expectedCheckFailure:  "too many arguments provided to checker: got 2, want 1: unexpected <nil>\n",
+	expectedNegateFailure: "too many arguments provided to checker: got 2, want 1: unexpected <nil>\n",
 }}
 
 func TestCheckers(t *testing.T) {

@@ -14,14 +14,17 @@ import (
 	"text/tabwriter"
 )
 
-// report generates a failure report.
-func report(msg string, a ...interface{}) string {
+// report generates a failure report for the given error, optionally including
+// the comment provided by the given commenter.
+func report(err error, c Commenter) string {
 	var buf bytes.Buffer
 	buf.WriteString("\n")
-	if len(a) > 0 {
-		fmt.Fprintln(&buf, a...)
+	if c != nil {
+		if comment := c.Comment(err); comment != "" {
+			fmt.Fprintln(&buf, comment)
+		}
 	}
-	fmt.Fprintln(&buf, strings.TrimSuffix(msg, "\n"))
+	fmt.Fprintln(&buf, strings.TrimSuffix(err.Error(), "\n"))
 	writeInvocation(&buf)
 	return buf.String()
 }
