@@ -10,18 +10,18 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"text/tabwriter"
 )
 
-// report generates a failure report.
-func report(msg string, a ...interface{}) string {
+// report generates a failure report for the given error, optionally including
+// the in the output the given comment
+func report(err error, c Comment) string {
 	var buf bytes.Buffer
 	buf.WriteString("\n")
-	if len(a) > 0 {
-		fmt.Fprintln(&buf, a...)
+	if comment := c.String(); comment != "" {
+		fmt.Fprintln(&buf, comment)
 	}
-	fmt.Fprintln(&buf, strings.TrimSuffix(msg, "\n"))
+	fmt.Fprintln(&buf, err.Error())
 	writeInvocation(&buf)
 	return buf.String()
 }

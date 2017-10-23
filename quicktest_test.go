@@ -29,17 +29,29 @@ var cTests = []struct {
 	args:            []interface{}{"47"},
 	expectedFailure: "not equal:\n(-got +want)\n\t-: \"42\"\n\t+: \"47\"\n",
 }, {
-	about:           "Equals failure with messages",
+	about:           "Equals failure with comment",
 	checker:         qt.Equals,
 	got:             true,
-	args:            []interface{}{false, "really", "wanted", "to check", true, "!=", false},
-	expectedFailure: "really wanted to check true != false\nnot equal:\n(-got +want)\n\t-: true\n\t+: false\n",
+	args:            []interface{}{false, qt.Commentf("apparently %v != %v", true, false)},
+	expectedFailure: "apparently true != false\nnot equal:\n(-got +want)\n\t-: true\n\t+: false\n",
 }, {
-	about:           "IsNil failure with messages",
+	about:           "IsNil failure with comment",
 	checker:         qt.IsNil,
 	got:             42,
-	args:            []interface{}{"bad wolf:", 42},
+	args:            []interface{}{qt.Commentf("bad wolf: %d", 42)},
 	expectedFailure: "bad wolf: 42\n42 is not nil\n",
+}, {
+	about:           "IsNil failure with constant comment",
+	checker:         qt.IsNil,
+	got:             "something",
+	args:            []interface{}{qt.Commentf("these are the voyages")},
+	expectedFailure: "these are the voyages\n\"something\" is not nil\n",
+}, {
+	about:           "IsNil failure with empty comment",
+	checker:         qt.IsNil,
+	got:             47,
+	args:            []interface{}{qt.Commentf("")},
+	expectedFailure: "47 is not nil\n",
 }, {
 	about:           "nil checker",
 	expectedFailure: "cannot run test: nil checker provided",
@@ -48,7 +60,31 @@ var cTests = []struct {
 	checker:         qt.Equals,
 	got:             42,
 	args:            []interface{}{},
-	expectedFailure: "invalid number of arguments provided to checker: got 0, want 1",
+	expectedFailure: "not enough arguments provided to checker: got 0, want 1",
+}, {
+	about:           "not enough arguments with comment",
+	checker:         qt.DeepEquals,
+	got:             42,
+	args:            []interface{}{qt.Commentf("test %d", 0)},
+	expectedFailure: "test 0\nnot enough arguments provided to checker: got 0, want 1",
+}, {
+	about:           "too many arguments",
+	checker:         qt.Equals,
+	got:             42,
+	args:            []interface{}{42, 47},
+	expectedFailure: "too many arguments provided to checker: got 2, want 1: unexpected 47",
+}, {
+	about:           "really too many arguments",
+	checker:         qt.Equals,
+	got:             42,
+	args:            []interface{}{42, 47, nil, "stop"},
+	expectedFailure: "too many arguments provided to checker: got 4, want 1: unexpected 47, <nil>, stop",
+}, {
+	about:           "too many arguments with comment",
+	checker:         qt.IsNil,
+	got:             42,
+	args:            []interface{}{nil, qt.Commentf("these are the voyages")},
+	expectedFailure: "these are the voyages\ntoo many arguments provided to checker: got 1, want 0: unexpected <nil>",
 }}
 
 func TestCAssertCheck(t *testing.T) {

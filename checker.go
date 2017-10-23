@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"strings"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -103,7 +104,7 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}) (err error
 	}()
 	want := args[0]
 	if diff := cmp.Diff(got, want, c.opts...); diff != "" {
-		return fmt.Errorf("values are not equal:\n%s%s", notEqualErrorPrefix, diff)
+		return fmt.Errorf("values are not equal:\n%s%s", notEqualErrorPrefix, strings.TrimSuffix(diff, "\n"))
 	}
 	return nil
 }
@@ -232,7 +233,8 @@ func (c *panicMatchesChecker) Check(got interface{}, args []interface{}) (err er
 	}
 	ftype := f.Type()
 	if ftype.NumIn() != 0 {
-		return BadCheckf("expected a function accepting no arguments, got %T instead", got)
+		return BadCheckf(
+			"expected a function accepting no arguments, got %T instead", got)
 	}
 
 	defer func() {
@@ -341,11 +343,12 @@ func (n numArgs) NumArgs() int {
 func match(got string, pattern interface{}, msg string) error {
 	regex, ok := pattern.(string)
 	if !ok {
-		return BadCheckf("the regular expression pattern must be a string, got %T instead", pattern)
+		return BadCheckf(
+			"the regular expression pattern must be a string, got %T instead", pattern)
 	}
 	matches, err := regexp.MatchString("^("+regex+")$", got)
 	if err != nil {
-		return BadCheckf("cannot compile regular expression %q: %s\n", regex, err)
+		return BadCheckf("cannot compile regular expression %q: %s", regex, err)
 	}
 	if matches {
 		return nil

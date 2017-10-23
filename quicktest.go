@@ -4,6 +4,7 @@ package quicktest
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -37,7 +38,7 @@ type C struct {
 // For instance:
 //
 //     c.Check(answer, qt.Equals, 42)
-//     c.Check(got, qt.IsNil, "the value we got is not nil")
+//     c.Check(got, qt.IsNil, qt.Commentf("iteration %d", i))
 //
 // Additional args (not consumed by the checker), when provided, are included
 // as comments in the failure output when the check fails.
@@ -49,7 +50,7 @@ func (c *C) Check(got interface{}, checker Checker, args ...interface{}) bool {
 // For instance:
 //
 //     c.Assert(got, qt.DeepEquals, []int{42, 47})
-//     c.Check(got, qt.ErrorMatches, "bad wolf .*", "test bad wolf")
+//     c.Assert(got, qt.ErrorMatches, "bad wolf .*", qt.Commentf("a comment"))
 //
 // Additional args (not consumed by the checker), when provided, are included
 // as comments in the failure output when the check fails.
@@ -83,19 +84,38 @@ func (c *C) Run(name string, f func(c *C)) bool {
 func check(fail func(...interface{}), checker Checker, got interface{}, args []interface{}) bool {
 	// Ensure that we have a checker.
 	if checker == nil {
-		fail(report("cannot run test: nil checker provided"))
+		fail(report(BadCheckf("cannot run test: nil checker provided"), Comment{}))
 		return false
+	}
+	// Extract a comment if it has been provided.
+	wantNumArgs := checker.NumArgs()
+	var c Comment
+	if len(args) > 0 {
+		if comment, ok := args[len(args)-1].(Comment); ok {
+			c = comment
+			args = args[:len(args)-1]
+		}
 	}
 	// Validate that we have the correct number of arguments.
-	gotNumArgs, wantNumArgs := len(args), checker.NumArgs()
-	if gotNumArgs < wantNumArgs {
-		fail(report(fmt.Sprintf("invalid number of arguments provided to checker: got %d, want %d", gotNumArgs, wantNumArgs)))
+	if len(args) < wantNumArgs {
+		err := BadCheckf("not enough arguments provided to checker: got %d, want %d", len(args), wantNumArgs)
+		fail(report(err, c))
 		return false
 	}
-	args, a := args[:wantNumArgs], args[wantNumArgs:]
+	if len(args) > wantNumArgs {
+		unexpected := make([]string, len(args)-wantNumArgs)
+		for i, a := range args[wantNumArgs:] {
+			unexpected[i] = fmt.Sprintf("%v", a)
+		}
+		err := BadCheckf(
+			"too many arguments provided to checker: got %d, want %d: unexpected %s",
+			len(args), wantNumArgs, strings.Join(unexpected, ", "))
+		fail(report(err, c))
+		return false
+	}
 	// Execute the check and report the failure if necessary.
 	if err := checker.Check(got, args); err != nil {
-		fail(report(err.Error(), a...))
+		fail(report(err, c))
 		return false
 	}
 	return true

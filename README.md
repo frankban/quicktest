@@ -26,7 +26,7 @@ func TestFoo(t *testing.T) {
     t.Run("nil", func(t *testing.T) {
         c := qt.New(t)
         got := somepackage.MaybeNil()
-        c.Assert(got, qt.IsNil)
+        c.Assert(got, qt.IsNil, qt.Commentf("value: %v", somepackage.Value))
     })
 }
 ```
