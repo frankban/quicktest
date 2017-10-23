@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-
-	"github.com/frankban/quicktest/testerror"
 )
 
 // New returns a new checker instance that uses t to fail the test when checks
@@ -86,7 +84,7 @@ func (c *C) Run(name string, f func(c *C)) bool {
 func check(fail func(...interface{}), checker Checker, got interface{}, args []interface{}) bool {
 	// Ensure that we have a checker.
 	if checker == nil {
-		fail(report(testerror.BadCheckf("cannot run test: nil checker provided"), nil))
+		fail(report(BadCheckf("cannot run test: nil checker provided"), nil))
 		return false
 	}
 	// Extract a comment if it has been provided.
@@ -101,7 +99,7 @@ func check(fail func(...interface{}), checker Checker, got interface{}, args []i
 	}
 	// Validate that we have the correct number of arguments.
 	if gotNumArgs < wantNumArgs {
-		err := testerror.BadCheckf("not enough arguments provided to checker: got %d, want %d", gotNumArgs, wantNumArgs)
+		err := BadCheckf("not enough arguments provided to checker: got %d, want %d", gotNumArgs, wantNumArgs)
 		fail(report(err, c))
 		return false
 	}
@@ -110,7 +108,7 @@ func check(fail func(...interface{}), checker Checker, got interface{}, args []i
 		for i, a := range args[wantNumArgs:] {
 			unexpected[i] = fmt.Sprintf("%v", a)
 		}
-		err := testerror.BadCheckf(
+		err := BadCheckf(
 			"too many arguments provided to checker: got %d, want %d: unexpected %s",
 			gotNumArgs, wantNumArgs, strings.Join(unexpected, ", "))
 		fail(report(err, c))

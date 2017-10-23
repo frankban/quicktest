@@ -9,8 +9,6 @@ import (
 	"regexp"
 
 	"github.com/google/go-cmp/cmp"
-
-	"github.com/frankban/quicktest/testerror"
 )
 
 // Checker is implemented by types used as part of Check/Assert invocations.
@@ -55,10 +53,10 @@ func (c *equalsChecker) Check(got interface{}, args []interface{}) (err error) {
 		}
 	}()
 	if want := args[0]; got != want {
-		return &testerror.NotEqual{
-			Message: "not equal",
-			Got:     got,
-			Want:    want,
+		return &notEqualError{
+			msg:  "not equal",
+			got:  got,
+			want: want,
 		}
 	}
 	return nil
@@ -105,7 +103,7 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}) (err error
 	}()
 	want := args[0]
 	if diff := cmp.Diff(got, want, c.opts...); diff != "" {
-		return fmt.Errorf("values are not equal:\n%s%s", testerror.NotEqualPrefix, diff)
+		return fmt.Errorf("values are not equal:\n%s%s", notEqualErrorPrefix, diff)
 	}
 	return nil
 }
@@ -152,14 +150,14 @@ func (c *matchesChecker) Check(got interface{}, args []interface{}) error {
 	case fmt.Stringer:
 		return match(v.String(), pattern, "fmt.Stringer mismatch")
 	}
-	return testerror.BadCheckf("did not get an string or a fmt.Stringer, got %T instead", got)
+	return BadCheckf("did not get an string or a fmt.Stringer, got %T instead", got)
 }
 
 // Negate implements Checker.Negate by checking that got is a string or a
 // fmt.Stringer and that it does not match args[0].
 func (c *matchesChecker) Negate(got interface{}, args []interface{}) error {
 	err := c.Check(got, args)
-	if testerror.IsBadCheck(err) {
+	if IsBadCheck(err) {
 		return err
 	}
 	if err != nil {
@@ -189,7 +187,7 @@ func (c *errorMatchesChecker) Check(got interface{}, args []interface{}) error {
 	pattern := args[0]
 	err, ok := got.(error)
 	if !ok {
-		return testerror.BadCheckf("did not get an error, got %T instead", got)
+		return BadCheckf("did not get an error, got %T instead", got)
 	}
 	if err == nil {
 		return fmt.Errorf("error is nil, therefore it does not match %q", pattern)
@@ -201,7 +199,7 @@ func (c *errorMatchesChecker) Check(got interface{}, args []interface{}) error {
 // an error whose String() does not match args[0].
 func (c *errorMatchesChecker) Negate(got interface{}, args []interface{}) error {
 	err := c.Check(got, args)
-	if testerror.IsBadCheck(err) {
+	if IsBadCheck(err) {
 		return err
 	}
 	if err != nil {
@@ -230,11 +228,11 @@ type panicMatchesChecker struct {
 func (c *panicMatchesChecker) Check(got interface{}, args []interface{}) (err error) {
 	f := reflect.ValueOf(got)
 	if f.Kind() != reflect.Func {
-		return testerror.BadCheckf("expected a function, got %T instead", got)
+		return BadCheckf("expected a function, got %T instead", got)
 	}
 	ftype := f.Type()
 	if ftype.NumIn() != 0 {
-		return testerror.BadCheckf(
+		return BadCheckf(
 			"expected a function accepting no arguments, got %T instead", got)
 	}
 
@@ -262,7 +260,7 @@ func (c *panicMatchesChecker) Check(got interface{}, args []interface{}) (err er
 // not panic with the given message.
 func (c *panicMatchesChecker) Negate(got interface{}, args []interface{}) error {
 	err := c.Check(got, args)
-	if testerror.IsBadCheck(err) {
+	if IsBadCheck(err) {
 		return err
 	}
 	if err != nil {
@@ -344,19 +342,19 @@ func (n numArgs) NumArgs() int {
 func match(got string, pattern interface{}, msg string) error {
 	regex, ok := pattern.(string)
 	if !ok {
-		return testerror.BadCheckf(
+		return BadCheckf(
 			"the regular expression pattern must be a string, got %T instead", pattern)
 	}
 	matches, err := regexp.MatchString("^("+regex+")$", got)
 	if err != nil {
-		return testerror.BadCheckf("cannot compile regular expression %q: %s\n", regex, err)
+		return BadCheckf("cannot compile regular expression %q: %s\n", regex, err)
 	}
 	if matches {
 		return nil
 	}
-	return &testerror.Mismatch{
-		Message: msg,
-		Got:     got,
-		Pattern: regex,
+	return &mismatchError{
+		msg:     msg,
+		got:     got,
+		pattern: regex,
 	}
 }
