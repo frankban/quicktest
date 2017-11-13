@@ -451,6 +451,86 @@ var checkerTests = []struct {
 	expectedCheckFailure:  "too many arguments provided to checker: got 1, want 0: unexpected not nil\n",
 	expectedNegateFailure: "too many arguments provided to checker: got 1, want 0: unexpected not nil\n",
 }, {
+	about:   "HasLen: arrays with the same length",
+	checker: qt.HasLen,
+	got:     [4]string{"these", "are", "the", "voyages"},
+	args:    []interface{}{4},
+	expectedNegateFailure: "the provided value has a length of 4, but should not:\n(value)\n\t[4]string{\"these\", \"are\", \"the\", \"voyages\"}\n",
+}, {
+	about:   "HasLen: channels with the same length",
+	checker: qt.HasLen,
+	got: func() chan int {
+		ch := make(chan int, 4)
+		ch <- 42
+		ch <- 47
+		return ch
+	}(),
+	args: []interface{}{2},
+	expectedNegateFailure: "the provided value has a length of 2, but should not:\n(value)\n\t(chan int)",
+}, {
+	about:                 "HasLen: maps with the same length",
+	checker:               qt.HasLen,
+	got:                   map[string]bool{"true": true, "false": false},
+	args:                  []interface{}{2},
+	expectedCheckFailure:  "",
+	expectedNegateFailure: "the provided value has a length of 2, but should not:\n(value)\n\tmap[string]bool",
+}, {
+	about:   "HasLen: slices with the same length",
+	checker: qt.HasLen,
+	got:     []int{},
+	args:    []interface{}{0},
+	expectedNegateFailure: "the provided value has a length of 0, but should not:\n(value)\n\t[]int{}",
+}, {
+	about:   "HasLen: strings with the same length",
+	checker: qt.HasLen,
+	got:     "these are the voyages",
+	args:    []interface{}{21},
+	expectedNegateFailure: "the provided value has a length of 21, but should not:\n(value)\n\t\"these are the voyages\"\n",
+}, {
+	about:                "HasLen: arrays with different lengths",
+	checker:              qt.HasLen,
+	got:                  [4]string{"these", "are", "the", "voyages"},
+	args:                 []interface{}{0},
+	expectedCheckFailure: "the provided value has not the expected length of 0:\n(value)\n\t[4]string{\"these\", \"are\", \"the\", \"voyages\"}\n(-got length +want lenght)\n\t-: 4\n\t+: 0\n",
+}, {
+	about:                "HasLen: channels with different lengths",
+	checker:              qt.HasLen,
+	got:                  make(chan struct{}),
+	args:                 []interface{}{2},
+	expectedCheckFailure: "the provided value has not the expected length of 2",
+}, {
+	about:                "HasLen: maps with different lengths",
+	checker:              qt.HasLen,
+	got:                  map[string]bool{"true": true, "false": false},
+	args:                 []interface{}{42},
+	expectedCheckFailure: "the provided value has not the expected length of 42",
+}, {
+	about:                "HasLen: slices with different lengths",
+	checker:              qt.HasLen,
+	got:                  []int{42, 47},
+	args:                 []interface{}{1},
+	expectedCheckFailure: "the provided value has not the expected length of 1:\n(value)\n\t[]int{42, 47}\n(-got length +want lenght)\n\t-: 2\n\t+: 1\n",
+}, {
+	about:                "HasLen: strings with different lengths",
+	checker:              qt.HasLen,
+	got:                  "these are the voyages",
+	args:                 []interface{}{42},
+	expectedCheckFailure: "the provided value has not the expected length of 42:\n(value)\n\t\"these are the voyages\"\n(-got length +want lenght)\n\t-: 21\n\t+: 42\n",
+}, {
+	about:                 "HasLen: value without a length",
+	checker:               qt.HasLen,
+	got:                   42,
+	args:                  []interface{}{42},
+	expectedCheckFailure:  "expected a type with a lenght, got int instead\n",
+	expectedNegateFailure: "expected a type with a lenght, got int instead\n",
+}, {
+	about:                 "HasLen: expected value not a number",
+	checker:               qt.HasLen,
+	got:                   "these are the voyages",
+	args:                  []interface{}{"bad wolf"},
+	expectedCheckFailure:  "expected a numeric length to compare the value to, got string instead\n",
+	expectedNegateFailure: "expected a numeric length to compare the value to, got string instead\n",
+}, {
 	about:   "Not: success",
 	checker: qt.Not(qt.IsNil),
 	got:     42,
