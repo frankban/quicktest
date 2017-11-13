@@ -323,16 +323,16 @@ type hasLenChecker struct {
 func (c *hasLenChecker) Check(got interface{}, args []interface{}) (err error) {
 	want, ok := args[0].(int)
 	if !ok {
-		return BadCheckf("expected a numeric length to compare the value to, got %T instead", args[0])
+		return BadCheckf("expected length is of type %T, not int", args[0])
 	}
 	v := reflect.ValueOf(got)
 	switch v.Kind() {
 	case reflect.Array, reflect.Chan, reflect.Map, reflect.Slice, reflect.String:
 	default:
-		return BadCheckf("expected a type with a lenght, got %T instead", got)
+		return BadCheckf("expected a type with a length, got %T instead", got)
 	}
 	if length := v.Len(); length != want {
-		return fmt.Errorf("the provided value has not the expected length of %d:\n(value)\n\t%#v\n(-got length +want lenght)\n\t-: %d\n\t+: %d", want, got, length, want)
+		return fmt.Errorf("the provided value has not the expected length of %d:\n(value)\n\t%#v\n(-got length +want length)\n\t-: %d\n\t+: %d", want, got, length, want)
 	}
 	return nil
 }
