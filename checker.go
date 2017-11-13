@@ -305,6 +305,51 @@ func (c *isNilChecker) Negate(got interface{}, args []interface{}) error {
 	return errors.New("the value is nil, but should not")
 }
 
+// HasLen is a Checker checking that the provided value has the provided length.
+// For instance:
+//
+//     c.Assert([]int{42, 47}, qt.HasLen, 2)
+//     c.Assert(myMap, qt.HasLen, 42)
+//
+var HasLen Checker = &hasLenChecker{
+	numArgs: 1,
+}
+
+type hasLenChecker struct {
+	numArgs
+}
+
+// Check implements Checker.Check by checking that len(got) == args[0].
+func (c *hasLenChecker) Check(got interface{}, args []interface{}) (err error) {
+	want, ok := args[0].(int)
+	if !ok {
+		return BadCheckf("expected length is of type %T, not int", args[0])
+	}
+	v := reflect.ValueOf(got)
+	switch v.Kind() {
+	case reflect.Array, reflect.Chan, reflect.Map, reflect.Slice, reflect.String:
+	default:
+		return BadCheckf("expected a type with a length, got %T instead", got)
+	}
+	if length := v.Len(); length != want {
+		return fmt.Errorf("the provided value has not the expected length of %d:\n(value)\n\t%#v\n(-got length +want length)\n\t-: %d\n\t+: %d", want, got, length, want)
+	}
+	return nil
+}
+
+// Negate implements Checker.Negate by checking that len(got) != args[0].
+func (c *hasLenChecker) Negate(got interface{}, args []interface{}) error {
+	err := c.Check(got, args)
+	if IsBadCheck(err) {
+		return err
+	}
+	if err != nil {
+		return nil
+	}
+	want := args[0].(int)
+	return fmt.Errorf("the provided value has a length of %d, but should not:\n(value)\n\t%#v", want, got)
+}
+
 // Not returns a Checker negating the given Checker.
 // For instance:
 //
