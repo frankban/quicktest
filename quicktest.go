@@ -23,7 +23,8 @@ import (
 // implementing the Checker interface.
 func New(t testing.TB) *C {
 	return &C{
-		TB: t,
+		TB:      t,
+		cleanup: func() {},
 	}
 }
 
@@ -32,6 +33,34 @@ func New(t testing.TB) *C {
 // uses the wrapped TB value to fail the test appropriately.
 type C struct {
 	testing.TB
+	cleanup func()
+}
+
+// AddCleanup registers a function to be called when c.Cleanup is
+// called. Cleanup functions will be called in last added, first called
+// order.
+func (c *C) AddCleanup(f func()) {
+	oldCleanup := c.cleanup
+	c.cleanup = func() {
+		defer oldCleanup()
+		f()
+	}
+}
+
+// Cleanup calls all the functions registered by AddCleanup in reverse
+// order to the order they were registered. After it's called, the
+// cleanup functions are unregistered, so calling Cleanup twice will
+// only call the cleanup functions once.
+//
+// When a test function is called by Run, the C value passed into it
+// will be cleaned up automatically when it returns.
+func (c *C) Cleanup() {
+	// Note: we need to use defer in case the cleanup panics
+	// or Goexits.
+	defer func() {
+		c.cleanup = func() {}
+	}()
+	c.cleanup()
 }
 
 // Check runs the given check and continues execution in case of failure.
@@ -59,7 +88,11 @@ func (c *C) Assert(got interface{}, checker Checker, args ...interface{}) bool {
 }
 
 // Run runs f as a subtest of t called name. It's a wrapper around
-// *testing.T.Run that provides the quicktest checker to f. For instance:
+// *testing.T.Run that provides the quicktest checker to f. When
+// the function completes, the *C instance passed to it
+// will be cleaned up (its Cleanup method will be called).
+//
+// For instance:
 //
 //     func TestFoo(t *testing.T) {
 //         c := qt.New(t)
@@ -74,7 +107,9 @@ func (c *C) Assert(got interface{}, checker Checker, args ...interface{}) bool {
 func (c *C) Run(name string, f func(c *C)) bool {
 	if r, ok := c.TB.(runner); ok {
 		return r.Run(name, func(t *testing.T) {
-			f(New(t))
+			c := New(t)
+			defer c.Cleanup()
+			f(c)
 		})
 	}
 	panic(fmt.Sprintf("cannot execute Run with underlying concrete type %T", c.TB))

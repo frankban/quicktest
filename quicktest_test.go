@@ -5,6 +5,7 @@ package quicktest_test
 import (
 	"bytes"
 	"fmt"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -147,6 +148,83 @@ func TestCRunPanic(t *testing.T) {
 	}()
 	c.Run("panic", func(innerC *qt.C) {})
 	assertBool(t, run, true)
+}
+
+func TestCAddCleanup(t *testing.T) {
+	c := qt.New(t)
+	var cleanups []int
+	c.AddCleanup(func() { cleanups = append(cleanups, 1) })
+	c.AddCleanup(func() { cleanups = append(cleanups, 2) })
+	c.Cleanup()
+	c.Assert(cleanups, qt.DeepEquals, []int{2, 1})
+	// Calling cleanup again should not do anything.
+	c.Cleanup()
+	c.Assert(cleanups, qt.DeepEquals, []int{2, 1})
+}
+
+func TestCCleanupCalledEvenAfterCleanupPanic(t *testing.T) {
+	c := qt.New(t)
+	cleaned1 := 0
+	cleaned2 := 0
+	c.AddCleanup(func() {
+		cleaned1++
+	})
+	c.AddCleanup(func() {
+		panic("scream and shout")
+	})
+	c.AddCleanup(func() {
+		cleaned2++
+	})
+	c.AddCleanup(func() {
+		panic("run in circles")
+	})
+	func() {
+		defer func() {
+			c.Check(recover(), qt.Equals, "scream and shout")
+		}()
+		c.Cleanup()
+	}()
+	c.Assert(cleaned1, qt.Equals, 1)
+	c.Assert(cleaned2, qt.Equals, 1)
+	c.Cleanup()
+	c.Assert(cleaned1, qt.Equals, 1)
+	c.Assert(cleaned2, qt.Equals, 1)
+}
+
+func TestCCleanupCalledEvenAfterGoexit(t *testing.T) {
+	// The testing package uses runtime.Goexit on
+	// assertion failure, so check that cleanups are still
+	// called in that case.
+	c := qt.New(t)
+	cleaned := 0
+	c.AddCleanup(func() {
+		cleaned++
+	})
+	c.AddCleanup(func() {
+		runtime.Goexit()
+	})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		c.Cleanup()
+		select {}
+	}()
+	<-done
+	c.Assert(cleaned, qt.Equals, 1)
+	c.Cleanup()
+	c.Assert(cleaned, qt.Equals, 1)
+}
+
+func TestCRunCleanup(t *testing.T) {
+	c := qt.New(&testingT{})
+	outerClean := 0
+	innerClean := 0
+	c.AddCleanup(func() { outerClean++ })
+	c.Run("x", func(c *qt.C) {
+		c.AddCleanup(func() { innerClean++ })
+	})
+	c.Assert(innerClean, qt.Equals, 1)
+	c.Assert(outerClean, qt.Equals, 0)
 }
 
 func checkResult(t *testing.T, ok bool, got, want string) {
