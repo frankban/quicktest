@@ -150,6 +150,26 @@ func TestCRunPanic(t *testing.T) {
 	assertBool(t, run, true)
 }
 
+func TestCParallel(t *testing.T) {
+	tt := &testingT{}
+	c := qt.New(tt)
+	c.Parallel()
+	if !tt.parallel {
+		t.Fatalf("parallel not called")
+	}
+}
+
+func TestCParallelPanic(t *testing.T) {
+	c := qt.New(&testing.B{})
+	defer func() {
+		r := recover()
+		if r != "cannot execute Parallel with underlying concrete type *testing.B" {
+			t.Fatalf("unexpected panic recover: %v", r)
+		}
+	}()
+	c.Parallel()
+}
+
 func TestCAddCleanup(t *testing.T) {
 	c := qt.New(t)
 	var cleanups []int
@@ -249,6 +269,8 @@ type testingT struct {
 	subTestResult bool
 	subTestName   string
 	subTestT      *testing.T
+
+	parallel bool
 }
 
 // Error overrides *testing.T.Error so that messages are collected.
@@ -260,6 +282,10 @@ func (t *testingT) Error(a ...interface{}) {
 // goroutine is not killed.
 func (t *testingT) Fatal(a ...interface{}) {
 	fmt.Fprint(&t.fatalBuf, a...)
+}
+
+func (t *testingT) Parallel() {
+	t.parallel = true
 }
 
 // Fatal overrides *testing.T.Fatal so that messages are collected and the
