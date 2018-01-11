@@ -105,14 +105,32 @@ func (c *C) Assert(got interface{}, checker Checker, args ...interface{}) bool {
 // A panic is raised when Run is called and the embedded concrete type does not
 // implement Run, for instance if TB's concrete type is a benchmark.
 func (c *C) Run(name string, f func(c *C)) bool {
-	if r, ok := c.TB.(runner); ok {
-		return r.Run(name, func(t *testing.T) {
-			c := New(t)
-			defer c.Cleanup()
-			f(c)
-		})
+	r, ok := c.TB.(interface {
+		Run(string, func(*testing.T)) bool
+	})
+	if !ok {
+		panic(fmt.Sprintf("cannot execute Run with underlying concrete type %T", c.TB))
 	}
-	panic(fmt.Sprintf("cannot execute Run with underlying concrete type %T", c.TB))
+	return r.Run(name, func(t *testing.T) {
+		c := New(t)
+		defer c.Cleanup()
+		f(c)
+	})
+}
+
+// Parallel signals that this test is to be run in parallel with (and only with) other parallel tests.
+// It's a wrapper around *testing.T.Parallel.
+//
+// A panic is raised when Parallel is called and the embedded concrete type does not
+// implement Parallel, for instance if TB's concrete type is a benchmark.
+func (c *C) Parallel() {
+	p, ok := c.TB.(interface {
+		Parallel()
+	})
+	if !ok {
+		panic(fmt.Sprintf("cannot execute Parallel with underlying concrete type %T", c.TB))
+	}
+	p.Parallel()
 }
 
 // check performs the actual check by calling the provided fail function.
@@ -154,8 +172,4 @@ func check(fail func(...interface{}), checker Checker, got interface{}, args []i
 		return false
 	}
 	return true
-}
-
-type runner interface {
-	Run(string, func(*testing.T)) bool
 }
