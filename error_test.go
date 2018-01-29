@@ -23,3 +23,11 @@ func TestIsBadCheck(t *testing.T) {
 	err = errors.New("bad wolf")
 	assertBool(t, qt.IsBadCheck(err), false)
 }
+
+func TestFormattedFailuref(t *testing.T) {
+	err := qt.FormattedFailuref("bad %s", "wolf")
+	expectedMessage := "bad wolf"
+	if err.Error() != expectedMessage {
+		t.Fatalf("error:\ngot  %q\nwant %q", err, expectedMessage)
+	}
+}

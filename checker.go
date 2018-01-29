@@ -318,7 +318,7 @@ type info struct {
 	argNames []string
 }
 
-// NumArgs implements Checker.NumArgs by returning the current integer value.
+// Info implements Checker.Info by returning the checker and arg names.
 func (i info) Info() (name string, argNames []string) {
 	return i.name, i.argNames
 }
