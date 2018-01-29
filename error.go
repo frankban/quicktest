@@ -2,7 +2,9 @@
 
 package quicktest
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // BadCheckf returns an error used to report a problem with the checker
 // invocation or testing execution itself (like wrong number or type of
@@ -27,28 +29,25 @@ func (e *badCheck) Error() string {
 	return string(*e)
 }
 
-// mismatchError is an error that simplifies printing mismatch messages.
-type mismatchError struct {
-	msg     string
-	got     string
-	pattern string
+// FormattedFailuref returns an error used to report a Check or Assert failure.
+// This error type is used when the whole failure output is already part of the
+// error string itself, and no other messages must be inferred from the
+// Checker. This helper can be used when implementing checkers.
+func FormattedFailuref(format string, a ...interface{}) error {
+	e := failure(fmt.Sprintf(format, a...))
+	return &e
 }
+
+// isFormattedFailure reports whether the given error has been created by
+// FormattedFailuref.
+func isFormattedFailure(err error) bool {
+	_, ok := err.(*failure)
+	return ok
+}
+
+type failure string
 
 // Error implements the error interface.
-func (e *mismatchError) Error() string {
-	return fmt.Sprintf("%s:\n(-text +pattern)\n\t-: %q\n\t+: %q", e.msg, e.got, e.pattern)
+func (e *failure) Error() string {
+	return string(*e)
 }
-
-// notEqualError is an error that simplifies printing "(-got +want)" messages.
-type notEqualError struct {
-	msg  string
-	got  interface{}
-	want interface{}
-}
-
-// Error implements the error interface.
-func (e *notEqualError) Error() string {
-	return fmt.Sprintf("%s:\n%s\t-: %#v\n\t+: %#v", e.msg, notEqualErrorPrefix, e.got, e.want)
-}
-
-const notEqualErrorPrefix = "(-got +want)\n"
