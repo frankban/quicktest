@@ -37,9 +37,9 @@ error:
 check:
   equals
 got:
-  (int) 42
+  int(42)
 want:
-  (int) 47
+  int(47)
 sources:
   report_test.go:20:
     17     // Context line #1.
