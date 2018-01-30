@@ -154,10 +154,7 @@ func check(fail func(...interface{}), checker Checker, got interface{}, args []i
 	}
 	// Validate that we have the correct number of arguments.
 	if len(args) < wantNumArgs {
-		missing := strings.Join(argNames[len(args)+1:], ", ")
-		err := BadCheckf(
-			"not enough arguments provided to %q checker: got %d, want %d, missing %s",
-			name, len(args), wantNumArgs, missing)
+		err := BadCheckf("not enough arguments provided to %q checker: got %d, want %d", name, len(args), wantNumArgs)
 		fail(report(checker, got, args, c, ns, err))
 		return false
 	}

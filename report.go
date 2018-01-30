@@ -39,8 +39,11 @@ func writeComment(w io.Writer, c Comment) {
 // provided writer. The checker originating the failure and its arguments are
 // also provided.
 func writeError(w io.Writer, checker Checker, got interface{}, args []interface{}, err error) {
-	if IsBadCheck(err) || isFormattedFailure(err) {
+	if IsBadCheck(err) {
 		fmt.Fprintln(w, strings.TrimSuffix(err.Error(), "\n"))
+		return
+	}
+	if IsSilentFailure(err) {
 		return
 	}
 	name, argNames := checker.Info()

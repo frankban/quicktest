@@ -64,8 +64,8 @@ var checkerTests = []struct {
 }, {
 	about:                 "Equals: not enough arguments",
 	checker:               qt.Equals,
-	expectedCheckFailure:  `not enough arguments provided to "equals" checker: got 0, want 1, missing want`,
-	expectedNegateFailure: `not enough arguments provided to "not(equals)" checker: got 0, want 1, missing want`,
+	expectedCheckFailure:  `not enough arguments provided to "equals" checker: got 0, want 1`,
+	expectedNegateFailure: `not enough arguments provided to "not(equals)" checker: got 0, want 1`,
 }, {
 	about:                 "Equals: too many arguments",
 	checker:               qt.Equals,
@@ -151,8 +151,8 @@ var checkerTests = []struct {
 }, {
 	about:                 "CmpEquals: not enough arguments",
 	checker:               qt.CmpEquals(),
-	expectedCheckFailure:  `not enough arguments provided to "deep equals" checker: got 0, want 1, missing want`,
-	expectedNegateFailure: `not enough arguments provided to "not(deep equals)" checker: got 0, want 1, missing want`,
+	expectedCheckFailure:  `not enough arguments provided to "deep equals" checker: got 0, want 1`,
+	expectedNegateFailure: `not enough arguments provided to "not(deep equals)" checker: got 0, want 1`,
 }, {
 	about:                 "CmpEquals: too many arguments",
 	checker:               qt.CmpEquals(),
@@ -179,8 +179,8 @@ var checkerTests = []struct {
 }, {
 	about:                 "DeepEquals: not enough arguments",
 	checker:               qt.DeepEquals,
-	expectedCheckFailure:  `not enough arguments provided to "deep equals" checker: got 0, want 1, missing want`,
-	expectedNegateFailure: `not enough arguments provided to "not(deep equals)" checker: got 0, want 1, missing want`,
+	expectedCheckFailure:  `not enough arguments provided to "deep equals" checker: got 0, want 1`,
+	expectedNegateFailure: `not enough arguments provided to "not(deep equals)" checker: got 0, want 1`,
 }, {
 	about:                 "DeepEquals: too many arguments",
 	checker:               qt.DeepEquals,
@@ -253,8 +253,8 @@ var checkerTests = []struct {
 }, {
 	about:                 "Matches: not enough arguments",
 	checker:               qt.Matches,
-	expectedCheckFailure:  `not enough arguments provided to "matches" checker: got 0, want 1, missing pattern`,
-	expectedNegateFailure: `not enough arguments provided to "not(matches)" checker: got 0, want 1, missing pattern`,
+	expectedCheckFailure:  `not enough arguments provided to "matches" checker: got 0, want 1`,
+	expectedNegateFailure: `not enough arguments provided to "not(matches)" checker: got 0, want 1`,
 }, {
 	about:                 "Matches: too many arguments",
 	checker:               qt.Matches,
@@ -323,8 +323,8 @@ var checkerTests = []struct {
 }, {
 	about:                 "ErrorMatches: not enough arguments",
 	checker:               qt.ErrorMatches,
-	expectedCheckFailure:  `not enough arguments provided to "error matches" checker: got 0, want 1, missing pattern`,
-	expectedNegateFailure: `not enough arguments provided to "not(error matches)" checker: got 0, want 1, missing pattern`,
+	expectedCheckFailure:  `not enough arguments provided to "error matches" checker: got 0, want 1`,
+	expectedNegateFailure: `not enough arguments provided to "not(error matches)" checker: got 0, want 1`,
 }, {
 	about:                 "ErrorMatches: too many arguments",
 	checker:               qt.ErrorMatches,
@@ -405,8 +405,8 @@ var checkerTests = []struct {
 }, {
 	about:                 "PanicMatches: not enough arguments",
 	checker:               qt.PanicMatches,
-	expectedCheckFailure:  `not enough arguments provided to "panic message matches" checker: got 0, want 1, missing pattern`,
-	expectedNegateFailure: `not enough arguments provided to "not(panic message matches)" checker: got 0, want 1, missing pattern`,
+	expectedCheckFailure:  `not enough arguments provided to "panic message matches" checker: got 0, want 1`,
+	expectedNegateFailure: `not enough arguments provided to "not(panic message matches)" checker: got 0, want 1`,
 }, {
 	about:                 "PanicMatches: too many arguments",
 	checker:               qt.PanicMatches,
@@ -542,8 +542,8 @@ var checkerTests = []struct {
 }, {
 	about:                 "Not: not enough arguments",
 	checker:               qt.Not(qt.PanicMatches),
-	expectedCheckFailure:  `not enough arguments provided to "not(panic message matches)" checker: got 0, want 1, missing pattern`,
-	expectedNegateFailure: `not enough arguments provided to "not(not(panic message matches))" checker: got 0, want 1, missing pattern`,
+	expectedCheckFailure:  `not enough arguments provided to "not(panic message matches)" checker: got 0, want 1`,
+	expectedNegateFailure: `not enough arguments provided to "not(not(panic message matches))" checker: got 0, want 1`,
 }, {
 	about:                 "Not: too many arguments",
 	checker:               qt.Not(qt.Equals),

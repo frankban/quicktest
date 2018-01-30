@@ -29,25 +29,23 @@ func (e *badCheck) Error() string {
 	return string(*e)
 }
 
-// FormattedFailuref returns an error used to report a Check or Assert failure.
-// This error type is used when the whole failure output is already part of the
-// error string itself, and no other messages must be inferred from the
-// Checker. This helper can be used when implementing checkers.
-func FormattedFailuref(format string, a ...interface{}) error {
-	e := failure(fmt.Sprintf(format, a...))
-	return &e
+// SilentFailure returns an error used when there is no need to include in the
+// failure output the "error" and "check" keys and all the keys automatically
+// added for args. This helper can be used when implementing checkers.
+func SilentFailure() error {
+	return &silentFailure{}
 }
 
-// isFormattedFailure reports whether the given error has been created by
-// FormattedFailuref.
-func isFormattedFailure(err error) bool {
-	_, ok := err.(*failure)
+// IsSilentFailure reports whether the given error has been created by
+// SilentFailure.
+func IsSilentFailure(err error) bool {
+	_, ok := err.(*silentFailure)
 	return ok
 }
 
-type failure string
+type silentFailure struct{}
 
 // Error implements the error interface.
-func (e *failure) Error() string {
-	return string(*e)
+func (e *silentFailure) Error() string {
+	return ""
 }

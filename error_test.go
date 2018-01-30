@@ -24,10 +24,16 @@ func TestIsBadCheck(t *testing.T) {
 	assertBool(t, qt.IsBadCheck(err), false)
 }
 
-func TestFormattedFailuref(t *testing.T) {
-	err := qt.FormattedFailuref("bad %s", "wolf")
-	expectedMessage := "bad wolf"
-	if err.Error() != expectedMessage {
-		t.Fatalf("error:\ngot  %q\nwant %q", err, expectedMessage)
+func TestSilentFailuref(t *testing.T) {
+	err := qt.SilentFailure()
+	if err.Error() != "" {
+		t.Fatalf("error:\ngot  %q\nwant empty string", err)
 	}
+}
+
+func TestIsSilentFailure(t *testing.T) {
+	err := qt.SilentFailure()
+	assertBool(t, qt.IsSilentFailure(err), true)
+	err = errors.New("bad wolf")
+	assertBool(t, qt.IsSilentFailure(err), false)
 }
