@@ -13,7 +13,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/kr/pretty"
 )
 
 // report generates a failure report for the given error, optionally including
@@ -22,8 +22,7 @@ func report(checker Checker, got interface{}, args []interface{}, c Comment, ns 
 	var buf bytes.Buffer
 	buf.WriteByte('\n')
 	writeComment(&buf, c)
-	writeError(&buf, checker, got, args, err)
-	writeNotes(&buf, ns)
+	writeError(&buf, checker, got, args, ns, err)
 	writeInvocation(&buf)
 	return buf.String()
 }
@@ -35,43 +34,55 @@ func writeComment(w io.Writer, c Comment) {
 	}
 }
 
-// writeError writes a pretty formatted output of the given error into the
-// provided writer. The checker originating the failure and its arguments are
-// also provided.
-func writeError(w io.Writer, checker Checker, got interface{}, args []interface{}, err error) {
+// writeError writes a pretty formatted output of the given error and notes
+// into the provided writer. The checker originating the failure and its
+// arguments are also provided.
+func writeError(w io.Writer, checker Checker, got interface{}, args []interface{}, ns notes, err error) {
+	showErr := true
 	if IsBadCheck(err) {
+		// For errors in the checker invocation, just show the bad check
+		// message and notes.
 		fmt.Fprintln(w, strings.TrimSuffix(err.Error(), "\n"))
-		return
+		showErr = false
 	}
 	if IsSilentFailure(err) {
-		return
+		// When a silent failure is returned only the notes are displayed.
+		showErr = false
 	}
-	name, argNames := checker.Info()
-	values := make(map[string]string, len(argNames))
-	cs := &spew.ConfigState{
-		Indent:                  prefix,
-		DisablePointerAddresses: true,
-		SortKeys:                true,
-	}
-	fmt.Fprintf(w, "error:\n%s", prefixf(prefix, "%s", err))
-	fmt.Fprintf(w, "check:\n%s", prefixf(prefix, "%s", name))
-	for i, arg := range append([]interface{}{got}, args...) {
-		fmt.Fprintln(w, argNames[i]+":")
-		v := cs.Sdump(arg)
-		if argName := values[v]; argName != "" {
-			fmt.Fprintf(w, prefixf(prefix, "<same as %q>", argName))
-			continue
-		}
-		values[v] = argNames[i]
-		fmt.Fprintf(w, prefixf(prefix, "%s", v))
-	}
-}
 
-// writeNotes writes the given notes, if any, to the provided writer.
-func writeNotes(w io.Writer, ns notes) {
+	values := make(map[string]string)
+	printPair := func(key, value string) {
+		fmt.Fprintln(w, key+":")
+		if k := values[value]; k != "" {
+			fmt.Fprintf(w, prefixf(prefix, "<same as %q>", k))
+			return
+		}
+		values[value] = key
+		fmt.Fprintf(w, prefixf(prefix, "%s", value))
+	}
+
+	// Show basic info about the checker error.
+	var name string
+	var argNames []string
+	if showErr {
+		name, argNames = checker.Info()
+		fmt.Fprintf(w, "error:\n%s", prefixf(prefix, "%s", err))
+		fmt.Fprintf(w, "check:\n%s", prefixf(prefix, "%s", name))
+	}
+
+	// Show notes.
 	for _, n := range ns {
 		key, value := n[0], n[1]
-		fmt.Fprintf(w, "%s:\n%s", key, prefixf(prefix, "%s", value))
+		printPair(key, value)
+	}
+	if !showErr {
+		return
+	}
+
+	// Show the provided args.
+	for i, arg := range append([]interface{}{got}, args...) {
+		key, value := argNames[i], pretty.Sprint(arg)
+		printPair(key, value)
 	}
 }
 

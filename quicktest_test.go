@@ -4,6 +4,7 @@ package quicktest_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -28,31 +29,31 @@ var cTests = []struct {
 	checker:         qt.Equals,
 	got:             "42",
 	args:            []interface{}{"47"},
-	expectedFailure: "error:\n  values are not equal\ncheck:\n  equals\ngot:\n  (string) (len=2) \"42\"\nwant:\n  (string) (len=2) \"47\"",
+	expectedFailure: "error:\n  values are not equal\ncheck:\n  equals\ngot:\n  42\nwant:\n  47\n",
 }, {
 	about:           "Equals failure with comment",
 	checker:         qt.Equals,
 	got:             true,
 	args:            []interface{}{false, qt.Commentf("apparently %v != %v", true, false)},
-	expectedFailure: "comment:\n  apparently true != false\nerror:\n  values are not equal\ncheck:\n  equals\ngot:\n  (bool) true\nwant:\n  (bool) false",
+	expectedFailure: "comment:\n  apparently true != false\nerror:\n  values are not equal\ncheck:\n  equals\ngot:\n  bool(true)\nwant:\n  bool(false)\n",
 }, {
 	about:           "IsNil failure with comment",
 	checker:         qt.IsNil,
 	got:             42,
 	args:            []interface{}{qt.Commentf("bad wolf: %d", 42)},
-	expectedFailure: "comment:\n  bad wolf: 42\nerror:\n  42 is not nil\ncheck:\n  is nil\ngot:\n  (int) 42",
+	expectedFailure: "comment:\n  bad wolf: 42\nerror:\n  42 is not nil\ncheck:\n  is nil\ngot:\n  int(42)\n",
 }, {
 	about:           "IsNil failure with constant comment",
 	checker:         qt.IsNil,
 	got:             "something",
 	args:            []interface{}{qt.Commentf("these are the voyages")},
-	expectedFailure: "comment:\n  these are the voyages\nerror:\n  \"something\" is not nil\ncheck:\n  is nil\ngot:\n  (string) (len=9) \"something\"",
+	expectedFailure: "comment:\n  these are the voyages\nerror:\n  \"something\" is not nil\ncheck:\n  is nil\ngot:\n  something\n",
 }, {
 	about:           "IsNil failure with empty comment",
 	checker:         qt.IsNil,
 	got:             47,
 	args:            []interface{}{qt.Commentf("")},
-	expectedFailure: "error:\n  47 is not nil\ncheck:\n  is nil\ngot:\n  (int) 47",
+	expectedFailure: "error:\n  47 is not nil\ncheck:\n  is nil\ngot:\n  int(47)\n",
 }, {
 	about:           "nil checker",
 	expectedFailure: "cannot run test: nil checker provided",
@@ -67,7 +68,7 @@ var cTests = []struct {
 	checker:         qt.DeepEquals,
 	got:             42,
 	args:            []interface{}{qt.Commentf("test %d", 0)},
-	expectedFailure: "comment:\n  test 0\nnot enough arguments provided to \"deep equals\" checker: got 0, want 1",
+	expectedFailure: "comment:\n  test 0\nnot enough arguments provided to \"deep equals\" checker: got 0, want 1\n",
 }, {
 	about:           "too many arguments",
 	checker:         qt.Equals,
@@ -85,7 +86,61 @@ var cTests = []struct {
 	checker:         qt.IsNil,
 	got:             42,
 	args:            []interface{}{nil, qt.Commentf("these are the voyages")},
-	expectedFailure: "comment:\n  these are the voyages\ntoo many arguments provided to \"is nil\" checker: got 1, want 0: unexpected <nil>",
+	expectedFailure: "comment:\n  these are the voyages\ntoo many arguments provided to \"is nil\" checker: got 1, want 0: unexpected <nil>\n",
+}, {
+	about: "many arguments and notes",
+	checker: &testingChecker{
+		args: []string{"arg1", "arg2", "arg3"},
+		addNotes: func(note func(key, value string)) {
+			note("note1", "these")
+			note("note2", "are")
+			note("note3", "the")
+			note("note4", "voyages")
+		},
+		err: errors.New("bad wolf"),
+	},
+	got:             42,
+	args:            []interface{}{"val2", "val3"},
+	expectedFailure: "error:\n  bad wolf\ncheck:\n  testing checker\nnote1:\n  these\nnote2:\n  are\nnote3:\n  the\nnote4:\n  voyages\narg1:\n  int(42)\narg2:\n  val2\narg3:\n  val3\n",
+}, {
+	about: "many arguments and notes with the same value",
+	checker: &testingChecker{
+		args: []string{"arg1", "arg2", "arg3"},
+		addNotes: func(note func(key, value string)) {
+			note("note1", "value1")
+			note("note2", "value2")
+			note("note3", "value1")
+		},
+		err: errors.New("bad wolf"),
+	},
+	got:             "value1",
+	args:            []interface{}{"value1", "value2"},
+	expectedFailure: "error:\n  bad wolf\ncheck:\n  testing checker\nnote1:\n  value1\nnote2:\n  value2\nnote3:\n  <same as \"note1\">\narg1:\n  <same as \"note1\">\narg2:\n  <same as \"note1\">\narg3:\n  <same as \"note2\">\n",
+}, {
+	about: "bad check with notes",
+	checker: &testingChecker{
+		args: []string{"got", "want"},
+		addNotes: func(note func(key, value string)) {
+			note("note", "a note")
+		},
+		err: qt.BadCheckf("bad wolf"),
+	},
+	got:             42,
+	args:            []interface{}{"want"},
+	expectedFailure: "bad wolf\nnote:\n  a note\n",
+}, {
+	about: "silent failure with notes",
+	checker: &testingChecker{
+		args: []string{"got", "want"},
+		addNotes: func(note func(key, value string)) {
+			note("note1", "first note")
+			note("note2", "second note")
+		},
+		err: qt.SilentFailure(),
+	},
+	got:             42,
+	args:            []interface{}{"want"},
+	expectedFailure: "note1:\n  first note\nnote2:\n  second note\n",
 }}
 
 func TestCAssertCheck(t *testing.T) {
@@ -355,4 +410,26 @@ func assertBool(t testing.TB, got, want bool) {
 // helpers.
 type helper interface {
 	Helper()
+}
+
+// testingChecker is a quicktest.Checker used in tests. It receives the
+// provided args, adds notes via the provided addNotes function, and when the
+// check is run the provided error is returned.
+type testingChecker struct {
+	args     []string
+	addNotes func(note func(key, value string))
+	err      error
+}
+
+// Check implements quicktest.Checker by returning the stored error.
+func (c *testingChecker) Check(got interface{}, args []interface{}, note func(key, value string)) error {
+	if c.addNotes != nil {
+		c.addNotes(note)
+	}
+	return c.err
+}
+
+// Info implements quicktest.Checker by returning the stored args.
+func (c *testingChecker) Info() (name string, argNames []string) {
+	return "testing checker", c.args
 }
