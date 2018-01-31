@@ -29,23 +29,7 @@ func (e *badCheck) Error() string {
 	return string(*e)
 }
 
-// SilentFailure returns an error used when there is no need to include in the
-// failure output the "error" and "check" keys and all the keys automatically
+// ErrSilent is the error used when there is no need to include in the failure
+// output the "error" and "check" keys and all the keys automatically
 // added for args. This helper can be used when implementing checkers.
-func SilentFailure() error {
-	return &silentFailure{}
-}
-
-// IsSilentFailure reports whether the given error has been created by
-// SilentFailure.
-func IsSilentFailure(err error) bool {
-	_, ok := err.(*silentFailure)
-	return ok
-}
-
-type silentFailure struct{}
-
-// Error implements the error interface.
-func (e *silentFailure) Error() string {
-	return ""
-}
+var ErrSilent = fmt.Errorf("silent failure")

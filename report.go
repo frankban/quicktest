@@ -21,23 +21,15 @@ import (
 func report(checker Checker, got interface{}, args []interface{}, c Comment, ns notes, err error) string {
 	var buf bytes.Buffer
 	buf.WriteByte('\n')
-	writeComment(&buf, c)
-	writeError(&buf, checker, got, args, ns, err)
+	writeError(&buf, checker, got, args, c, ns, err)
 	writeInvocation(&buf)
 	return buf.String()
 }
 
-// writeComment writes the given comment, if any, to the provided writer.
-func writeComment(w io.Writer, c Comment) {
-	if comment := c.String(); comment != "" {
-		fmt.Fprintf(w, "comment:\n%s", prefixf(prefix, "%s", comment))
-	}
-}
-
-// writeError writes a pretty formatted output of the given error and notes
-// into the provided writer. The checker originating the failure and its
+// writeError writes a pretty formatted output of the given error comment and
+// notes into the provided writer. The checker originating the failure and its
 // arguments are also provided.
-func writeError(w io.Writer, checker Checker, got interface{}, args []interface{}, ns notes, err error) {
+func writeError(w io.Writer, checker Checker, got interface{}, args []interface{}, c Comment, ns notes, err error) {
 	showErr := true
 	if IsBadCheck(err) {
 		// For errors in the checker invocation, just show the bad check
@@ -45,7 +37,7 @@ func writeError(w io.Writer, checker Checker, got interface{}, args []interface{
 		fmt.Fprintln(w, strings.TrimSuffix(err.Error(), "\n"))
 		showErr = false
 	}
-	if IsSilentFailure(err) {
+	if err == ErrSilent {
 		// When a silent failure is returned only the notes are displayed.
 		showErr = false
 	}
@@ -61,13 +53,18 @@ func writeError(w io.Writer, checker Checker, got interface{}, args []interface{
 		fmt.Fprintf(w, prefixf(prefix, "%s", value))
 	}
 
+	// Write the comment if provided.
+	if comment := c.String(); comment != "" {
+		printPair("comment", comment)
+	}
+
 	// Show basic info about the checker error.
 	var name string
 	var argNames []string
 	if showErr {
 		name, argNames = checker.Info()
-		fmt.Fprintf(w, "error:\n%s", prefixf(prefix, "%s", err))
-		fmt.Fprintf(w, "check:\n%s", prefixf(prefix, "%s", name))
+		printPair("error", err.Error())
+		printPair("check", name)
 	}
 
 	// Show notes.
@@ -136,19 +133,18 @@ func writeInvocation(w io.Writer) {
 // prefixf formats the given string with the given args. It also inserts the
 // final newline if needed and indentation with the given prefix.
 func prefixf(prefix, format string, args ...interface{}) string {
-	var buf bytes.Buffer
-	lines := strings.Split(fmt.Sprintf(format, args...), "\n")
-	if l := len(lines); l > 1 && lines[l-1] == "" {
-		lines = lines[:l-1]
+	var buf []byte
+	s := strings.TrimSuffix(fmt.Sprintf(format, args...), "\n")
+	for _, line := range strings.Split(s, "\n") {
+		buf = append(buf, prefix...)
+		buf = append(buf, line...)
+		buf = append(buf, '\n')
 	}
-	for _, line := range lines {
-		fmt.Fprintln(&buf, prefix+line)
-	}
-	return buf.String()
+	return string(buf)
 }
 
 // notes holds key/value annotations.
-type notes [][]string
+type notes [][2]string
 
 const (
 	// contextLines holds the number of lines of code to show when showing a

@@ -13,13 +13,17 @@ import (
 
 // Checker is implemented by types used as part of Check/Assert invocations.
 type Checker interface {
-	// Check performs the check and returns an error in the case it fails.
-	// The check is performed using the provided got argument and any
-	// additional args required. The note function can be optionally used by
-	// the checker to provide additional information about the check as it
-	// runs, for example by registering any artifacts generated. Those notes
-	// will be displayed as part of the check output in case of failure.
+	// Check checks that the obtained value (got) is correct with respect to
+	// the checker's arguments (args). On failure, the returned error is
+	// printed along with the name of the failed check and any key-value pairs
+	// added by calling the note function.
+	//
+	// Check may return a BadCheck error when the check arguments are invalid
+	// for the checker, and ErrSilent to suppress the default printing of the
+	// error message and checker name (key/value pairs added with note are
+	// still printed).
 	Check(got interface{}, args []interface{}, note func(key, value string)) error
+
 	// Info returns the name of the checker and the names of all required
 	// arguments, including the mandatory got argument and any additional args.
 	Info() (name string, argNames []string)
@@ -91,7 +95,7 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}, note func(
 	want := args[0]
 	if diff := cmp.Diff(got, want, c.opts...); diff != "" {
 		note("diff (-got +want)", diff)
-		return errors.New("values do not compare equals")
+		return errors.New("values are not deep equal")
 	}
 	return nil
 }
@@ -103,16 +107,15 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}, note func(
 //
 var DeepEquals = CmpEquals()
 
-// Matches is a Checker checking that the provided string, or the string
-// representation of the provided value, matches the provided regular
-// expression pattern.
+// Matches is a Checker checking that the provided string or fmt.Stringer
+// matches the provided regular expression pattern.
 // For instance:
 //
 //     c.Assert("these are the voyages", qt.Matches, "these are .*")
 //     c.Assert(net.ParseIP("1.2.3.4"), qt.Matches, "1.*")
 //
 var Matches Checker = &matchesChecker{
-	info: newInfo("matches", "text", "pattern"),
+	info: newInfo("matches", "value", "regexp"),
 }
 
 type matchesChecker struct {
@@ -125,10 +128,10 @@ func (c *matchesChecker) Check(got interface{}, args []interface{}, note func(ke
 	pattern := args[0]
 	switch v := got.(type) {
 	case string:
-		return match(v, pattern, "the string does not match the pattern")
+		return match(v, pattern, "value does not match regexp")
 	case fmt.Stringer:
-		note("stringer content", fmt.Sprintf("%q", v.String()))
-		return match(v.String(), pattern, "the fmt.Stringer does not match the pattern")
+		note("value.String()", fmt.Sprintf("%q", v.String()))
+		return match(v.String(), pattern, "value.String() does not match regexp")
 	}
 	return BadCheckf("did not get a string or a fmt.Stringer, got %T instead", got)
 }
@@ -140,7 +143,7 @@ func (c *matchesChecker) Check(got interface{}, args []interface{}, note func(ke
 //     c.Assert(err, qt.ErrorMatches, "bad wolf .*")
 //
 var ErrorMatches Checker = &errorMatchesChecker{
-	info: newInfo("error matches", "error", "pattern"),
+	info: newInfo("error matches", "error", "regexp"),
 }
 
 type errorMatchesChecker struct {
@@ -156,10 +159,10 @@ func (c *errorMatchesChecker) Check(got interface{}, args []interface{}, note fu
 		return BadCheckf("did not get an error, got %T instead", got)
 	}
 	if err == nil {
-		return errors.New("error is nil, therefore it does not match the pattern")
+		return errors.New("no error found")
 	}
-	note("error message", fmt.Sprintf("%q", err))
-	return match(err.Error(), pattern, "the error does not match the pattern")
+	note("error message", err.Error())
+	return match(err.Error(), pattern, "error does not match regexp")
 }
 
 // PanicMatches is a Checker checking that the provided function panics with a
@@ -169,7 +172,7 @@ func (c *errorMatchesChecker) Check(got interface{}, args []interface{}, note fu
 //     c.Assert(func() {panic("bad wolf ...")}, qt.PanicMatches, "bad wolf .*")
 //
 var PanicMatches Checker = &panicMatchesChecker{
-	info: newInfo("panic message matches", "panic", "pattern"),
+	info: newInfo("panic matches", "panic", "regexp"),
 }
 
 type panicMatchesChecker struct {
@@ -191,18 +194,13 @@ func (c *panicMatchesChecker) Check(got interface{}, args []interface{}, note fu
 	defer func() {
 		r := recover()
 		if r == nil {
-			err = errors.New("the function did not panic")
+			err = errors.New("function did not panic")
 			return
 		}
-		var msg string
-		if panicErr, ok := r.(error); ok {
-			msg = panicErr.Error()
-		} else {
-			msg = fmt.Sprintf("%s", r)
-		}
-		note("panic message", fmt.Sprintf("%q", msg))
+		msg := fmt.Sprint(r)
+		note("panic value", msg)
 		pattern := args[0]
-		err = match(msg, pattern, "the panic message does not match the pattern")
+		err = match(msg, pattern, "panic value does not match regexp")
 	}()
 
 	f.Call(nil)
@@ -263,8 +261,10 @@ func (c *hasLenChecker) Check(got interface{}, args []interface{}, note func(key
 	default:
 		return BadCheckf("expected a type with a length, got %T instead", got)
 	}
-	if length := v.Len(); length != want {
-		return fmt.Errorf("the value has a length of %d, not %d", length, want)
+	length := v.Len()
+	note("len(got)", fmt.Sprintf("%d", length))
+	if length != want {
+		return fmt.Errorf("unexpected length")
 	}
 	return nil
 }
@@ -300,8 +300,7 @@ func (c *notChecker) Check(got interface{}, args []interface{}, note func(key, v
 	if err != nil {
 		return nil
 	}
-	name, _ := c.checker.Info()
-	return fmt.Errorf("the %q check should have failed, but did not", name)
+	return errors.New("unexpected success")
 }
 
 // newInfo returns an info value providing the given names.
@@ -327,7 +326,7 @@ func (i info) Info() (name string, argNames []string) {
 func match(got string, pattern interface{}, msg string) error {
 	regex, ok := pattern.(string)
 	if !ok {
-		return BadCheckf("the regular expression pattern must be a string, got %T instead", pattern)
+		return BadCheckf("regular expression pattern must be a string, got %T instead", pattern)
 	}
 	matches, err := regexp.MatchString("^("+regex+")$", got)
 	if err != nil {

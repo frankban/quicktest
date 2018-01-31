@@ -171,7 +171,7 @@ func check(fail func(...interface{}), checker Checker, got interface{}, args []i
 	}
 	// Allow checkers to annotate messages.
 	notef := func(key, value string) {
-		ns = append(ns, []string{key, value})
+		ns = append(ns, [2]string{key, value})
 	}
 	// Execute the check and report the failure if necessary.
 	if err := checker.Check(got, args, notef); err != nil {

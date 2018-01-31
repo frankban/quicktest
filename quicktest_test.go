@@ -20,73 +20,134 @@ var cTests = []struct {
 	args            []interface{}
 	expectedFailure string
 }{{
-	about:   "test success",
+	about:   "success",
 	checker: qt.Equals,
 	got:     42,
 	args:    []interface{}{42},
 }, {
-	about:           "test failure",
-	checker:         qt.Equals,
-	got:             "42",
-	args:            []interface{}{"47"},
-	expectedFailure: "error:\n  values are not equal\ncheck:\n  equals\ngot:\n  42\nwant:\n  47\n",
+	about:   "failure",
+	checker: qt.Equals,
+	got:     "42",
+	args:    []interface{}{"47"},
+	expectedFailure: `
+error:
+  values are not equal
+check:
+  equals
+got:
+  42
+want:
+  47
+`,
 }, {
-	about:           "Equals failure with comment",
-	checker:         qt.Equals,
-	got:             true,
-	args:            []interface{}{false, qt.Commentf("apparently %v != %v", true, false)},
-	expectedFailure: "comment:\n  apparently true != false\nerror:\n  values are not equal\ncheck:\n  equals\ngot:\n  bool(true)\nwant:\n  bool(false)\n",
+	about:   "failure with comment",
+	checker: qt.Equals,
+	got:     true,
+	args:    []interface{}{false, qt.Commentf("apparently %v != %v", true, false)},
+	expectedFailure: `
+comment:
+  apparently true != false
+error:
+  values are not equal
+check:
+  equals
+got:
+  bool(true)
+want:
+  bool(false)
+`,
 }, {
-	about:           "IsNil failure with comment",
-	checker:         qt.IsNil,
-	got:             42,
-	args:            []interface{}{qt.Commentf("bad wolf: %d", 42)},
-	expectedFailure: "comment:\n  bad wolf: 42\nerror:\n  42 is not nil\ncheck:\n  is nil\ngot:\n  int(42)\n",
+	about:   "another failure with comment",
+	checker: qt.IsNil,
+	got:     42,
+	args:    []interface{}{qt.Commentf("bad wolf: %d", 42)},
+	expectedFailure: `
+comment:
+  bad wolf: 42
+error:
+  42 is not nil
+check:
+  is nil
+got:
+  int(42)
+`,
 }, {
-	about:           "IsNil failure with constant comment",
-	checker:         qt.IsNil,
-	got:             "something",
-	args:            []interface{}{qt.Commentf("these are the voyages")},
-	expectedFailure: "comment:\n  these are the voyages\nerror:\n  \"something\" is not nil\ncheck:\n  is nil\ngot:\n  something\n",
+	about:   "failure with constant comment",
+	checker: qt.IsNil,
+	got:     "something",
+	args:    []interface{}{qt.Commentf("these are the voyages")},
+	expectedFailure: `
+comment:
+  these are the voyages
+error:
+  "something" is not nil
+check:
+  is nil
+got:
+  something
+`,
 }, {
-	about:           "IsNil failure with empty comment",
-	checker:         qt.IsNil,
-	got:             47,
-	args:            []interface{}{qt.Commentf("")},
-	expectedFailure: "error:\n  47 is not nil\ncheck:\n  is nil\ngot:\n  int(47)\n",
+	about:   "failure with empty comment",
+	checker: qt.IsNil,
+	got:     47,
+	args:    []interface{}{qt.Commentf("")},
+	expectedFailure: `
+error:
+  47 is not nil
+check:
+  is nil
+got:
+  int(47)
+`,
 }, {
-	about:           "nil checker",
-	expectedFailure: "cannot run test: nil checker provided",
+	about: "nil checker",
+	expectedFailure: `
+cannot run test: nil checker provided
+`,
 }, {
-	about:           "not enough arguments",
-	checker:         qt.Equals,
-	got:             42,
-	args:            []interface{}{},
-	expectedFailure: `not enough arguments provided to "equals" checker: got 0, want 1`,
+	about:   "not enough arguments",
+	checker: qt.Equals,
+	got:     42,
+	args:    []interface{}{},
+	expectedFailure: `
+not enough arguments provided to "equals" checker: got 0, want 1
+`,
 }, {
-	about:           "not enough arguments with comment",
-	checker:         qt.DeepEquals,
-	got:             42,
-	args:            []interface{}{qt.Commentf("test %d", 0)},
-	expectedFailure: "comment:\n  test 0\nnot enough arguments provided to \"deep equals\" checker: got 0, want 1\n",
+	about:   "not enough arguments with comment",
+	checker: qt.DeepEquals,
+	got:     42,
+	args:    []interface{}{qt.Commentf("test %d", 0)},
+	expectedFailure: `
+not enough arguments provided to "deep equals" checker: got 0, want 1
+comment:
+  test 0
+`,
 }, {
-	about:           "too many arguments",
-	checker:         qt.Equals,
-	got:             42,
-	args:            []interface{}{42, 47},
-	expectedFailure: `too many arguments provided to "equals" checker: got 2, want 1: unexpected 47`,
+	about:   "too many arguments",
+	checker: qt.Equals,
+	got:     42,
+	args:    []interface{}{42, 47},
+	expectedFailure: `
+too many arguments provided to "equals" checker: got 2, want 1: unexpected 47
+`,
 }, {
-	about:           "really too many arguments",
-	checker:         qt.DeepEquals,
-	got:             42,
-	args:            []interface{}{42, 47, nil, "stop"},
-	expectedFailure: `too many arguments provided to "deep equals" checker: got 4, want 1: unexpected 47, <nil>, stop`,
+	about:   "really too many arguments",
+	checker: qt.DeepEquals,
+	got:     42,
+	args:    []interface{}{42, 47, nil, "stop"},
+	expectedFailure: `
+too many arguments provided to "deep equals" checker: got 4, want 1: unexpected 47, <nil>, stop
+`,
 }, {
-	about:           "too many arguments with comment",
-	checker:         qt.IsNil,
-	got:             42,
-	args:            []interface{}{nil, qt.Commentf("these are the voyages")},
-	expectedFailure: "comment:\n  these are the voyages\ntoo many arguments provided to \"is nil\" checker: got 1, want 0: unexpected <nil>\n",
+	about:   "too many arguments with comment",
+	checker: qt.IsNil,
+	got:     42,
+	args:    []interface{}{nil, qt.Commentf("these are the voyages")},
+	expectedFailure: `
+too many arguments provided to "is nil" checker: got 1, want 0: unexpected <nil>
+comment:
+  these are the voyages
+`,
 }, {
 	about: "many arguments and notes",
 	checker: &testingChecker{
@@ -99,9 +160,28 @@ var cTests = []struct {
 		},
 		err: errors.New("bad wolf"),
 	},
-	got:             42,
-	args:            []interface{}{"val2", "val3"},
-	expectedFailure: "error:\n  bad wolf\ncheck:\n  testing checker\nnote1:\n  these\nnote2:\n  are\nnote3:\n  the\nnote4:\n  voyages\narg1:\n  int(42)\narg2:\n  val2\narg3:\n  val3\n",
+	got:  42,
+	args: []interface{}{"val2", "val3"},
+	expectedFailure: `
+error:
+  bad wolf
+check:
+  testing checker
+note1:
+  these
+note2:
+  are
+note3:
+  the
+note4:
+  voyages
+arg1:
+  int(42)
+arg2:
+  val2
+arg3:
+  val3
+`,
 }, {
 	about: "many arguments and notes with the same value",
 	checker: &testingChecker{
@@ -113,9 +193,26 @@ var cTests = []struct {
 		},
 		err: errors.New("bad wolf"),
 	},
-	got:             "value1",
-	args:            []interface{}{"value1", "value2"},
-	expectedFailure: "error:\n  bad wolf\ncheck:\n  testing checker\nnote1:\n  value1\nnote2:\n  value2\nnote3:\n  <same as \"note1\">\narg1:\n  <same as \"note1\">\narg2:\n  <same as \"note1\">\narg3:\n  <same as \"note2\">\n",
+	got:  "value1",
+	args: []interface{}{"value1", "value2"},
+	expectedFailure: `
+error:
+  bad wolf
+check:
+  testing checker
+note1:
+  value1
+note2:
+  value2
+note3:
+  <same as "note1">
+arg1:
+  <same as "note1">
+arg2:
+  <same as "note1">
+arg3:
+  <same as "note2">
+`,
 }, {
 	about: "bad check with notes",
 	checker: &testingChecker{
@@ -125,9 +222,13 @@ var cTests = []struct {
 		},
 		err: qt.BadCheckf("bad wolf"),
 	},
-	got:             42,
-	args:            []interface{}{"want"},
-	expectedFailure: "bad wolf\nnote:\n  a note\n",
+	got:  42,
+	args: []interface{}{"want"},
+	expectedFailure: `
+bad wolf
+note:
+  a note
+`,
 }, {
 	about: "silent failure with notes",
 	checker: &testingChecker{
@@ -136,11 +237,16 @@ var cTests = []struct {
 			note("note1", "first note")
 			note("note2", "second note")
 		},
-		err: qt.SilentFailure(),
+		err: qt.ErrSilent,
 	},
-	got:             42,
-	args:            []interface{}{"want"},
-	expectedFailure: "note1:\n  first note\nnote2:\n  second note\n",
+	got:  42,
+	args: []interface{}{"want"},
+	expectedFailure: `
+note1:
+  first note
+note2:
+  second note
+`,
 }}
 
 func TestCAssertCheck(t *testing.T) {
@@ -304,7 +410,7 @@ func TestCRunCleanup(t *testing.T) {
 
 func checkResult(t *testing.T, ok bool, got, want string) {
 	if want != "" {
-		assertPrefix(t, got, "\n"+want)
+		assertPrefix(t, got, want)
 		assertBool(t, ok, false)
 		return
 	}
