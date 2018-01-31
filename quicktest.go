@@ -133,15 +133,18 @@ func (c *C) Parallel() {
 	p.Parallel()
 }
 
-// check performs the actual check by calling the provided fail function.
+// check performs the actual check and calls the provided fail function in case
+// of failure.
 func check(fail func(...interface{}), checker Checker, got interface{}, args []interface{}) bool {
+	var ns notes
 	// Ensure that we have a checker.
 	if checker == nil {
-		fail(report(BadCheckf("cannot run test: nil checker provided"), Comment{}))
+		fail(report(checker, got, args, Comment{}, ns, BadCheckf("cannot run test: nil checker provided")))
 		return false
 	}
 	// Extract a comment if it has been provided.
-	wantNumArgs := checker.NumArgs()
+	name, argNames := checker.Info()
+	wantNumArgs := len(argNames) - 1
 	var c Comment
 	if len(args) > 0 {
 		if comment, ok := args[len(args)-1].(Comment); ok {
@@ -151,8 +154,8 @@ func check(fail func(...interface{}), checker Checker, got interface{}, args []i
 	}
 	// Validate that we have the correct number of arguments.
 	if len(args) < wantNumArgs {
-		err := BadCheckf("not enough arguments provided to checker: got %d, want %d", len(args), wantNumArgs)
-		fail(report(err, c))
+		err := BadCheckf("not enough arguments provided to %q checker: got %d, want %d", name, len(args), wantNumArgs)
+		fail(report(checker, got, args, c, ns, err))
 		return false
 	}
 	if len(args) > wantNumArgs {
@@ -161,14 +164,18 @@ func check(fail func(...interface{}), checker Checker, got interface{}, args []i
 			unexpected[i] = fmt.Sprintf("%v", a)
 		}
 		err := BadCheckf(
-			"too many arguments provided to checker: got %d, want %d: unexpected %s",
-			len(args), wantNumArgs, strings.Join(unexpected, ", "))
-		fail(report(err, c))
+			"too many arguments provided to %q checker: got %d, want %d: unexpected %s",
+			name, len(args), wantNumArgs, strings.Join(unexpected, ", "))
+		fail(report(checker, got, args, c, ns, err))
 		return false
 	}
+	// Allow checkers to annotate messages.
+	notef := func(key, value string) {
+		ns = append(ns, [2]string{key, value})
+	}
 	// Execute the check and report the failure if necessary.
-	if err := checker.Check(got, args); err != nil {
-		fail(report(err, c))
+	if err := checker.Check(got, args, notef); err != nil {
+		fail(report(checker, got, args, c, ns, err))
 		return false
 	}
 	return true

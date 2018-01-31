@@ -7,24 +7,26 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"strings"
 
 	"github.com/google/go-cmp/cmp"
 )
 
 // Checker is implemented by types used as part of Check/Assert invocations.
 type Checker interface {
-	// Check performs the check and returns an error in the case it fails.
-	// The check is performed using the provided got argument and any
-	// additional args required.
-	Check(got interface{}, args []interface{}) error
-	// Negate negates the check performed by Check. In essence, it checks that
-	// the opposite is true. For instance, if Check ensures that two values are
-	// equal, Negate ensures that they are not equal.
-	Negate(got interface{}, args []interface{}) error
-	// NumArgs returns the number of additional arguments (excluding got)
-	// expected to be provided to Check and Negate.
-	NumArgs() int
+	// Check checks that the obtained value (got) is correct with respect to
+	// the checker's arguments (args). On failure, the returned error is
+	// printed along with the name of the failed check and any key-value pairs
+	// added by calling the note function.
+	//
+	// Check may return a BadCheck error when the check arguments are invalid
+	// for the checker, and ErrSilent to suppress the default printing of the
+	// error message and checker name (key/value pairs added with note are
+	// still printed).
+	Check(got interface{}, args []interface{}, note func(key, value string)) error
+
+	// Info returns the name of the checker and the names of all required
+	// arguments, including the mandatory got argument and any additional args.
+	Info() (name string, argNames []string)
 }
 
 // Equals is a Checker checking equality of two comparable values.
@@ -38,15 +40,15 @@ type Checker interface {
 //
 // Use the IsNil checker below for this kind of nil check.
 var Equals Checker = &equalsChecker{
-	numArgs: 1,
+	info: newInfo("equals", "got", "want"),
 }
 
 type equalsChecker struct {
-	numArgs
+	info
 }
 
 // Check implements Checker.Check by checking that got == args[0].
-func (c *equalsChecker) Check(got interface{}, args []interface{}) (err error) {
+func (c *equalsChecker) Check(got interface{}, args []interface{}, note func(key, value string)) (err error) {
 	defer func() {
 		// A panic is raised when the provided values are not comparable.
 		if r := recover(); r != nil {
@@ -54,21 +56,9 @@ func (c *equalsChecker) Check(got interface{}, args []interface{}) (err error) {
 		}
 	}()
 	if want := args[0]; got != want {
-		return &notEqualError{
-			msg:  "not equal",
-			got:  got,
-			want: want,
-		}
+		return errors.New("values are not equal")
 	}
 	return nil
-}
-
-// Negate implements Checker.Negate by checking that got != args[0].
-func (c *equalsChecker) Negate(got interface{}, args []interface{}) error {
-	if c.Check(got, args) != nil {
-		return nil
-	}
-	return fmt.Errorf("both values equal %#v, but should not", got)
 }
 
 // CmpEquals returns a Checker checking equality of two arbitrary values
@@ -81,19 +71,19 @@ func (c *equalsChecker) Negate(got interface{}, args []interface{}) error {
 //
 func CmpEquals(opts ...cmp.Option) Checker {
 	return &cmpEqualsChecker{
-		numArgs: 1,
-		opts:    opts,
+		info: newInfo("deep equals", "got", "want"),
+		opts: opts,
 	}
 }
 
 type cmpEqualsChecker struct {
-	numArgs
+	info
 	opts cmp.Options
 }
 
 // Check implements Checker.Check by checking that got == args[0] according to
 // the compare options stored in the checker.
-func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}) (err error) {
+func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}, note func(key, value string)) (err error) {
 	defer func() {
 		// A panic is raised in some cases, for instance when trying to compare
 		// structs with unexported fields and neither AllowUnexported nor
@@ -104,18 +94,10 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}) (err error
 	}()
 	want := args[0]
 	if diff := cmp.Diff(got, want, c.opts...); diff != "" {
-		return fmt.Errorf("values are not equal:\n%s%s", notEqualErrorPrefix, strings.TrimSuffix(diff, "\n"))
+		note("diff (-got +want)", diff)
+		return errors.New("values are not deep equal")
 	}
 	return nil
-}
-
-// Negate implements Checker.Negate by checking that got != args[0] according
-// to the compare options stored in the checker.
-func (c *cmpEqualsChecker) Negate(got interface{}, args []interface{}) error {
-	if c.Check(got, args) != nil {
-		return nil
-	}
-	return fmt.Errorf("both values deeply equal %#v, but should not", got)
 }
 
 // DeepEquals is a Checker deeply checking equality of two arbitrary values.
@@ -125,47 +107,33 @@ func (c *cmpEqualsChecker) Negate(got interface{}, args []interface{}) error {
 //
 var DeepEquals = CmpEquals()
 
-// Matches is a Checker checking that the provided string, or the string
-// representation of the provided value, matches the provided regular
-// expression pattern.
+// Matches is a Checker checking that the provided string or fmt.Stringer
+// matches the provided regular expression pattern.
 // For instance:
 //
 //     c.Assert("these are the voyages", qt.Matches, "these are .*")
 //     c.Assert(net.ParseIP("1.2.3.4"), qt.Matches, "1.*")
 //
 var Matches Checker = &matchesChecker{
-	numArgs: 1,
+	info: newInfo("matches", "value", "regexp"),
 }
 
 type matchesChecker struct {
-	numArgs
+	info
 }
 
 // Check implements Checker.Check by checking that got is a string or a
 // fmt.Stringer and that it matches args[0].
-func (c *matchesChecker) Check(got interface{}, args []interface{}) error {
+func (c *matchesChecker) Check(got interface{}, args []interface{}, note func(key, value string)) error {
 	pattern := args[0]
 	switch v := got.(type) {
 	case string:
-		return match(v, pattern, "string mismatch")
+		return match(v, pattern, "value does not match regexp")
 	case fmt.Stringer:
-		return match(v.String(), pattern, "fmt.Stringer mismatch")
+		note("value.String()", fmt.Sprintf("%q", v.String()))
+		return match(v.String(), pattern, "value.String() does not match regexp")
 	}
-	return BadCheckf("did not get an string or a fmt.Stringer, got %T instead", got)
-}
-
-// Negate implements Checker.Negate by checking that got is a string or a
-// fmt.Stringer and that it does not match args[0].
-func (c *matchesChecker) Negate(got interface{}, args []interface{}) error {
-	err := c.Check(got, args)
-	if IsBadCheck(err) {
-		return err
-	}
-	if err != nil {
-		return nil
-	}
-	pattern := args[0]
-	return fmt.Errorf("%q matches %q, but should not", got, pattern)
+	return BadCheckf("did not get a string or a fmt.Stringer, got %T instead", got)
 }
 
 // ErrorMatches is a Checker checking that the provided value is an error whose
@@ -175,39 +143,26 @@ func (c *matchesChecker) Negate(got interface{}, args []interface{}) error {
 //     c.Assert(err, qt.ErrorMatches, "bad wolf .*")
 //
 var ErrorMatches Checker = &errorMatchesChecker{
-	numArgs: 1,
+	info: newInfo("error matches", "error", "regexp"),
 }
 
 type errorMatchesChecker struct {
-	numArgs
+	info
 }
 
 // Check implements Checker.Check by checking that got is an error whose
 // Error() matches args[0].
-func (c *errorMatchesChecker) Check(got interface{}, args []interface{}) error {
+func (c *errorMatchesChecker) Check(got interface{}, args []interface{}, note func(key, value string)) error {
 	pattern := args[0]
 	err, ok := got.(error)
 	if !ok {
 		return BadCheckf("did not get an error, got %T instead", got)
 	}
 	if err == nil {
-		return fmt.Errorf("error is nil, therefore it does not match %q", pattern)
+		return errors.New("no error found")
 	}
-	return match(err.Error(), pattern, "error message mismatch")
-}
-
-// Negate implements Checker.Negate by checking that got is either nil or
-// an error whose String() does not match args[0].
-func (c *errorMatchesChecker) Negate(got interface{}, args []interface{}) error {
-	err := c.Check(got, args)
-	if IsBadCheck(err) {
-		return err
-	}
-	if err != nil {
-		return nil
-	}
-	pattern := args[0]
-	return fmt.Errorf("error %q matches %q, but should not", got, pattern)
+	note("error message", err.Error())
+	return match(err.Error(), pattern, "error does not match regexp")
 }
 
 // PanicMatches is a Checker checking that the provided function panics with a
@@ -217,58 +172,39 @@ func (c *errorMatchesChecker) Negate(got interface{}, args []interface{}) error 
 //     c.Assert(func() {panic("bad wolf ...")}, qt.PanicMatches, "bad wolf .*")
 //
 var PanicMatches Checker = &panicMatchesChecker{
-	numArgs: 1,
+	info: newInfo("panic matches", "panic", "regexp"),
 }
 
 type panicMatchesChecker struct {
-	numArgs
+	info
 }
 
 // Check implements Checker.Check by checking that got is a func() that panics
 // with a message matching args[0].
-func (c *panicMatchesChecker) Check(got interface{}, args []interface{}) (err error) {
+func (c *panicMatchesChecker) Check(got interface{}, args []interface{}, note func(key, value string)) (err error) {
 	f := reflect.ValueOf(got)
 	if f.Kind() != reflect.Func {
 		return BadCheckf("expected a function, got %T instead", got)
 	}
 	ftype := f.Type()
 	if ftype.NumIn() != 0 {
-		return BadCheckf(
-			"expected a function accepting no arguments, got %T instead", got)
+		return BadCheckf("expected a function accepting no arguments, got %T instead", got)
 	}
 
 	defer func() {
 		r := recover()
 		if r == nil {
-			err = fmt.Errorf("the function did not panic")
+			err = errors.New("function did not panic")
 			return
 		}
-		var msg string
-		if panicErr, ok := r.(error); ok {
-			msg = panicErr.Error()
-		} else {
-			msg = fmt.Sprintf("%s", r)
-		}
+		msg := fmt.Sprint(r)
+		note("panic value", msg)
 		pattern := args[0]
-		err = match(msg, pattern, "panic message mismatch")
+		err = match(msg, pattern, "panic value does not match regexp")
 	}()
 
 	f.Call(nil)
 	return nil
-}
-
-// Negate implements Checker.Negate by checking that got is a func() that does
-// not panic with the given message.
-func (c *panicMatchesChecker) Negate(got interface{}, args []interface{}) error {
-	err := c.Check(got, args)
-	if IsBadCheck(err) {
-		return err
-	}
-	if err != nil {
-		return nil
-	}
-	pattern := args[0]
-	return fmt.Errorf("there was a panic matching %q", pattern)
 }
 
 // IsNil is a Checker checking that the provided value is nil.
@@ -276,14 +212,16 @@ func (c *panicMatchesChecker) Negate(got interface{}, args []interface{}) error 
 //
 //     c.Assert(got, qt.IsNil)
 //
-var IsNil Checker = &isNilChecker{}
+var IsNil Checker = &isNilChecker{
+	info: newInfo("is nil", "got"),
+}
 
 type isNilChecker struct {
-	numArgs
+	info
 }
 
 // Check implements Checker.Check by checking that got is nil.
-func (c *isNilChecker) Check(got interface{}, args []interface{}) (err error) {
+func (c *isNilChecker) Check(got interface{}, args []interface{}, note func(key, value string)) (err error) {
 	if got == nil {
 		return nil
 	}
@@ -297,14 +235,6 @@ func (c *isNilChecker) Check(got interface{}, args []interface{}) (err error) {
 	return fmt.Errorf("%#v is not nil", got)
 }
 
-// Negate implements Checker.Negate by checking that got is not nil.
-func (c *isNilChecker) Negate(got interface{}, args []interface{}) error {
-	if c.Check(got, args) != nil {
-		return nil
-	}
-	return errors.New("the value is nil, but should not")
-}
-
 // HasLen is a Checker checking that the provided value has the provided length.
 // For instance:
 //
@@ -312,15 +242,15 @@ func (c *isNilChecker) Negate(got interface{}, args []interface{}) error {
 //     c.Assert(myMap, qt.HasLen, 42)
 //
 var HasLen Checker = &hasLenChecker{
-	numArgs: 1,
+	info: newInfo("has length", "got", "length"),
 }
 
 type hasLenChecker struct {
-	numArgs
+	info
 }
 
 // Check implements Checker.Check by checking that len(got) == args[0].
-func (c *hasLenChecker) Check(got interface{}, args []interface{}) (err error) {
+func (c *hasLenChecker) Check(got interface{}, args []interface{}, note func(key, value string)) (err error) {
 	want, ok := args[0].(int)
 	if !ok {
 		return BadCheckf("expected length is of type %T, not int", args[0])
@@ -331,23 +261,12 @@ func (c *hasLenChecker) Check(got interface{}, args []interface{}) (err error) {
 	default:
 		return BadCheckf("expected a type with a length, got %T instead", got)
 	}
-	if length := v.Len(); length != want {
-		return fmt.Errorf("the provided value has not the expected length of %d:\n(value)\n\t%#v\n(-got length +want length)\n\t-: %d\n\t+: %d", want, got, length, want)
+	length := v.Len()
+	note("len(got)", fmt.Sprintf("%d", length))
+	if length != want {
+		return fmt.Errorf("unexpected length")
 	}
 	return nil
-}
-
-// Negate implements Checker.Negate by checking that len(got) != args[0].
-func (c *hasLenChecker) Negate(got interface{}, args []interface{}) error {
-	err := c.Check(got, args)
-	if IsBadCheck(err) {
-		return err
-	}
-	if err != nil {
-		return nil
-	}
-	want := args[0].(int)
-	return fmt.Errorf("the provided value has a length of %d, but should not:\n(value)\n\t%#v", want, got)
 }
 
 // Not returns a Checker negating the given Checker.
@@ -357,39 +276,57 @@ func (c *hasLenChecker) Negate(got interface{}, args []interface{}) error {
 //     c.Assert(answer, qt.Not(qt.Equals), 42)
 //
 func Not(checker Checker) Checker {
+	name, argNames := checker.Info()
 	return &notChecker{
-		Checker: checker,
+		info:    newInfo("not("+name+")", argNames...),
+		checker: checker,
 	}
 }
 
 type notChecker struct {
-	Checker
+	info
+	checker Checker
 }
 
 // Check implements Checker.Check by checking that the stored checker fails.
-func (c *notChecker) Check(got interface{}, args []interface{}) (err error) {
-	return c.Checker.Negate(got, args)
+func (c *notChecker) Check(got interface{}, args []interface{}, note func(key, value string)) (err error) {
+	if nc, ok := c.checker.(*notChecker); ok {
+		return nc.checker.Check(got, args, note)
+	}
+	err = c.checker.Check(got, args, note)
+	if IsBadCheck(err) {
+		return err
+	}
+	if err != nil {
+		return nil
+	}
+	return errors.New("unexpected success")
 }
 
-// Negate implements Checker.Negate by checking that the checker succeeds.
-func (c *notChecker) Negate(got interface{}, args []interface{}) error {
-	return c.Checker.Check(got, args)
+// newInfo returns an info value providing the given names.
+func newInfo(name string, argNames ...string) info {
+	return info{
+		name:     name,
+		argNames: argNames,
+	}
 }
 
-// numArgs helps implementing Checker.NumArgs.
-type numArgs int
+// info helps implementing Checker.Info.
+type info struct {
+	name     string
+	argNames []string
+}
 
-// NumArgs implements Checker.NumArgs by returning the current integer value.
-func (n numArgs) NumArgs() int {
-	return int(n)
+// Info implements Checker.Info by returning the checker and arg names.
+func (i info) Info() (name string, argNames []string) {
+	return i.name, i.argNames
 }
 
 // match checks that the given error message matches the given pattern.
 func match(got string, pattern interface{}, msg string) error {
 	regex, ok := pattern.(string)
 	if !ok {
-		return BadCheckf(
-			"the regular expression pattern must be a string, got %T instead", pattern)
+		return BadCheckf("regular expression pattern must be a string, got %T instead", pattern)
 	}
 	matches, err := regexp.MatchString("^("+regex+")$", got)
 	if err != nil {
@@ -398,9 +335,5 @@ func match(got string, pattern interface{}, msg string) error {
 	if matches {
 		return nil
 	}
-	return &mismatchError{
-		msg:     msg,
-		got:     got,
-		pattern: regex,
-	}
+	return errors.New(msg)
 }

@@ -32,16 +32,21 @@ func TestCodeOutput(t *testing.T) {
 }
 
 var expectedCodeOutput = `
-not equal:
-(-got +want)
-        -: 42
-        +: 47
-report_test.go:20:
-        17     // Context line #1.
-        18     // Context line #2.
-        19     // Context line #3.
-        20!    c.Assert(42, qt.Equals, 47)
-        21     // Context line #4.
-        22     // Context line #5.
-        23     // Context line #6.
+error:
+  values are not equal
+check:
+  equals
+got:
+  int(42)
+want:
+  int(47)
+sources:
+  report_test.go:20:
+    17     // Context line #1.
+    18     // Context line #2.
+    19     // Context line #3.
+    20!    c.Assert(42, qt.Equals, 47)
+    21     // Context line #4.
+    22     // Context line #5.
+    23     // Context line #6.
 `

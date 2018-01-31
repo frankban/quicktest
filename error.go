@@ -2,7 +2,9 @@
 
 package quicktest
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // BadCheckf returns an error used to report a problem with the checker
 // invocation or testing execution itself (like wrong number or type of
@@ -27,28 +29,7 @@ func (e *badCheck) Error() string {
 	return string(*e)
 }
 
-// mismatchError is an error that simplifies printing mismatch messages.
-type mismatchError struct {
-	msg     string
-	got     string
-	pattern string
-}
-
-// Error implements the error interface.
-func (e *mismatchError) Error() string {
-	return fmt.Sprintf("%s:\n(-text +pattern)\n\t-: %q\n\t+: %q", e.msg, e.got, e.pattern)
-}
-
-// notEqualError is an error that simplifies printing "(-got +want)" messages.
-type notEqualError struct {
-	msg  string
-	got  interface{}
-	want interface{}
-}
-
-// Error implements the error interface.
-func (e *notEqualError) Error() string {
-	return fmt.Sprintf("%s:\n%s\t-: %#v\n\t+: %#v", e.msg, notEqualErrorPrefix, e.got, e.want)
-}
-
-const notEqualErrorPrefix = "(-got +want)\n"
+// ErrSilent is the error used when there is no need to include in the failure
+// output the "error" and "check" keys and all the keys automatically
+// added for args. This helper can be used when implementing checkers.
+var ErrSilent = fmt.Errorf("silent failure")
