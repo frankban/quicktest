@@ -350,6 +350,163 @@ too many arguments provided to "deep equals" checker: got 2, want 1: unexpected 
 too many arguments provided to "not(deep equals)" checker: got 2, want 1: unexpected <nil>
 `,
 }, {
+	about:   "ContentEquals: same values",
+	checker: qt.ContentEquals,
+	got:     []string{"these", "are", "the", "voyages"},
+	args: []interface{}{
+		[]string{"these", "are", "the", "voyages"},
+	},
+	expectedNegateFailure: `
+error:
+  unexpected success
+check:
+  not(content equals)
+got:
+  []string{"these", "are", "the", "voyages"}
+want:
+  <same as "got">
+`,
+}, {
+	about:   "ContentEquals: same contents",
+	checker: qt.ContentEquals,
+	got:     []int{1, 2, 3},
+	args: []interface{}{
+		[]int{3, 2, 1},
+	},
+	expectedNegateFailure: `
+error:
+  unexpected success
+check:
+  not(content equals)
+got:
+  []int{1, 2, 3}
+want:
+  []int{3, 2, 1}
+`,
+}, {
+	about:   "ContentEquals: same contents on complex slice",
+	checker: qt.ContentEquals,
+	got: []struct {
+		Strings []interface{}
+		Ints    []int
+	}{cmpEqualsGot, cmpEqualsGot, cmpEqualsWant},
+	args: []interface{}{
+		[]struct {
+			Strings []interface{}
+			Ints    []int
+		}{cmpEqualsWant, cmpEqualsGot, cmpEqualsGot},
+	},
+	expectedNegateFailure: `
+error:
+  unexpected success
+check:
+  not(content equals)
+got:
+  []struct { Strings []interface {}; Ints []int }{
+      {
+          Strings: {
+              "who",
+              "dalek",
+          },
+          Ints: {42, 47},
+      },
+      {
+          Strings: {
+              "who",
+              "dalek",
+          },
+          Ints: {42, 47},
+      },
+      {
+          Strings: {
+              "who",
+              "dalek",
+          },
+          Ints: {42},
+      },
+  }
+want:
+  []struct { Strings []interface {}; Ints []int }{
+      {
+          Strings: {
+              "who",
+              "dalek",
+          },
+          Ints: {42},
+      },
+      {
+          Strings: {
+              "who",
+              "dalek",
+          },
+          Ints: {42, 47},
+      },
+      {
+          Strings: {
+              "who",
+              "dalek",
+          },
+          Ints: {42, 47},
+      },
+  }
+`,
+}, {
+	about:   "ContentEquals: got not a slice",
+	checker: qt.ContentEquals,
+	got:     42,
+	args: []interface{}{
+		[]int{3, 2, 1},
+	},
+	expectedCheckFailure: `
+got value should be a slice, but it is a int instead
+`,
+	expectedNegateFailure: `
+got value should be a slice, but it is a int instead
+`,
+}, {
+	about:   "ContentEquals: want not a slice",
+	checker: qt.ContentEquals,
+	got:     []string{},
+	args:    []interface{}{"bad wolf"},
+	expectedCheckFailure: `
+want value should be a slice, but it is a string instead
+`,
+	expectedNegateFailure: `
+want value should be a slice, but it is a string instead
+`,
+}, {
+	about:   "ContentEquals: slices of different type",
+	checker: qt.ContentEquals,
+	got:     []string{"bad", "wolf"},
+	args: []interface{}{
+		[]interface{}{"bad", "wolf"},
+	},
+	expectedCheckFailure: `
+values are not slices of the same type: []string != []interface {}
+`,
+	expectedNegateFailure: `
+values are not slices of the same type: []string != []interface {}
+`,
+}, {
+	about:   "ContentEquals: not enough arguments",
+	checker: qt.ContentEquals,
+	expectedCheckFailure: `
+not enough arguments provided to "content equals" checker: got 0, want 1
+`,
+	expectedNegateFailure: `
+not enough arguments provided to "not(content equals)" checker: got 0, want 1
+`,
+}, {
+	about:   "ContentEquals: too many arguments",
+	checker: qt.ContentEquals,
+	args:    []interface{}{nil, nil},
+	expectedCheckFailure: `
+too many arguments provided to "content equals" checker: got 2, want 1: unexpected <nil>
+`,
+	expectedNegateFailure: `
+too many arguments provided to "not(content equals)" checker: got 2, want 1: unexpected <nil>
+`,
+}, {
 	about:   "Matches: perfect match",
 	checker: qt.Matches,
 	got:     "exterminate",
@@ -1102,6 +1259,237 @@ expected length is of type string, not int
 `,
 	expectedNegateFailure: `
 expected length is of type string, not int
+`,
+}, {
+	about:   "HasLen: not enough arguments",
+	checker: qt.HasLen,
+	expectedCheckFailure: `
+not enough arguments provided to "has length" checker: got 0, want 1
+`,
+	expectedNegateFailure: `
+not enough arguments provided to "not(has length)" checker: got 0, want 1
+`,
+}, {
+	about:   "HasLen: too many arguments",
+	checker: qt.HasLen,
+	got:     []int{42},
+	args:    []interface{}{42, 47},
+	expectedCheckFailure: `
+too many arguments provided to "has length" checker: got 2, want 1: unexpected 47
+`,
+	expectedNegateFailure: `
+too many arguments provided to "not(has length)" checker: got 2, want 1: unexpected 47
+`,
+}, {
+	about:   "Satisfies: success with an error",
+	checker: qt.Satisfies,
+	got:     qt.BadCheckf("bad wolf"),
+	args:    []interface{}{qt.IsBadCheck},
+	expectedNegateFailure: `
+error:
+  unexpected success
+check:
+  not(satisfies)
+result:
+  true
+arg:
+  &"bad wolf"
+function:
+  func(error) bool {...}
+`,
+}, {
+	about:   "Satisfies: success with an int",
+	checker: qt.Satisfies,
+	got:     42,
+	args: []interface{}{
+		func(v int) bool { return v == 42 },
+	},
+	expectedNegateFailure: `
+error:
+  unexpected success
+check:
+  not(satisfies)
+result:
+  true
+arg:
+  int(42)
+function:
+  func(int) bool {...}
+`,
+}, {
+	about:   "Satisfies: success with nil",
+	checker: qt.Satisfies,
+	got:     nil,
+	args: []interface{}{
+		func(v []int) bool { return true },
+	},
+	expectedNegateFailure: `
+error:
+  unexpected success
+check:
+  not(satisfies)
+result:
+  true
+arg:
+  nil
+function:
+  func([]int) bool {...}
+`,
+}, {
+	about:   "Satisfies: failure with an error",
+	checker: qt.Satisfies,
+	got:     nil,
+	args:    []interface{}{qt.IsBadCheck},
+	expectedCheckFailure: `
+error:
+  value does not satisfy the function
+check:
+  satisfies
+result:
+  false
+arg:
+  nil
+function:
+  func(error) bool {...}
+`,
+}, {
+	about:   "Satisfies: failure with a string",
+	checker: qt.Satisfies,
+	got:     "bad wolf",
+	args: []interface{}{
+		func(string) bool { return false },
+	},
+	expectedCheckFailure: `
+error:
+  value does not satisfy the function
+check:
+  satisfies
+result:
+  false
+arg:
+  bad wolf
+function:
+  func(string) bool {...}
+`,
+}, {
+	about:   "Satisfies: not a function",
+	checker: qt.Satisfies,
+	got:     42,
+	args:    []interface{}{42},
+	expectedCheckFailure: `
+expected func(T) bool, got int
+`,
+	expectedNegateFailure: `
+expected func(T) bool, got int
+`,
+}, {
+	about:   "Satisfies: function accepting no arguments",
+	checker: qt.Satisfies,
+	got:     42,
+	args: []interface{}{
+		func() bool { return true },
+	},
+	expectedCheckFailure: `
+expected func(T) bool, got func() bool
+`,
+	expectedNegateFailure: `
+expected func(T) bool, got func() bool
+`,
+}, {
+	about:   "Satisfies: function accepting too many arguments",
+	checker: qt.Satisfies,
+	got:     42,
+	args: []interface{}{
+		func(int, string) bool { return false },
+	},
+	expectedCheckFailure: `
+expected func(T) bool, got func(int, string) bool
+`,
+	expectedNegateFailure: `
+expected func(T) bool, got func(int, string) bool
+`,
+}, {
+	about:   "Satisfies: function returning no arguments",
+	checker: qt.Satisfies,
+	got:     42,
+	args: []interface{}{
+		func(error) {},
+	},
+	expectedCheckFailure: `
+expected func(T) bool, got func(error)
+`,
+	expectedNegateFailure: `
+expected func(T) bool, got func(error)
+`,
+}, {
+	about:   "Satisfies: function returning too many argments",
+	checker: qt.Satisfies,
+	got:     42,
+	args: []interface{}{
+		func(int) (bool, error) { return true, nil },
+	},
+	expectedCheckFailure: `
+expected func(T) bool, got func(int) (bool, error)
+`,
+	expectedNegateFailure: `
+expected func(T) bool, got func(int) (bool, error)
+`,
+}, {
+	about:   "Satisfies: function not returning a bool",
+	checker: qt.Satisfies,
+	got:     42,
+	args: []interface{}{
+		func(int) error { return nil },
+	},
+	expectedCheckFailure: `
+expected func(T) bool, got func(int) error
+`,
+	expectedNegateFailure: `
+expected func(T) bool, got func(int) error
+`,
+}, {
+	about:   "Satisfies: type mismatch",
+	checker: qt.Satisfies,
+	got:     42,
+	args:    []interface{}{qt.IsBadCheck},
+	expectedCheckFailure: `
+provided value of type int cannot be used as the argument for func(error) bool
+`,
+	expectedNegateFailure: `
+provided value of type int cannot be used as the argument for func(error) bool
+`,
+}, {
+	about:   "Satisfies: nil value that cannot be nil",
+	checker: qt.Satisfies,
+	got:     nil,
+	args: []interface{}{
+		func(string) bool { return true },
+	},
+	expectedCheckFailure: `
+provided nil value cannot be used as the argument for func(string) bool
+`,
+	expectedNegateFailure: `
+provided nil value cannot be used as the argument for func(string) bool
+`,
+}, {
+	about:   "Satisfies: not enough arguments",
+	checker: qt.Satisfies,
+	expectedCheckFailure: `
+not enough arguments provided to "satisfies" checker: got 0, want 1
+`,
+	expectedNegateFailure: `
+not enough arguments provided to "not(satisfies)" checker: got 0, want 1
+`,
+}, {
+	about:   "Satisfies: too many arguments",
+	checker: qt.Satisfies,
+	got:     42,
+	args:    []interface{}{func() bool { return true }, 1, 2},
+	expectedCheckFailure: `
+too many arguments provided to "satisfies" checker: got 3, want 1: unexpected 1, 2
+`,
+	expectedNegateFailure: `
+too many arguments provided to "not(satisfies)" checker: got 3, want 1: unexpected 1, 2
 `,
 }, {
 	about:   "Not: success",

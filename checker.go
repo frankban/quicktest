@@ -9,6 +9,8 @@ import (
 	"regexp"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/kr/pretty"
 )
 
 // Checker is implemented by types used as part of Check/Assert invocations.
@@ -106,6 +108,42 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}, note func(
 //     c.Assert(got, qt.DeepEquals, []int{42, 47})
 //
 var DeepEquals = CmpEquals()
+
+// ContentEquals is a Checker checking that the two provided slices have the
+// same items, without respect to order.
+// For instance:
+//
+//     c.Assert([]int{1, 2, 3], qt.ContentEquals, []int{3, 2, 1})
+//
+var ContentEquals Checker = &contentEqualsChecker{
+	checker: CmpEquals(cmpopts.SortSlices(func(x, y interface{}) bool {
+		// TODO frankban: implement a proper sort function.
+		return pretty.Sprint(x) < pretty.Sprint(y)
+	})),
+	info: newInfo("content equals", "got", "want"),
+}
+
+type contentEqualsChecker struct {
+	checker Checker
+	info
+}
+
+// Check implements Checker.Check by checking that, got and args[0] are slices
+// of the same type, and they contain the same items, without respect to order.
+func (c *contentEqualsChecker) Check(got interface{}, args []interface{}, note func(key, value string)) error {
+	want := args[0]
+	gotType, wantType := reflect.TypeOf(got), reflect.TypeOf(want)
+	if gotType.Kind() != reflect.Slice {
+		return BadCheckf("got value should be a slice, but it is a %s instead", gotType.String())
+	}
+	if wantType.Kind() != reflect.Slice {
+		return BadCheckf("want value should be a slice, but it is a %s instead", wantType.String())
+	}
+	if gotElem, wantElem := gotType.Elem(), wantType.Elem(); gotElem != wantElem {
+		return BadCheckf("values are not slices of the same type: []%s != []%s", gotElem.String(), wantElem.String())
+	}
+	return c.checker.Check(got, args, note)
+}
 
 // Matches is a Checker checking that the provided string or fmt.Stringer
 // matches the provided regular expression pattern.
@@ -226,16 +264,13 @@ func (c *isNilChecker) Check(got interface{}, args []interface{}, note func(key,
 		return nil
 	}
 	value := reflect.ValueOf(got)
-	switch value.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
-		if value.IsNil() {
-			return nil
-		}
+	if canBeNil(value.Kind()) && value.IsNil() {
+		return nil
 	}
 	return fmt.Errorf("%#v is not nil", got)
 }
 
-// HasLen is a Checker checking that the provided value has the provided length.
+// HasLen is a Checker checking that the provided value has the given length.
 // For instance:
 //
 //     c.Assert([]int{42, 47}, qt.HasLen, 2)
@@ -267,6 +302,50 @@ func (c *hasLenChecker) Check(got interface{}, args []interface{}, note func(key
 		return fmt.Errorf("unexpected length")
 	}
 	return nil
+}
+
+// Satisfies is a Checker checking that the provided value, when used as
+// argument of the provided function, causes the function to return true.
+// The function must be of type func(T) bool where T is the type of got.
+// For instance:
+//
+//     c.Assert(os.ErrNotExist, qt.Satisfies, os.IsNotExist)
+//     c.Assert(42, qt.Satisfies, func(v int) bool { return v == 42 })
+//
+var Satisfies Checker = &satisfiesChecker{
+	info: newInfo("satisfies", "arg", "function"),
+}
+
+type satisfiesChecker struct {
+	info
+}
+
+// Check implements Checker.Check by checking that args[0](got) == true.
+func (c *satisfiesChecker) Check(got interface{}, args []interface{}, note func(key, value string)) (err error) {
+	// Original code at
+	// <https://github.com/juju/testing/blob/master/checkers/bool.go>.
+	// Copyright 2011 Canonical Ltd.
+	// Licensed under the LGPLv3, see LICENCE file for details.
+	f := reflect.ValueOf(args[0])
+	ftype := f.Type()
+	if ftype.Kind() != reflect.Func || ftype.NumIn() != 1 || ftype.NumOut() != 1 || ftype.Out(0).Kind() != reflect.Bool {
+		return BadCheckf("expected func(T) bool, got %s", ftype)
+	}
+	v, t := reflect.ValueOf(got), ftype.In(0)
+	if !v.IsValid() {
+		if !canBeNil(t.Kind()) {
+			return BadCheckf("provided nil value cannot be used as the argument for %s", ftype)
+		}
+		v = reflect.Zero(t)
+	} else if !v.Type().AssignableTo(t) {
+		return BadCheckf("provided value of type %s cannot be used as the argument for %s", v.Type(), ftype)
+	}
+	result := f.Call([]reflect.Value{v})[0].Interface().(bool)
+	note("result", fmt.Sprint(result))
+	if result {
+		return nil
+	}
+	return fmt.Errorf("value does not satisfy the function")
 }
 
 // Not returns a Checker negating the given Checker.
@@ -336,4 +415,13 @@ func match(got string, pattern interface{}, msg string) error {
 		return nil
 	}
 	return errors.New(msg)
+}
+
+// canBeNil reports whether a value or type of the given kind can be nil.
+func canBeNil(k reflect.Kind) bool {
+	switch k {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
+		return true
+	}
+	return false
 }
