@@ -16,15 +16,17 @@ import (
 // Checker is implemented by types used as part of Check/Assert invocations.
 type Checker interface {
 	// Check checks that the obtained value (got) is correct with respect to
-	// the checker's arguments (args). The last argument can optionally be a
-	// comment created by calling Commentf. On failure, the returned error is
-	// printed along with the comment and any key-value pairs added by calling
-	// the note function. Values provided when calling note are pretty printed
-	// by default. Strings are left unquoted if the Unquoted type is used.
+	// the checker's arguments (args). On failure, the returned error is
+	// printed along with the checker arguments and any key-value pairs added
+	// by calling the note function. Values are pretty-printed unless they are
+	// of type Unquoted.
 	//
-	// Check may return a BadCheck error when the check arguments are invalid
-	// for the checker, and ErrSilent to suppress the default printing of the
-	// error message (key-value pairs added with note are still printed).
+	// When the check arguments are invalid, Check may return a BadCheck error,
+	// which suppresses printing of the checker arguments. Values added with
+	// note are still printed.
+	//
+	// If Check returns ErrSilent, neither the checker arguments nor the error
+	// are printed. Again, values added with note are still printed.
 	Check(got interface{}, args []interface{}, note func(key string, value interface{})) error
 
 	// ArgNames returns the names of all required arguments, including the

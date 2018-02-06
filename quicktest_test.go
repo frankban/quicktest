@@ -103,7 +103,7 @@ error:
 	expectedFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   want
 `,
 }, {
@@ -116,7 +116,7 @@ error:
   bad check: not enough arguments provided to checker: got 0, want 1
 comment:
   test 0
-want:
+want args:
   want
 `,
 }, {
@@ -127,12 +127,12 @@ want:
 	expectedFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       int(42),
       int(47),
   }
-want:
+want args:
   regexp
 `,
 }, {
@@ -143,14 +143,14 @@ want:
 	expectedFailure: `
 error:
   bad check: too many arguments provided to checker: got 4, want 1
-got:
+got args:
   []interface {}{
       int(42),
       int(47),
       nil,
       "stop",
   }
-want:
+want args:
   want
 `,
 }, {
@@ -163,7 +163,7 @@ error:
   bad check: too many arguments provided to checker: got 1, want 0
 comment:
   these are the voyages
-got:
+got args:
   []interface {}{
       nil,
   }

@@ -122,13 +122,13 @@ want:
 	expectedCheckFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   want
 `,
 	expectedNegateFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   want
 `,
 }, {
@@ -138,23 +138,23 @@ want:
 	expectedCheckFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       nil,
       int(47),
   }
-want:
+want args:
   want
 `,
 	expectedNegateFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       nil,
       int(47),
   }
-want:
+want args:
   want
 `,
 }, {
@@ -280,13 +280,13 @@ want:
 	expectedCheckFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   want
 `,
 	expectedNegateFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   want
 `,
 }, {
@@ -297,23 +297,23 @@ want:
 	expectedCheckFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       []int{42},
       "bad wolf",
   }
-want:
+want args:
   want
 `,
 	expectedNegateFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       []int{42},
       "bad wolf",
   }
-want:
+want args:
   want
 `,
 }, {
@@ -354,13 +354,13 @@ want:
 	expectedCheckFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   want
 `,
 	expectedNegateFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   want
 `,
 }, {
@@ -370,23 +370,23 @@ want:
 	expectedCheckFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       nil,
       nil,
   }
-want:
+want args:
   want
 `,
 	expectedNegateFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       nil,
       nil,
   }
-want:
+want args:
   want
 `,
 }, {
@@ -537,13 +537,13 @@ want:
 	expectedCheckFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   want
 `,
 	expectedNegateFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   want
 `,
 }, {
@@ -553,23 +553,23 @@ want:
 	expectedCheckFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       nil,
       nil,
   }
-want:
+want args:
   want
 `,
 	expectedNegateFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       nil,
       nil,
   }
-want:
+want args:
   want
 `,
 }, {
@@ -712,13 +712,13 @@ value:
 	expectedCheckFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   regexp
 `,
 	expectedNegateFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   regexp
 `,
 }, {
@@ -729,23 +729,23 @@ want:
 	expectedCheckFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       "these are the .*",
       nil,
   }
-want:
+want args:
   regexp
 `,
 	expectedNegateFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       "these are the .*",
       nil,
   }
-want:
+want args:
   regexp
 `,
 }, {
@@ -895,13 +895,13 @@ got:
 	expectedCheckFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   regexp
 `,
 	expectedNegateFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   regexp
 `,
 }, {
@@ -912,23 +912,23 @@ want:
 	expectedCheckFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       "error: bad wolf",
       []string{"bad", "wolf"},
   }
-want:
+want args:
   regexp
 `,
 	expectedNegateFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       "error: bad wolf",
       []string{"bad", "wolf"},
   }
-want:
+want args:
   regexp
 `,
 }, {
@@ -1106,13 +1106,13 @@ regexp:
 	expectedCheckFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   regexp
 `,
 	expectedNegateFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   regexp
 `,
 }, {
@@ -1123,23 +1123,23 @@ want:
 	expectedCheckFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       "error: bad wolf",
       int(42),
   }
-want:
+want args:
   regexp
 `,
 	expectedNegateFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       "error: bad wolf",
       int(42),
   }
-want:
+want args:
   regexp
 `,
 }, {
@@ -1209,7 +1209,7 @@ got:
 	expectedCheckFailure: `
 error:
   bad check: too many arguments provided to checker: got 1, want 0
-got:
+got args:
   []interface {}{
       "not nil",
   }
@@ -1217,7 +1217,7 @@ got:
 	expectedNegateFailure: `
 error:
   bad check: too many arguments provided to checker: got 1, want 0
-got:
+got args:
   []interface {}{
       "not nil",
   }
@@ -1411,13 +1411,13 @@ length:
 	expectedCheckFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   length
 `,
 	expectedNegateFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   length
 `,
 }, {
@@ -1428,23 +1428,23 @@ want:
 	expectedCheckFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       int(42),
       int(47),
   }
-want:
+want args:
   length
 `,
 	expectedNegateFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       int(42),
       int(47),
   }
-want:
+want args:
   length
 `,
 }, {
@@ -1686,13 +1686,13 @@ predicate function:
 	expectedCheckFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   predicate function
 `,
 	expectedNegateFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   predicate function
 `,
 }, {
@@ -1703,25 +1703,25 @@ want:
 	expectedCheckFailure: `
 error:
   bad check: too many arguments provided to checker: got 3, want 1
-got:
+got args:
   []interface {}{
       func() bool {...},
       int(1),
       int(2),
   }
-want:
+want args:
   predicate function
 `,
 	expectedNegateFailure: `
 error:
   bad check: too many arguments provided to checker: got 3, want 1
-got:
+got args:
   []interface {}{
       func() bool {...},
       int(1),
       int(2),
   }
-want:
+want args:
   predicate function
 `,
 }, {
@@ -1750,13 +1750,13 @@ got:
 	expectedCheckFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   regexp
 `,
 	expectedNegateFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
-want:
+want args:
   regexp
 `,
 }, {
@@ -1766,23 +1766,23 @@ want:
 	expectedCheckFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       int(42),
       nil,
   }
-want:
+want args:
   want
 `,
 	expectedNegateFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
-got:
+got args:
   []interface {}{
       int(42),
       nil,
   }
-want:
+want args:
   want
 `,
 }}

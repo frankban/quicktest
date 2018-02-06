@@ -162,10 +162,10 @@ func check(fail func(...interface{}), checker Checker, got interface{}, args []i
 	// Validate that we have the correct number of arguments.
 	if gotNumArgs := len(args); gotNumArgs != wantNumArgs {
 		if gotNumArgs > 0 {
-			note("got", args)
+			note("got args", args)
 		}
 		if wantNumArgs > 0 {
-			note("want", Unquoted(strings.Join(argNames[1:], ", ")))
+			note("want args", Unquoted(strings.Join(argNames[1:], ", ")))
 		}
 		var prefix string
 		if gotNumArgs > wantNumArgs {
