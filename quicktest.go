@@ -136,14 +136,21 @@ func (c *C) Parallel() {
 // check performs the actual check and calls the provided fail function in case
 // of failure.
 func check(fail func(...interface{}), checker Checker, got interface{}, args []interface{}) bool {
-	var ns notes
+	// Allow checkers to annotate messages.
+	var ns []note
+	note := func(key string, value interface{}) {
+		ns = append(ns, note{
+			key:   key,
+			value: value,
+		})
+	}
 	// Ensure that we have a checker.
 	if checker == nil {
-		fail(report(checker, got, args, Comment{}, ns, BadCheckf("cannot run test: nil checker provided")))
+		fail(report(nil, got, args, Comment{}, ns, BadCheckf("nil checker provided")))
 		return false
 	}
 	// Extract a comment if it has been provided.
-	name, argNames := checker.Info()
+	argNames := checker.ArgNames()
 	wantNumArgs := len(argNames) - 1
 	var c Comment
 	if len(args) > 0 {
@@ -153,29 +160,26 @@ func check(fail func(...interface{}), checker Checker, got interface{}, args []i
 		}
 	}
 	// Validate that we have the correct number of arguments.
-	if len(args) < wantNumArgs {
-		err := BadCheckf("not enough arguments provided to %q checker: got %d, want %d", name, len(args), wantNumArgs)
-		fail(report(checker, got, args, c, ns, err))
-		return false
-	}
-	if len(args) > wantNumArgs {
-		unexpected := make([]string, len(args)-wantNumArgs)
-		for i, a := range args[wantNumArgs:] {
-			unexpected[i] = fmt.Sprintf("%v", a)
+	if gotNumArgs := len(args); gotNumArgs != wantNumArgs {
+		if gotNumArgs > 0 {
+			note("got args", args)
 		}
-		err := BadCheckf(
-			"too many arguments provided to %q checker: got %d, want %d: unexpected %s",
-			name, len(args), wantNumArgs, strings.Join(unexpected, ", "))
-		fail(report(checker, got, args, c, ns, err))
+		if wantNumArgs > 0 {
+			note("want args", Unquoted(strings.Join(argNames[1:], ", ")))
+		}
+		var prefix string
+		if gotNumArgs > wantNumArgs {
+			prefix = "too many arguments provided to checker"
+		} else {
+			prefix = "not enough arguments provided to checker"
+		}
+		fail(report(argNames, got, args, c, ns, BadCheckf("%s: got %d, want %d", prefix, gotNumArgs, wantNumArgs)))
 		return false
 	}
-	// Allow checkers to annotate messages.
-	notef := func(key, value string) {
-		ns = append(ns, [2]string{key, value})
-	}
+
 	// Execute the check and report the failure if necessary.
-	if err := checker.Check(got, args, notef); err != nil {
-		fail(report(checker, got, args, c, ns, err))
+	if err := checker.Check(got, args, note); err != nil {
+		fail(report(argNames, got, args, c, ns, err))
 		return false
 	}
 	return true

@@ -32,12 +32,10 @@ var cTests = []struct {
 	expectedFailure: `
 error:
   values are not equal
-check:
-  equals
 got:
-  42
+  "42"
 want:
-  47
+  "47"
 `,
 }, {
 	about:   "failure with comment",
@@ -45,12 +43,10 @@ want:
 	got:     true,
 	args:    []interface{}{false, qt.Commentf("apparently %v != %v", true, false)},
 	expectedFailure: `
-comment:
-  apparently true != false
 error:
   values are not equal
-check:
-  equals
+comment:
+  apparently true != false
 got:
   bool(true)
 want:
@@ -62,12 +58,10 @@ want:
 	got:     42,
 	args:    []interface{}{qt.Commentf("bad wolf: %d", 42)},
 	expectedFailure: `
-comment:
-  bad wolf: 42
 error:
   42 is not nil
-check:
-  is nil
+comment:
+  bad wolf: 42
 got:
   int(42)
 `,
@@ -77,14 +71,12 @@ got:
 	got:     "something",
 	args:    []interface{}{qt.Commentf("these are the voyages")},
 	expectedFailure: `
-comment:
-  these are the voyages
 error:
   "something" is not nil
-check:
-  is nil
+comment:
+  these are the voyages
 got:
-  something
+  "something"
 `,
 }, {
 	about:   "failure with empty comment",
@@ -94,15 +86,14 @@ got:
 	expectedFailure: `
 error:
   47 is not nil
-check:
-  is nil
 got:
   int(47)
 `,
 }, {
 	about: "nil checker",
 	expectedFailure: `
-cannot run test: nil checker provided
+error:
+  bad check: nil checker provided
 `,
 }, {
 	about:   "not enough arguments",
@@ -110,7 +101,10 @@ cannot run test: nil checker provided
 	got:     42,
 	args:    []interface{}{},
 	expectedFailure: `
-not enough arguments provided to "equals" checker: got 0, want 1
+error:
+  bad check: not enough arguments provided to checker: got 0, want 1
+want args:
+  want
 `,
 }, {
 	about:   "not enough arguments with comment",
@@ -118,17 +112,28 @@ not enough arguments provided to "equals" checker: got 0, want 1
 	got:     42,
 	args:    []interface{}{qt.Commentf("test %d", 0)},
 	expectedFailure: `
-not enough arguments provided to "deep equals" checker: got 0, want 1
+error:
+  bad check: not enough arguments provided to checker: got 0, want 1
 comment:
   test 0
+want args:
+  want
 `,
 }, {
 	about:   "too many arguments",
-	checker: qt.Equals,
+	checker: qt.Matches,
 	got:     42,
 	args:    []interface{}{42, 47},
 	expectedFailure: `
-too many arguments provided to "equals" checker: got 2, want 1: unexpected 47
+error:
+  bad check: too many arguments provided to checker: got 2, want 1
+got args:
+  []interface {}{
+      int(42),
+      int(47),
+  }
+want args:
+  regexp
 `,
 }, {
 	about:   "really too many arguments",
@@ -136,7 +141,17 @@ too many arguments provided to "equals" checker: got 2, want 1: unexpected 47
 	got:     42,
 	args:    []interface{}{42, 47, nil, "stop"},
 	expectedFailure: `
-too many arguments provided to "deep equals" checker: got 4, want 1: unexpected 47, <nil>, stop
+error:
+  bad check: too many arguments provided to checker: got 4, want 1
+got args:
+  []interface {}{
+      int(42),
+      int(47),
+      nil,
+      "stop",
+  }
+want args:
+  want
 `,
 }, {
 	about:   "too many arguments with comment",
@@ -144,19 +159,25 @@ too many arguments provided to "deep equals" checker: got 4, want 1: unexpected 
 	got:     42,
 	args:    []interface{}{nil, qt.Commentf("these are the voyages")},
 	expectedFailure: `
-too many arguments provided to "is nil" checker: got 1, want 0: unexpected <nil>
+error:
+  bad check: too many arguments provided to checker: got 1, want 0
 comment:
   these are the voyages
+got args:
+  []interface {}{
+      nil,
+  }
 `,
 }, {
 	about: "many arguments and notes",
 	checker: &testingChecker{
-		args: []string{"arg1", "arg2", "arg3"},
-		addNotes: func(note func(key, value string)) {
+		argNames: []string{"arg1", "arg2", "arg3"},
+		addNotes: func(note func(key string, value interface{})) {
 			note("note1", "these")
-			note("note2", "are")
+			note("note2", qt.Unquoted("are"))
 			note("note3", "the")
 			note("note4", "voyages")
+			note("note5", true)
 		},
 		err: errors.New("bad wolf"),
 	},
@@ -165,77 +186,81 @@ comment:
 	expectedFailure: `
 error:
   bad wolf
-check:
-  testing checker
 note1:
-  these
+  "these"
 note2:
   are
 note3:
-  the
+  "the"
 note4:
-  voyages
+  "voyages"
+note5:
+  bool(true)
 arg1:
   int(42)
 arg2:
-  val2
+  "val2"
 arg3:
-  val3
+  "val3"
 `,
 }, {
 	about: "many arguments and notes with the same value",
 	checker: &testingChecker{
-		args: []string{"arg1", "arg2", "arg3"},
-		addNotes: func(note func(key, value string)) {
+		argNames: []string{"arg1", "arg2", "arg3", "arg4"},
+		addNotes: func(note func(key string, value interface{})) {
 			note("note1", "value1")
-			note("note2", "value2")
+			note("note2", []int{42})
 			note("note3", "value1")
+			note("note4", nil)
 		},
 		err: errors.New("bad wolf"),
 	},
 	got:  "value1",
-	args: []interface{}{"value1", "value2"},
+	args: []interface{}{"value1", []int{42}, nil},
 	expectedFailure: `
 error:
   bad wolf
-check:
-  testing checker
 note1:
-  value1
+  "value1"
 note2:
-  value2
+  []int{42}
 note3:
   <same as "note1">
+note4:
+  nil
 arg1:
   <same as "note1">
 arg2:
   <same as "note1">
 arg3:
   <same as "note2">
+arg4:
+  <same as "note4">
 `,
 }, {
 	about: "bad check with notes",
 	checker: &testingChecker{
-		args: []string{"got", "want"},
-		addNotes: func(note func(key, value string)) {
-			note("note", "a note")
+		argNames: []string{"got", "want"},
+		addNotes: func(note func(key string, value interface{})) {
+			note("note", 42)
 		},
 		err: qt.BadCheckf("bad wolf"),
 	},
 	got:  42,
 	args: []interface{}{"want"},
 	expectedFailure: `
-bad wolf
+error:
+  bad check: bad wolf
 note:
-  a note
+  int(42)
 `,
 }, {
 	about: "silent failure with notes",
 	checker: &testingChecker{
-		args: []string{"got", "want"},
-		addNotes: func(note func(key, value string)) {
+		argNames: []string{"got", "want"},
+		addNotes: func(note func(key string, value interface{})) {
 			note("note1", "first note")
-			note("note2", "second note")
+			note("note2", qt.Unquoted("second note"))
 		},
 		err: qt.ErrSilent,
 	},
@@ -243,7 +268,7 @@ note:
 	args: []interface{}{"want"},
 	expectedFailure: `
 note1:
-  first note
+  "first note"
 note2:
   second note
 `,
@@ -519,16 +544,16 @@ type helper interface {
 }
 
 // testingChecker is a quicktest.Checker used in tests. It receives the
-// provided args, adds notes via the provided addNotes function, and when the
-// check is run the provided error is returned.
+// provided argNames, adds notes via the provided addNotes function, and when
+// the check is run the provided error is returned.
 type testingChecker struct {
-	args     []string
-	addNotes func(note func(key, value string))
+	argNames []string
+	addNotes func(note func(key string, value interface{}))
 	err      error
 }
 
 // Check implements quicktest.Checker by returning the stored error.
-func (c *testingChecker) Check(got interface{}, args []interface{}, note func(key, value string)) error {
+func (c *testingChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
 	if c.addNotes != nil {
 		c.addNotes(note)
 	}
@@ -536,6 +561,6 @@ func (c *testingChecker) Check(got interface{}, args []interface{}, note func(ke
 }
 
 // Info implements quicktest.Checker by returning the stored args.
-func (c *testingChecker) Info() (name string, argNames []string) {
-	return "testing checker", c.args
+func (c *testingChecker) ArgNames() []string {
+	return c.argNames
 }

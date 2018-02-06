@@ -34,8 +34,6 @@ func TestCodeOutput(t *testing.T) {
 var expectedCodeOutput = `
 error:
   values are not equal
-check:
-  equals
 got:
   int(42)
 want:

@@ -11,7 +11,7 @@ import (
 
 func TestBadCheckf(t *testing.T) {
 	err := qt.BadCheckf("bad %s", "wolf")
-	expectedMessage := "bad wolf"
+	expectedMessage := "bad check: bad wolf"
 	if err.Error() != expectedMessage {
 		t.Fatalf("error:\ngot  %q\nwant %q", err, expectedMessage)
 	}
