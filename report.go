@@ -16,70 +16,65 @@ import (
 	"github.com/kr/pretty"
 )
 
+// Unquoted indicates that the string must not be pretty printed in the failure
+// output. This is useful when a checker calls note and does not want the
+// provided value to be quoted.
+type Unquoted string
+
 // report generates a failure report for the given error, optionally including
-// the in the output the given comment
-func report(checker Checker, got interface{}, args []interface{}, c Comment, ns notes, err error) string {
+// in the output the given checker arguments, comment and notes.
+func report(argNames []string, got interface{}, args []interface{}, c Comment, ns []note, err error) string {
 	var buf bytes.Buffer
 	buf.WriteByte('\n')
-	writeError(&buf, checker, got, args, c, ns, err)
+	writeError(&buf, argNames, got, args, c, ns, err)
 	writeInvocation(&buf)
 	return buf.String()
 }
 
-// writeError writes a pretty formatted output of the given error comment and
-// notes into the provided writer. The checker originating the failure and its
-// arguments are also provided.
-func writeError(w io.Writer, checker Checker, got interface{}, args []interface{}, c Comment, ns notes, err error) {
-	showErr := true
-	if IsBadCheck(err) {
-		// For errors in the checker invocation, just show the bad check
-		// message and notes.
-		fmt.Fprintln(w, strings.TrimSuffix(err.Error(), "\n"))
-		showErr = false
-	}
-	if err == ErrSilent {
-		// When a silent failure is returned only the notes are displayed.
-		showErr = false
-	}
-
+// writeError writes a pretty formatted output of the given error, comment and
+// notes into the provided writer.
+func writeError(w io.Writer, argNames []string, got interface{}, args []interface{}, c Comment, ns []note, err error) {
 	values := make(map[string]string)
-	printPair := func(key, value string) {
+	printPair := func(key string, value interface{}) {
 		fmt.Fprintln(w, key+":")
-		if k := values[value]; k != "" {
+		var v string
+		if u, ok := value.(Unquoted); ok {
+			v = string(u)
+		} else {
+			// The pretty.Sprint quivalent does not quote string values.
+			v = fmt.Sprintf("%# v", pretty.Formatter(value))
+		}
+		if k := values[v]; k != "" {
 			fmt.Fprintf(w, prefixf(prefix, "<same as %q>", k))
 			return
 		}
-		values[value] = key
-		fmt.Fprintf(w, prefixf(prefix, "%s", value))
+		values[v] = key
+		fmt.Fprintf(w, prefixf(prefix, "%s", v))
+	}
+
+	// Write the checker error.
+	if err != ErrSilent {
+		printPair("error", Unquoted(err.Error()))
 	}
 
 	// Write the comment if provided.
 	if comment := c.String(); comment != "" {
-		printPair("comment", comment)
+		printPair("comment", Unquoted(comment))
 	}
 
-	// Show basic info about the checker error.
-	var name string
-	var argNames []string
-	if showErr {
-		name, argNames = checker.Info()
-		printPair("error", err.Error())
-		printPair("check", name)
-	}
-
-	// Show notes.
+	// Write notes if present.
 	for _, n := range ns {
-		key, value := n[0], n[1]
-		printPair(key, value)
+		printPair(n.key, n.value)
 	}
-	if !showErr {
+	if IsBadCheck(err) || err == ErrSilent {
+		// For errors in the checker invocation or for silent errors, do not
+		// show output from args.
 		return
 	}
 
-	// Show the provided args.
+	// Write provided args.
 	for i, arg := range append([]interface{}{got}, args...) {
-		key, value := argNames[i], pretty.Sprint(arg)
-		printPair(key, value)
+		printPair(argNames[i], arg)
 	}
 }
 
@@ -143,8 +138,11 @@ func prefixf(prefix, format string, args ...interface{}) string {
 	return string(buf)
 }
 
-// notes holds key/value annotations.
-type notes [][2]string
+// note holds a key/value annotation.
+type note struct {
+	key   string
+	value interface{}
+}
 
 const (
 	// contextLines holds the number of lines of code to show when showing a

@@ -26,7 +26,7 @@ type badCheck string
 
 // Error implements the error interface.
 func (e *badCheck) Error() string {
-	return string(*e)
+	return "bad check: " + string(*e)
 }
 
 // ErrSilent is the error used when there is no need to include in the failure
