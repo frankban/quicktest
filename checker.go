@@ -19,7 +19,8 @@ type Checker interface {
 	// the checker's arguments (args). On failure, the returned error is
 	// printed along with the checker arguments and any key-value pairs added
 	// by calling the note function. Values are pretty-printed unless they are
-	// of type Unquoted.
+	// of type Unquoted. The String() or Error() strings are printed for values
+	// wrapped in a Repr type.
 	//
 	// When the check arguments are invalid, Check may return a BadCheck error,
 	// which suppresses printing of the checker arguments. Values added with
@@ -61,8 +62,8 @@ func (c *equalsChecker) Check(got interface{}, args []interface{}, note func(key
 		}
 	}()
 	want := args[0]
-	repr("got", got, note)
-	repr("want", want, note)
+	note("got", Repr{got})
+	note("want", Repr{want})
 	if got != want {
 		return errors.New("values are not equal")
 	}
@@ -101,8 +102,8 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}, note func(
 		}
 	}()
 	want := args[0]
-	repr("got", got, note)
-	repr("want", want, note)
+	note("got", Repr{got})
+	note("want", Repr{want})
 	if diff := cmp.Diff(got, want, c.opts...); diff != "" {
 		note("diff (-got +want)", Unquoted(diff))
 		return errors.New("values are not deep equal")
@@ -248,7 +249,7 @@ func (c *isNilChecker) Check(got interface{}, args []interface{}, note func(key 
 	if canBeNil(value.Kind()) && value.IsNil() {
 		return nil
 	}
-	repr("got", got, note)
+	note("got", Repr{got})
 	return fmt.Errorf("%#v is not nil", got)
 }
 
@@ -404,15 +405,4 @@ func canBeNil(k reflect.Kind) bool {
 		return true
 	}
 	return false
-}
-
-// repr uses the provided note function to annotate value.String() or
-// value.Error() when the given value's concrete type implements those methods.
-func repr(key string, value interface{}, note func(key string, value interface{})) {
-	switch v := value.(type) {
-	case fmt.Stringer:
-		note(key+".String()", v.String())
-	case error:
-		note(key+".Error()", v.Error())
-	}
 }
