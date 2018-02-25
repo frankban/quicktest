@@ -21,6 +21,13 @@ import (
 // provided value to be quoted.
 type Unquoted string
 
+// Repr indicates that the String() or Error() string of the wrapped value must
+// be pretty printed in the failure output, and not the value itself. Nothing
+// is printed if the wrapped value is not a fmt.Stringer or an error.
+type Repr struct {
+	Value interface{}
+}
+
 // report generates a failure report for the given error, optionally including
 // in the output the given checker arguments, comment and notes.
 func report(argNames []string, got interface{}, args []interface{}, c Comment, ns []note, err error) string {
@@ -36,14 +43,25 @@ func report(argNames []string, got interface{}, args []interface{}, c Comment, n
 func writeError(w io.Writer, argNames []string, got interface{}, args []interface{}, c Comment, ns []note, err error) {
 	values := make(map[string]string)
 	printPair := func(key string, value interface{}) {
-		fmt.Fprintln(w, key+":")
 		var v string
-		if u, ok := value.(Unquoted); ok {
-			v = string(u)
-		} else {
-			// The pretty.Sprint quivalent does not quote string values.
-			v = fmt.Sprintf("%# v", pretty.Formatter(value))
+		switch v0 := value.(type) {
+		case Unquoted:
+			v = string(v0)
+		case Repr:
+			switch v1 := v0.Value.(type) {
+			case fmt.Stringer:
+				key += ".String()"
+				v = prettyFormat(v1.String())
+			case error:
+				key += ".Error()"
+				v = prettyFormat(v1.Error())
+			default:
+				return
+			}
+		default:
+			v = prettyFormat(value)
 		}
+		fmt.Fprintln(w, key+":")
 		if k := values[v]; k != "" {
 			fmt.Fprintf(w, prefixf(prefix, "<same as %q>", k))
 			return
@@ -142,6 +160,11 @@ func prefixf(prefix, format string, args ...interface{}) string {
 type note struct {
 	key   string
 	value interface{}
+}
+
+func prettyFormat(v interface{}) string {
+	// The pretty.Sprint quivalent does not quote string values.
+	return fmt.Sprintf("%# v", pretty.Formatter(v))
 }
 
 const (

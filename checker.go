@@ -19,7 +19,8 @@ type Checker interface {
 	// the checker's arguments (args). On failure, the returned error is
 	// printed along with the checker arguments and any key-value pairs added
 	// by calling the note function. Values are pretty-printed unless they are
-	// of type Unquoted.
+	// of type Unquoted. The String() or Error() strings are printed for values
+	// wrapped in a Repr type.
 	//
 	// When the check arguments are invalid, Check may return a BadCheck error,
 	// which suppresses printing of the checker arguments. Values added with
@@ -60,7 +61,10 @@ func (c *equalsChecker) Check(got interface{}, args []interface{}, note func(key
 			err = fmt.Errorf("%s", r)
 		}
 	}()
-	if want := args[0]; got != want {
+	want := args[0]
+	note("got", Repr{got})
+	note("want", Repr{want})
+	if got != want {
 		return errors.New("values are not equal")
 	}
 	return nil
@@ -98,6 +102,8 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}, note func(
 		}
 	}()
 	want := args[0]
+	note("got", Repr{got})
+	note("want", Repr{want})
 	if diff := cmp.Diff(got, want, c.opts...); diff != "" {
 		note("diff (-got +want)", Unquoted(diff))
 		return errors.New("values are not deep equal")
@@ -174,7 +180,7 @@ func (c *errorMatchesChecker) Check(got interface{}, args []interface{}, note fu
 	if err == nil {
 		return errors.New("no error found")
 	}
-	note("error message", err.Error())
+	note("got.Error()", err.Error())
 	return match(err.Error(), args[0], "error does not match regexp", note)
 }
 
@@ -243,6 +249,7 @@ func (c *isNilChecker) Check(got interface{}, args []interface{}, note func(key 
 	if canBeNil(value.Kind()) && value.IsNil() {
 		return nil
 	}
+	note("got", Repr{got})
 	return fmt.Errorf("%#v is not nil", got)
 }
 
