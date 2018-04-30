@@ -36,14 +36,17 @@ func report(argNames []string, got interface{}, args []interface{}, c Comment, n
 func writeError(w io.Writer, argNames []string, got interface{}, args []interface{}, c Comment, ns []note, err error) {
 	values := make(map[string]string)
 	printPair := func(key string, value interface{}) {
-		fmt.Fprintln(w, key+":")
 		var v string
 		if u, ok := value.(Unquoted); ok {
 			v = string(u)
 		} else {
+			if err, ok := value.(error); ok && !Verbose() {
+				value = err.Error()
+			}
 			// The pretty.Sprint quivalent does not quote string values.
 			v = fmt.Sprintf("%# v", pretty.Formatter(value))
 		}
+		fmt.Fprintln(w, key+":")
 		if k := values[v]; k != "" {
 			fmt.Fprintf(w, prefixf(prefix, "<same as %q>", k))
 			return

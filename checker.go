@@ -127,7 +127,7 @@ var ContentEquals = CmpEquals(cmpopts.SortSlices(func(x, y interface{}) bool {
 //     c.Assert(net.ParseIP("1.2.3.4"), qt.Matches, "1.*")
 //
 var Matches Checker = &matchesChecker{
-	argNames: []string{"value", "regexp"},
+	argNames: []string{"got value", "regexp"},
 }
 
 type matchesChecker struct {
@@ -174,7 +174,9 @@ func (c *errorMatchesChecker) Check(got interface{}, args []interface{}, note fu
 	if err == nil {
 		return errors.New("no error found")
 	}
-	note("error message", err.Error())
+	if Verbose() {
+		note("got error message", err.Error())
+	}
 	return match(err.Error(), args[0], "error does not match regexp", note)
 }
 
@@ -253,7 +255,7 @@ func (c *isNilChecker) Check(got interface{}, args []interface{}, note func(key 
 //     c.Assert(myMap, qt.HasLen, 42)
 //
 var HasLen Checker = &hasLenChecker{
-	argNames: []string{"got", "length"},
+	argNames: []string{"got", "want length"},
 }
 
 type hasLenChecker struct {
