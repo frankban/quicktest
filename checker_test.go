@@ -580,10 +580,10 @@ want args:
 	expectedNegateFailure: `
 error:
   unexpected success
-value:
+got value:
   "exterminate"
 regexp:
-  <same as "value">
+  <same as "got value">
 `,
 }, {
 	about:   "Matches: match",
@@ -593,7 +593,7 @@ regexp:
 	expectedNegateFailure: `
 error:
   unexpected success
-value:
+got value:
   "these are the voyages"
 regexp:
   "these are the .*"
@@ -608,7 +608,7 @@ error:
   unexpected success
 value.String():
   "resistance is futile"
-value:
+got value:
   &bytes.Buffer{`,
 }, {
 	about:   "Matches: mismatch",
@@ -618,7 +618,7 @@ value:
 	expectedCheckFailure: `
 error:
   value does not match regexp
-value:
+got value:
   "voyages"
 regexp:
   "these are the voyages"
@@ -633,7 +633,7 @@ error:
   value.String() does not match regexp
 value.String():
   "voyages"
-value:
+got value:
   &bytes.Buffer{`,
 }, {
 	about:   "Matches: empty pattern",
@@ -643,7 +643,7 @@ value:
 	expectedCheckFailure: `
 error:
   value does not match regexp
-value:
+got value:
   "these are the voyages"
 regexp:
   ""
@@ -656,7 +656,7 @@ regexp:
 	expectedNegateFailure: `
 error:
   unexpected success
-value:
+got value:
   "end of the universe"
 regexp:
   "bad wolf|end of the .*"
@@ -1234,7 +1234,7 @@ len(got):
   int(4)
 got:
   [4]string{"these", "are", "the", "voyages"}
-length:
+want length:
   <same as "len(got)">
 `,
 }, {
@@ -1266,7 +1266,7 @@ len(got):
   int(1)
 got:
   map[string]bool{"true":true}
-length:
+want length:
   <same as "len(got)">
 `,
 }, {
@@ -1281,7 +1281,7 @@ len(got):
   int(0)
 got:
   []int{}
-length:
+want length:
   <same as "len(got)">
 `,
 }, {
@@ -1296,7 +1296,7 @@ len(got):
   int(21)
 got:
   "these are the voyages"
-length:
+want length:
   <same as "len(got)">
 `,
 }, {
@@ -1311,7 +1311,7 @@ len(got):
   int(4)
 got:
   [4]string{"these", "are", "the", "voyages"}
-length:
+want length:
   int(0)
 `,
 }, {
@@ -1338,7 +1338,7 @@ len(got):
   int(1)
 got:
   map[string]bool{"true":true}
-length:
+want length:
   int(42)
 `,
 }, {
@@ -1353,7 +1353,7 @@ len(got):
   int(2)
 got:
   []int{42, 47}
-length:
+want length:
   int(1)
 `,
 }, {
@@ -1368,7 +1368,7 @@ len(got):
   int(21)
 got:
   "these are the voyages"
-length:
+want length:
   int(42)
 `,
 }, {
@@ -1412,13 +1412,13 @@ length:
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
 want args:
-  length
+  want length
 `,
 	expectedNegateFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
 want args:
-  length
+  want length
 `,
 }, {
 	about:   "HasLen: too many arguments",
@@ -1434,7 +1434,7 @@ got args:
       int(47),
   }
 want args:
-  length
+  want length
 `,
 	expectedNegateFailure: `
 error:
@@ -1445,7 +1445,7 @@ got args:
       int(47),
   }
 want args:
-  length
+  want length
 `,
 }, {
 	about:   "Satisfies: success with an error",
