@@ -60,7 +60,10 @@ func (c *equalsChecker) Check(got interface{}, args []interface{}, note func(key
 			err = fmt.Errorf("%s", r)
 		}
 	}()
-	if want := args[0]; got != want {
+	want := args[0]
+	repr("got", got, note)
+	repr("want", want, note)
+	if got != want {
 		return errors.New("values are not equal")
 	}
 	return nil
@@ -98,6 +101,8 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}, note func(
 		}
 	}()
 	want := args[0]
+	repr("got", got, note)
+	repr("want", want, note)
 	if diff := cmp.Diff(got, want, c.opts...); diff != "" {
 		note("diff (-got +want)", Unquoted(diff))
 		return errors.New("values are not deep equal")
@@ -174,7 +179,7 @@ func (c *errorMatchesChecker) Check(got interface{}, args []interface{}, note fu
 	if err == nil {
 		return errors.New("no error found")
 	}
-	note("error message", err.Error())
+	note("got.Error()", err.Error())
 	return match(err.Error(), args[0], "error does not match regexp", note)
 }
 
@@ -243,6 +248,7 @@ func (c *isNilChecker) Check(got interface{}, args []interface{}, note func(key 
 	if canBeNil(value.Kind()) && value.IsNil() {
 		return nil
 	}
+	repr("got", got, note)
 	return fmt.Errorf("%#v is not nil", got)
 }
 
@@ -398,4 +404,15 @@ func canBeNil(k reflect.Kind) bool {
 		return true
 	}
 	return false
+}
+
+// repr uses the provided note function to annotate value.String() or
+// value.Error() when the given value's concrete type implements those methods.
+func repr(key string, value interface{}, note func(key string, value interface{})) {
+	switch v := value.(type) {
+	case fmt.Stringer:
+		note(key+".String()", v.String())
+	case error:
+		note(key+".Error()", v.Error())
+	}
 }

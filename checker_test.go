@@ -94,6 +94,37 @@ want:
   nil
 `,
 }, {
+	about:   "Equals: error and nil",
+	checker: qt.Equals,
+	got:     errors.New("bad wolf"),
+	args:    []interface{}{nil},
+	expectedCheckFailure: `
+error:
+  values are not equal
+got.Error():
+  "bad wolf"
+got:
+  &errors.errorString{s:"bad wolf"}
+want:
+  nil
+`,
+}, {
+	about:   "Equals: fmt.Stringer",
+	checker: qt.Equals,
+	got:     "resistance is futile",
+	args: []interface{}{
+		bytes.NewBufferString("resistance is futile"),
+	},
+	expectedCheckFailure: `
+error:
+  values are not equal
+want.String():
+  "resistance is futile"
+got:
+  <same as "want.String()">
+want:
+  &bytes.Buffer{`,
+}, {
 	about:   "Equals: uncomparable types",
 	checker: qt.Equals,
 	got: struct {
@@ -235,6 +266,24 @@ got:
 want:
   []int{3, 2, 1}
 `,
+}, {
+	about:   "CmpEquals: fmt.Stringer and error",
+	checker: qt.CmpEquals(),
+	got:     bytes.NewBufferString("who"),
+	args: []interface{}{
+		errors.New("who"),
+	},
+	expectedCheckFailure: `
+error:
+  values are not deep equal
+got.String():
+  "who"
+want.Error():
+  <same as "got.String()">
+diff (-got +want):
+` + diff(bytes.NewBufferString("who"), errors.New("who"), nil) + `
+got:
+  &bytes.Buffer{`,
 }, {
 	about:   "CmpEquals: structs with unexported fields not allowed",
 	checker: qt.CmpEquals(),
@@ -756,12 +805,12 @@ want args:
 	expectedNegateFailure: `
 error:
   unexpected success
-error message:
+got.Error():
   "error: bad wolf"
 got error:
   &errors.errorString{s:"error: bad wolf"}
 regexp:
-  <same as "error message">
+  <same as "got.Error()">
 `,
 }, {
 	about:   "ErrorMatches: match",
@@ -771,7 +820,7 @@ regexp:
 	expectedNegateFailure: `
 error:
   unexpected success
-error message:
+got.Error():
   "error: bad wolf"
 got error:
   &errors.errorString{s:"error: bad wolf"}
@@ -786,7 +835,7 @@ regexp:
 	expectedCheckFailure: `
 error:
   error does not match regexp
-error message:
+got.Error():
   "error: bad wolf"
 got error:
   &errors.errorString{s:"error: bad wolf"}
@@ -801,7 +850,7 @@ regexp:
 	expectedCheckFailure: `
 error:
   error does not match regexp
-error message:
+got.Error():
   "error: bad wolf"
 got error:
   &errors.errorString{s:"error: bad wolf"}
@@ -816,7 +865,7 @@ regexp:
 	expectedNegateFailure: `
 error:
   unexpected success
-error message:
+got.Error():
   "bad wolf"
 got error:
   &errors.errorString{s:"bad wolf"}
@@ -842,7 +891,7 @@ error:
 	expectedCheckFailure: `
 error:
   bad check: regexp is not a string
-error message:
+got.Error():
   "bad wolf"
 regexp:
   []int{42}
@@ -850,7 +899,7 @@ regexp:
 	expectedNegateFailure: `
 error:
   bad check: regexp is not a string
-error message:
+got.Error():
   "bad wolf"
 regexp:
   []int{42}
@@ -1201,6 +1250,18 @@ error:
   42 is not nil
 got:
   int(42)
+`,
+}, {
+	about:   "IsNil: error",
+	checker: qt.IsNil,
+	got:     errors.New("bad wolf"),
+	expectedCheckFailure: `
+error:
+  &errors.errorString{s:"bad wolf"} is not nil
+got.Error():
+  "bad wolf"
+got:
+  &errors.errorString{s:"bad wolf"}
 `,
 }, {
 	about:   "IsNil: too many arguments",
