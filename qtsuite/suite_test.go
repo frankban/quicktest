@@ -1,6 +1,6 @@
 // Licensed under the MIT license, see LICENCE file for details.
 
-package suite_test
+package qtsuite_test
 
 import (
 	"bytes"
@@ -8,15 +8,28 @@ import (
 	"testing"
 
 	qt "github.com/frankban/quicktest"
-	qtsuite "github.com/frankban/quicktest/suite"
+	"github.com/frankban/quicktest/qtsuite"
 )
 
 func TestRunSuite(t *testing.T) {
 	c := qt.New(t)
 	var calls []call
 	tt := &testingT{}
-	tc := qt.New(tt)
-	qtsuite.Run(tc, testSuite{calls: &calls})
+	qtsuite.Run(qt.New(tt), testSuite{calls: &calls})
+	c.Assert(calls, qt.DeepEquals, []call{
+		{"Test1", 0},
+		{"Test4", 0},
+	})
+}
+
+func TestRunSuiteEmbedded(t *testing.T) {
+	c := qt.New(t)
+	var calls []call
+	tt := &testingT{}
+	suite := struct {
+		testSuite
+	}{testSuite: testSuite{calls: &calls}}
+	qtsuite.Run(qt.New(tt), suite)
 	c.Assert(calls, qt.DeepEquals, []call{
 		{"Test1", 0},
 		{"Test4", 0},
@@ -27,8 +40,7 @@ func TestRunSuitePtr(t *testing.T) {
 	c := qt.New(t)
 	var calls []call
 	tt := &testingT{}
-	tc := qt.New(tt)
-	qtsuite.Run(tc, &testSuite{calls: &calls})
+	qtsuite.Run(qt.New(tt), &testSuite{calls: &calls})
 	c.Assert(calls, qt.DeepEquals, []call{
 		{"Init", 0},
 		{"Test1", 1},
@@ -46,12 +58,12 @@ func (s testSuite) addCall(name string) {
 	*s.calls = append(*s.calls, call{Name: name, Init: s.init})
 }
 
-func (s *testSuite) Init(c *qt.C) {
+func (s *testSuite) Init(*qt.C) {
 	s.addCall("Init")
 	s.init++
 }
 
-func (s testSuite) Test1(_ *qt.C) {
+func (s testSuite) Test1(*qt.C) {
 	s.addCall("Test1")
 }
 
@@ -59,22 +71,21 @@ func (s testSuite) Test2() {
 	s.addCall("Test2")
 }
 
-func (s testSuite) Test3(_ *testing.T) {
+func (s testSuite) Test3(*testing.T) {
 	s.addCall("Test3")
 }
 
-func (s testSuite) Test4(_ *qt.C) {
+func (s testSuite) Test4(*qt.C) {
 	s.addCall("Test4")
 }
 
-func (s testSuite) Test5(_ *qt.C) bool {
+func (s testSuite) Test5(*qt.C) bool {
 	s.addCall("Test5")
 	return false
 }
 
-func (s testSuite) Testa(_ *qt.C) bool {
+func (s testSuite) Testa(*qt.C) {
 	s.addCall("Testa")
-	return false
 }
 
 type call struct {
@@ -104,8 +115,6 @@ type testingT struct {
 	subTestResult bool
 	subTestName   string
 	subTestT      *testing.T
-
-	parallel bool
 }
 
 // Error overrides *testing.T.Error so that messages are collected.
@@ -117,10 +126,6 @@ func (t *testingT) Error(a ...interface{}) {
 // goroutine is not killed.
 func (t *testingT) Fatal(a ...interface{}) {
 	fmt.Fprint(&t.fatalBuf, a...)
-}
-
-func (t *testingT) Parallel() {
-	t.parallel = true
 }
 
 // Run overrides *testing.T.Run.
