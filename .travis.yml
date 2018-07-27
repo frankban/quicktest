@@ -1,11 +1,14 @@
 language: go
+
 go:
- - "1.7"
- - "1.8"
- - "1.9"
- - "1.10"
- - 1.x
- - master
+  - "1.7"
+  - "1.8"
+  - "1.9"
+  - "1.10"
+  - 1.x
+  - master
 
 script:
- - make test
+  - go get -v github.com/rogpeppe/godeps
+  - $GOPATH/bin/godeps -u dependencies.tsv
+  - GO111MODULE=on go test -v ./...
