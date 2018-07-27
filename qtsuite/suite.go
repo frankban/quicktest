@@ -1,46 +1,53 @@
 // Licensed under the MIT license, see LICENCE file for details.
 
-// Package suite allows quicktest to run test suites.
-//
-// A test suite is a value with one or more test methods.
-//
-// For instance
-//	type suite struct {
-//		url string
-//	}
-//
-//	func (s *suite) Init(c *qt.C) {
-//		hnd := func(w http.ResponseWriter, req *http.Request) {
-//			fmt.Fprintf(w, "%s %s", req.Method, req.URL.Path)
-//		}
-//		srv := httptest.NewServer(http.HandlerFunc(hnd))
-//		c.AddCleanup(srv.Close)
-//		s.url = srv.URL
-//	}
-//
-//	func (s *suite) TestGet(c *qt.C) {
-//		c.Parallel()
-//		resp, err := http.Get(s.url)
-//		c.Assert(err, qt.Equals, nil)
-//		defer resp.Body.Close()
-//		b, err := ioutil.ReadAll(resp.Body)
-//		c.Assert(err, qt.Equals, nil)
-//		c.Assert(string(b), qt.Equals, "GET /")
-//	}
-//
-//	func (s *suite) TestHead(c *qt.C) {
-//		c.Parallel()
-//		resp, err := http.Head(s.url + "/path")
-//		c.Assert(err, qt.Equals, nil)
-//		defer resp.Body.Close()
-//		b, err := ioutil.ReadAll(resp.Body)
-//		c.Assert(err, qt.Equals, nil)
-//		c.Assert(string(b), qt.Equals, "")
-//		c.Assert(resp.ContentLength, qt.Equals, int64(10))
-//	}
-// is a test suite which starts a new http server for each test and
-// cleans it up at the end of the test.
-package suite
+/*
+Package qtsuite allows quicktest to run test suites.
+
+A test suite is a value with one or more test methods.
+For example, the following code defines a suite of test functions that starts
+an HTTP server before running each test, and tears it down afterwards:
+
+	type suite struct {
+		url string
+	}
+
+	func (s *suite) Init(c *qt.C) {
+		hnd := func(w http.ResponseWriter, req *http.Request) {
+			fmt.Fprintf(w, "%s %s", req.Method, req.URL.Path)
+		}
+		srv := httptest.NewServer(http.HandlerFunc(hnd))
+		c.AddCleanup(srv.Close)
+		s.url = srv.URL
+	}
+
+	func (s *suite) TestGet(c *qt.C) {
+		c.Parallel()
+		resp, err := http.Get(s.url)
+		c.Assert(err, qt.Equals, nil)
+		defer resp.Body.Close()
+		b, err := ioutil.ReadAll(resp.Body)
+		c.Assert(err, qt.Equals, nil)
+		c.Assert(string(b), qt.Equals, "GET /")
+	}
+
+	func (s *suite) TestHead(c *qt.C) {
+		c.Parallel()
+		resp, err := http.Head(s.url + "/path")
+		c.Assert(err, qt.Equals, nil)
+		defer resp.Body.Close()
+		b, err := ioutil.ReadAll(resp.Body)
+		c.Assert(err, qt.Equals, nil)
+		c.Assert(string(b), qt.Equals, "")
+		c.Assert(resp.ContentLength, qt.Equals, int64(10))
+	}
+
+The above code could be invoked from a test function like this:
+
+	func TestHTTPMethods(t *testing.T) {
+		qtsuite.Run(qt.New(t), &suite{"http://example.com"})
+	}
+*/
+package qtsuite
 
 import (
 	"reflect"
@@ -103,18 +110,9 @@ func isTestMethod(m reflect.Method) bool {
 		return false
 	}
 	r, n := utf8.DecodeRuneInString(m.Name[4:])
-	if n > 0 && unicode.IsLower(r) {
-		return false
-	}
-	return true
+	return n == 0 || !unicode.IsLower(r)
 }
 
 func isValidMethod(m reflect.Method) bool {
-	if m.Type.NumIn() != 2 || m.Type.NumOut() != 0 {
-		return false
-	}
-	if m.Type.In(1) != cType {
-		return false
-	}
-	return true
+	return m.Type.NumIn() == 2 && m.Type.NumOut() == 0 && m.Type.In(1) == cType
 }
