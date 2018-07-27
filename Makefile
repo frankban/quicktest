@@ -19,4 +19,5 @@ install: deps
 
 .PHONY: test
 test: deps
+	go tool vet .
 	go test -v ./...
