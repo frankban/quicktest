@@ -356,81 +356,81 @@ func TestCParallelPanic(t *testing.T) {
 	c.Parallel()
 }
 
-func TestCAddCleanup(t *testing.T) {
+func TestCDefer(t *testing.T) {
 	c := qt.New(t)
-	var cleanups []int
-	c.AddCleanup(func() { cleanups = append(cleanups, 1) })
-	c.AddCleanup(func() { cleanups = append(cleanups, 2) })
-	c.Cleanup()
-	c.Assert(cleanups, qt.DeepEquals, []int{2, 1})
-	// Calling cleanup again should not do anything.
-	c.Cleanup()
-	c.Assert(cleanups, qt.DeepEquals, []int{2, 1})
+	var defers []int
+	c.Defer(func() { defers = append(defers, 1) })
+	c.Defer(func() { defers = append(defers, 2) })
+	c.Done()
+	c.Assert(defers, qt.DeepEquals, []int{2, 1})
+	// Calling Done again should not do anything.
+	c.Done()
+	c.Assert(defers, qt.DeepEquals, []int{2, 1})
 }
 
-func TestCCleanupCalledEvenAfterCleanupPanic(t *testing.T) {
+func TestCDeferCalledEvenAfterDeferPanic(t *testing.T) {
 	c := qt.New(t)
-	cleaned1 := 0
-	cleaned2 := 0
-	c.AddCleanup(func() {
-		cleaned1++
+	deferred1 := 0
+	deferred2 := 0
+	c.Defer(func() {
+		deferred1++
 	})
-	c.AddCleanup(func() {
+	c.Defer(func() {
 		panic("scream and shout")
 	})
-	c.AddCleanup(func() {
-		cleaned2++
+	c.Defer(func() {
+		deferred2++
 	})
-	c.AddCleanup(func() {
+	c.Defer(func() {
 		panic("run in circles")
 	})
 	func() {
 		defer func() {
 			c.Check(recover(), qt.Equals, "scream and shout")
 		}()
-		c.Cleanup()
+		c.Done()
 	}()
-	c.Assert(cleaned1, qt.Equals, 1)
-	c.Assert(cleaned2, qt.Equals, 1)
-	c.Cleanup()
-	c.Assert(cleaned1, qt.Equals, 1)
-	c.Assert(cleaned2, qt.Equals, 1)
+	c.Assert(deferred1, qt.Equals, 1)
+	c.Assert(deferred2, qt.Equals, 1)
+	c.Done()
+	c.Assert(deferred1, qt.Equals, 1)
+	c.Assert(deferred2, qt.Equals, 1)
 }
 
-func TestCCleanupCalledEvenAfterGoexit(t *testing.T) {
+func TestCDeferCalledEvenAfterGoexit(t *testing.T) {
 	// The testing package uses runtime.Goexit on
-	// assertion failure, so check that cleanups are still
+	// assertion failure, so check that defers are still
 	// called in that case.
 	c := qt.New(t)
-	cleaned := 0
-	c.AddCleanup(func() {
-		cleaned++
+	defers := 0
+	c.Defer(func() {
+		defers++
 	})
-	c.AddCleanup(func() {
+	c.Defer(func() {
 		runtime.Goexit()
 	})
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		c.Cleanup()
+		c.Done()
 		select {}
 	}()
 	<-done
-	c.Assert(cleaned, qt.Equals, 1)
-	c.Cleanup()
-	c.Assert(cleaned, qt.Equals, 1)
+	c.Assert(defers, qt.Equals, 1)
+	c.Done()
+	c.Assert(defers, qt.Equals, 1)
 }
 
-func TestCRunCleanup(t *testing.T) {
+func TestCRunDefer(t *testing.T) {
 	c := qt.New(&testingT{})
-	outerClean := 0
-	innerClean := 0
-	c.AddCleanup(func() { outerClean++ })
+	outerDefer := 0
+	innerDefer := 0
+	c.Defer(func() { outerDefer++ })
 	c.Run("x", func(c *qt.C) {
-		c.AddCleanup(func() { innerClean++ })
+		c.Defer(func() { innerDefer++ })
 	})
-	c.Assert(innerClean, qt.Equals, 1)
-	c.Assert(outerClean, qt.Equals, 0)
+	c.Assert(innerDefer, qt.Equals, 1)
+	c.Assert(outerDefer, qt.Equals, 0)
 }
 
 func checkResult(t *testing.T, ok bool, got, want string) {

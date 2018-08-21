@@ -21,10 +21,21 @@ import (
 //
 // The library already provides some base checkers, and more can be added by
 // implementing the Checker interface.
+//
+// If there is a likelihood that Defer will be called, then
+// a call to Done should be deferred after calling New.
+// For example:
+//
+//     func TestFoo(t *testing.T) {
+//             c := qt.New(t)
+//             defer c.Done()
+//             c.Setenv("HOME", "/non-existent")
+//             c.Assert(os.Getenv("HOME"), qt.Equals, "/non-existent")
+//     })
 func New(t testing.TB) *C {
 	return &C{
-		TB:      t,
-		cleanup: func() {},
+		TB:       t,
+		deferred: func() {},
 	}
 }
 
@@ -33,34 +44,45 @@ func New(t testing.TB) *C {
 // uses the wrapped TB value to fail the test appropriately.
 type C struct {
 	testing.TB
-	cleanup func()
+	deferred func()
 }
 
-// AddCleanup registers a function to be called when c.Cleanup is
-// called. Cleanup functions will be called in last added, first called
+// Defer registers a function to be called when c.Done is
+// called. Deferred functions will be called in last added, first called
 // order.
-func (c *C) AddCleanup(f func()) {
-	oldCleanup := c.cleanup
-	c.cleanup = func() {
-		defer oldCleanup()
+func (c *C) Defer(f func()) {
+	oldDeferred := c.deferred
+	c.deferred = func() {
+		defer oldDeferred()
 		f()
 	}
 }
 
-// Cleanup calls all the functions registered by AddCleanup in reverse
-// order to the order they were registered. After it's called, the
-// cleanup functions are unregistered, so calling Cleanup twice will
-// only call the cleanup functions once.
+// Done calls all the functions registered by Defer in reverse
+// registration order. After it's called, the functions are
+// unregistered, so calling Done twice will only call them once.
 //
-// When a test function is called by Run, the C value passed into it
-// will be cleaned up automatically when it returns.
-func (c *C) Cleanup() {
-	// Note: we need to use defer in case the cleanup panics
+// When a test function is called by Run, Done will be called
+// automatically on the C value passed into it.
+func (c *C) Done() {
+	// Note: we need to use defer in case the deferred function panics
 	// or Goexits.
 	defer func() {
-		c.cleanup = func() {}
+		c.deferred = func() {}
 	}()
-	c.cleanup()
+	c.deferred()
+}
+
+// AddCleanup is the old name for Defer.
+// Deprecated: this will be removed in a subsequent version.
+func (c *C) AddCleanup(f func()) {
+	c.Defer(f)
+}
+
+// Cleanup is the old name for Done.
+// Deprecated: this will be removed in a subsequent version.
+func (c *C) Cleanup() {
+	c.Done()
 }
 
 // Check runs the given check and continues execution in case of failure.
@@ -89,8 +111,8 @@ func (c *C) Assert(got interface{}, checker Checker, args ...interface{}) bool {
 
 // Run runs f as a subtest of t called name. It's a wrapper around
 // *testing.T.Run that provides the quicktest checker to f. When
-// the function completes, the *C instance passed to it
-// will be cleaned up (its Cleanup method will be called).
+// the function completes, c.Done will be called to run any
+// functions registered with c.Defer.
 //
 // For instance:
 //
@@ -113,7 +135,7 @@ func (c *C) Run(name string, f func(c *C)) bool {
 	}
 	return r.Run(name, func(t *testing.T) {
 		c := New(t)
-		defer c.Cleanup()
+		defer c.Done()
 		f(c)
 	})
 }
