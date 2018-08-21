@@ -16,7 +16,7 @@ an HTTP server before running each test, and tears it down afterwards:
 			fmt.Fprintf(w, "%s %s", req.Method, req.URL.Path)
 		}
 		srv := httptest.NewServer(http.HandlerFunc(hnd))
-		c.AddCleanup(srv.Close)
+		c.Defer(srv.Close)
 		s.url = srv.URL
 	}
 

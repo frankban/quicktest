@@ -16,7 +16,7 @@ func TestPatchSetInt(t *testing.T) {
 	i := 99
 	c.Patch(&i, 88)
 	c.Assert(i, qt.Equals, 88)
-	c.Cleanup()
+	c.Done()
 	c.Assert(i, qt.Equals, 99)
 }
 
@@ -27,7 +27,7 @@ func TestPatchSetError(t *testing.T) {
 	err := oldErr
 	c.Patch(&err, newErr)
 	c.Assert(err, qt.Equals, newErr)
-	c.Cleanup()
+	c.Done()
 	c.Assert(err, qt.Equals, oldErr)
 }
 
@@ -37,7 +37,7 @@ func TestPatchSetErrorToNil(t *testing.T) {
 	err := oldErr
 	c.Patch(&err, nil)
 	c.Assert(err, qt.Equals, nil)
-	c.Cleanup()
+	c.Done()
 	c.Assert(err, qt.Equals, oldErr)
 }
 
@@ -47,7 +47,7 @@ func TestPatchSetMapToNil(t *testing.T) {
 	m := oldMap
 	c.Patch(&m, nil)
 	c.Assert(m, qt.IsNil)
-	c.Cleanup()
+	c.Done()
 	c.Assert(m, qt.DeepEquals, oldMap)
 }
 
@@ -64,7 +64,7 @@ func TestSetenv(t *testing.T) {
 	os.Setenv(envName, "initial")
 	c.Setenv(envName, "new value")
 	c.Check(os.Getenv(envName), qt.Equals, "new value")
-	c.Cleanup()
+	c.Done()
 	c.Check(os.Getenv(envName), qt.Equals, "initial")
 }
 
@@ -78,7 +78,7 @@ func TestMkdir(t *testing.T) {
 	f, err := os.Create(filepath.Join(dir, "hello"))
 	c.Assert(err, qt.Equals, nil)
 	f.Close()
-	c.Cleanup()
+	c.Done()
 	_, err = os.Stat(dir)
 	c.Assert(err, qt.Not(qt.IsNil))
 }
