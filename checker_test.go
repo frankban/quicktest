@@ -978,18 +978,14 @@ got:
 	about:   "ErrorMatches: nil error",
 	checker: qt.ErrorMatches,
 	got:     nil,
-	args:    []interface{}{".*"},
+	args:    []interface{}{"some pattern"},
 	expectedCheckFailure: `
 error:
-  bad check: first argument is not an error
-got:
+  got nil error but want non-nil
+got error:
   nil
-`,
-	expectedNegateFailure: `
-error:
-  bad check: first argument is not an error
-got:
-  nil
+regexp:
+  "some pattern"
 `,
 }, {
 	about:   "ErrorMatches: not enough arguments",
