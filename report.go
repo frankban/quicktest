@@ -45,11 +45,11 @@ func writeError(w io.Writer, argNames []string, got interface{}, args []interfac
 		}
 		fmt.Fprintln(w, key+":")
 		if k := values[v]; k != "" {
-			fmt.Fprintf(w, prefixf(prefix, "<same as %q>", k))
+			fmt.Fprint(w, prefixf(prefix, "<same as %q>", k))
 			return
 		}
 		values[v] = key
-		fmt.Fprintf(w, prefixf(prefix, "%s", v))
+		fmt.Fprint(w, prefixf(prefix, "%s", v))
 	}
 
 	// Write the checker error.
@@ -85,14 +85,14 @@ func writeInvocation(w io.Writer) {
 	// TODO: we can do better than 4.
 	_, file, line, ok := runtime.Caller(4)
 	if !ok {
-		fmt.Fprintf(w, prefixf(prefix, "<invocation not available>"))
+		fmt.Fprint(w, prefixf(prefix, "<invocation not available>"))
 		return
 	}
-	fmt.Fprintf(w, prefixf(prefix, "%s:%d:", filepath.Base(file), line))
+	fmt.Fprint(w, prefixf(prefix, "%s:%d:", filepath.Base(file), line))
 	prefix := prefix + prefix
 	f, err := os.Open(file)
 	if err != nil {
-		fmt.Fprintf(w, prefixf(prefix, "<cannot open source file: %s>", err))
+		fmt.Fprint(w, prefixf(prefix, "<cannot open source file: %s>", err))
 		return
 	}
 	defer f.Close()
@@ -117,11 +117,11 @@ func writeInvocation(w io.Writer) {
 	}
 	tw.Flush()
 	if err = sc.Err(); err != nil {
-		fmt.Fprintf(w, prefixf(prefix, "<cannot scan source file: %s>", err))
+		fmt.Fprint(w, prefixf(prefix, "<cannot scan source file: %s>", err))
 		return
 	}
 	if !found {
-		fmt.Fprintf(w, prefixf(prefix, "<cannot find source lines>"))
+		fmt.Fprint(w, prefixf(prefix, "<cannot find source lines>"))
 	}
 }
 
