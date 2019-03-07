@@ -38,6 +38,19 @@ want:
   "47"
 `,
 }, {
+	about:   "failure with % signs",
+	checker: qt.Equals,
+	got:     "42%x",
+	args:    []interface{}{"47%y"},
+	expectedFailure: `
+error:
+  values are not equal
+got:
+  "42%x"
+want:
+  "47%y"
+`,
+}, {
 	about:   "failure with comment",
 	checker: qt.Equals,
 	got:     true,
