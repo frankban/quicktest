@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -15,7 +16,10 @@ import (
 	qt "github.com/frankban/quicktest"
 )
 
-var errBadWolf = errors.New("bad wolf")
+var (
+	errBadWolf = errors.New("bad wolf")
+	goTime     = time.Date(2012, 3, 28, 0, 0, 0, 0, time.UTC)
+)
 
 var (
 	sameInts = cmpopts.SortSlices(func(x, y int) bool {
@@ -377,6 +381,38 @@ got:
 want:
   []int{3, 2, 1}
 `, prefixf(cmp.Diff([]int{1, 2, 3}, []int{3, 2, 1}))),
+}, {
+	about:   "DeepEquals: same times",
+	checker: qt.DeepEquals,
+	got:     goTime,
+	args: []interface{}{
+		goTime,
+	},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  s"2012-03-28 00:00:00 +0000 UTC"
+want:
+  <same as "got">
+`,
+}, {
+	about:   "DeepEquals: different times",
+	checker: qt.DeepEquals,
+	got:     goTime.Add(24 * time.Hour),
+	args: []interface{}{
+		goTime,
+	},
+	expectedCheckFailure: fmt.Sprintf(`
+error:
+  values are not deep equal
+diff (-got +want):
+%s
+got:
+  s"2012-03-29 00:00:00 +0000 UTC"
+want:
+  s"2012-03-28 00:00:00 +0000 UTC"
+`, prefixf(cmp.Diff(goTime.Add(24*time.Hour), goTime))),
 }, {
 	about:   "DeepEquals: not enough arguments",
 	checker: qt.DeepEquals,
