@@ -5,6 +5,7 @@ package quicktest_test
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -13,6 +14,8 @@ import (
 
 	qt "github.com/frankban/quicktest"
 )
+
+var errBadWolf = errors.New("bad wolf")
 
 var (
 	sameInts = cmpopts.SortSlices(func(x, y int) bool {
@@ -80,6 +83,32 @@ got:
 want:
   "42"
 `,
+}, {
+	about:   "Equals: error is nil",
+	checker: qt.Equals,
+	got:     (error)(nil),
+	args:    []interface{}{nil},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  nil
+want:
+  <same as "got">
+`,
+}, {
+	about:   "Equals: error is not nil",
+	checker: qt.Equals,
+	got:     errBadWolf,
+	args:    []interface{}{nil},
+	expectedCheckFailure: fmt.Sprintf(`
+error:
+  provided error is not nil
+got:
+%s
+want:
+  nil
+`, prefixf("%+v", errBadWolf)),
 }, {
 	about:   "Equals: nil struct",
 	checker: qt.Equals,
@@ -181,11 +210,11 @@ want:
 	checker: qt.CmpEquals(),
 	got:     cmpEqualsGot,
 	args:    []interface{}{cmpEqualsWant},
-	expectedCheckFailure: `
+	expectedCheckFailure: fmt.Sprintf(`
 error:
   values are not deep equal
 diff (-got +want):
-` + diff(cmpEqualsGot, cmpEqualsWant) + `
+%s
 got:
   struct { Strings []interface {}; Ints []int }{
       Strings: {
@@ -202,7 +231,7 @@ want:
       },
       Ints: {42},
   }
-`,
+`, prefixf(cmp.Diff(cmpEqualsGot, cmpEqualsWant))),
 }, {
 	about:   "CmpEquals: same values with options",
 	checker: qt.CmpEquals(sameInts),
@@ -225,16 +254,16 @@ want:
 	args: []interface{}{
 		[]int{3, 2, 1},
 	},
-	expectedCheckFailure: `
+	expectedCheckFailure: fmt.Sprintf(`
 error:
   values are not deep equal
 diff (-got +want):
-` + diff([]int{1, 2, 4}, []int{3, 2, 1}, sameInts) + `
+%s
 got:
   []int{1, 2, 4}
 want:
   []int{3, 2, 1}
-`,
+`, prefixf(cmp.Diff([]int{1, 2, 4}, []int{3, 2, 1}, sameInts))),
 }, {
 	about:   "CmpEquals: structs with unexported fields not allowed",
 	checker: qt.CmpEquals(),
@@ -338,16 +367,16 @@ want:
 	args: []interface{}{
 		[]int{3, 2, 1},
 	},
-	expectedCheckFailure: `
+	expectedCheckFailure: fmt.Sprintf(`
 error:
   values are not deep equal
 diff (-got +want):
-` + diff([]int{1, 2, 3}, []int{3, 2, 1}) + `
+%s
 got:
   []int{1, 2, 3}
 want:
   []int{3, 2, 1}
-`,
+`, prefixf(cmp.Diff([]int{1, 2, 3}, []int{3, 2, 1}))),
 }, {
 	about:   "DeepEquals: not enough arguments",
 	checker: qt.DeepEquals,
@@ -518,11 +547,11 @@ want:
 	args: []interface{}{
 		[]interface{}{"bad", "wolf"},
 	},
-	expectedCheckFailure: `
+	expectedCheckFailure: fmt.Sprintf(`
 error:
   values are not deep equal
 diff (-got +want):
-` + diff([]string{"bad", "wolf"}, []interface{}{"bad", "wolf"}) + `
+%s
 got:
   []string{"bad", "wolf"}
 want:
@@ -530,7 +559,7 @@ want:
       "bad",
       "wolf",
   }
-`,
+`, prefixf(cmp.Diff([]string{"bad", "wolf"}, []interface{}{"bad", "wolf"}))),
 }, {
 	about:   "ContentEquals: not enough arguments",
 	checker: qt.ContentEquals,
@@ -606,10 +635,11 @@ regexp:
 	expectedNegateFailure: `
 error:
   unexpected success
-value.String():
-  "resistance is futile"
 got value:
-  &bytes.Buffer{`,
+  s"resistance is futile"
+regexp:
+  "resistance is (futile|useful)"
+`,
 }, {
 	about:   "Matches: mismatch",
 	checker: qt.Matches,
@@ -631,10 +661,10 @@ regexp:
 	expectedCheckFailure: `
 error:
   value.String() does not match regexp
-value.String():
-  "voyages"
 got value:
-  &bytes.Buffer{`,
+  s"voyages"
+regexp:
+  "these are the voyages"`,
 }, {
 	about:   "Matches: empty pattern",
 	checker: qt.Matches,
@@ -751,82 +781,72 @@ want args:
 }, {
 	about:   "ErrorMatches: perfect match",
 	checker: qt.ErrorMatches,
-	got:     errors.New("error: bad wolf"),
-	args:    []interface{}{"error: bad wolf"},
-	expectedNegateFailure: `
+	got:     errBadWolf,
+	args:    []interface{}{"bad wolf"},
+	expectedNegateFailure: fmt.Sprintf(`
 error:
   unexpected success
-error message:
-  "error: bad wolf"
 got error:
-  &errors.errorString{s:"error: bad wolf"}
+%s
 regexp:
-  <same as "error message">
-`,
+  "bad wolf"
+`, prefixf("%+v", errBadWolf)),
 }, {
 	about:   "ErrorMatches: match",
 	checker: qt.ErrorMatches,
-	got:     errors.New("error: bad wolf"),
-	args:    []interface{}{"error: .*"},
-	expectedNegateFailure: `
+	got:     errBadWolf,
+	args:    []interface{}{"bad .*"},
+	expectedNegateFailure: fmt.Sprintf(`
 error:
   unexpected success
-error message:
-  "error: bad wolf"
 got error:
-  &errors.errorString{s:"error: bad wolf"}
+%s
 regexp:
-  "error: .*"
-`,
+  "bad .*"
+`, prefixf("%+v", errBadWolf)),
 }, {
 	about:   "ErrorMatches: mismatch",
 	checker: qt.ErrorMatches,
-	got:     errors.New("error: bad wolf"),
-	args:    []interface{}{"error: exterminate"},
-	expectedCheckFailure: `
+	got:     errBadWolf,
+	args:    []interface{}{"exterminate"},
+	expectedCheckFailure: fmt.Sprintf(`
 error:
   error does not match regexp
-error message:
-  "error: bad wolf"
 got error:
-  &errors.errorString{s:"error: bad wolf"}
+%s
 regexp:
-  "error: exterminate"
-`,
+  "exterminate"
+`, prefixf("%+v", errBadWolf)),
 }, {
 	about:   "ErrorMatches: empty pattern",
 	checker: qt.ErrorMatches,
-	got:     errors.New("error: bad wolf"),
+	got:     errBadWolf,
 	args:    []interface{}{""},
-	expectedCheckFailure: `
+	expectedCheckFailure: fmt.Sprintf(`
 error:
   error does not match regexp
-error message:
-  "error: bad wolf"
 got error:
-  &errors.errorString{s:"error: bad wolf"}
+%s
 regexp:
   ""
-`,
+`, prefixf("%+v", errBadWolf)),
 }, {
 	about:   "ErrorMatches: complex pattern",
 	checker: qt.ErrorMatches,
-	got:     errors.New("bad wolf"),
+	got:     errBadWolf,
 	args:    []interface{}{"bad wolf|end of the universe"},
-	expectedNegateFailure: `
+	expectedNegateFailure: fmt.Sprintf(`
 error:
   unexpected success
-error message:
-  "bad wolf"
 got error:
-  &errors.errorString{s:"bad wolf"}
+%s
 regexp:
   "bad wolf|end of the universe"
-`,
+`, prefixf("%+v", errBadWolf)),
 }, {
 	about:   "ErrorMatches: invalid pattern",
 	checker: qt.ErrorMatches,
-	got:     errors.New("bad wolf"),
+	got:     errBadWolf,
 	args:    []interface{}{"("},
 	expectedCheckFailure: `
 error:
@@ -837,21 +857,17 @@ error:
 }, {
 	about:   "ErrorMatches: pattern not a string",
 	checker: qt.ErrorMatches,
-	got:     errors.New("bad wolf"),
+	got:     errBadWolf,
 	args:    []interface{}{[]int{42}},
 	expectedCheckFailure: `
 error:
   bad check: regexp is not a string
-error message:
-  "bad wolf"
 regexp:
   []int{42}
 `,
 	expectedNegateFailure: `
 error:
   bad check: regexp is not a string
-error message:
-  "bad wolf"
 regexp:
   []int{42}
 `,
@@ -907,14 +923,14 @@ want args:
 }, {
 	about:   "ErrorMatches: too many arguments",
 	checker: qt.ErrorMatches,
-	got:     errors.New("error: bad wolf"),
-	args:    []interface{}{"error: bad wolf", []string{"bad", "wolf"}},
+	got:     errBadWolf,
+	args:    []interface{}{"bad wolf", []string{"bad", "wolf"}},
 	expectedCheckFailure: `
 error:
   bad check: too many arguments provided to checker: got 2, want 1
 got args:
   []interface {}{
-      "error: bad wolf",
+      "bad wolf",
       []string{"bad", "wolf"},
   }
 want args:
@@ -925,7 +941,7 @@ error:
   bad check: too many arguments provided to checker: got 2, want 1
 got args:
   []interface {}{
-      "error: bad wolf",
+      "bad wolf",
       []string{"bad", "wolf"},
   }
 want args:
@@ -1455,10 +1471,8 @@ want args:
 	expectedNegateFailure: `
 error:
   unexpected success
-result:
-  bool(true)
 arg:
-  &"bad wolf"
+  bad check: bad wolf
 predicate function:
   func(error) bool {...}
 `,
@@ -1472,8 +1486,6 @@ predicate function:
 	expectedNegateFailure: `
 error:
   unexpected success
-result:
-  bool(true)
 arg:
   int(42)
 predicate function:
@@ -1489,8 +1501,6 @@ predicate function:
 	expectedNegateFailure: `
 error:
   unexpected success
-result:
-  bool(true)
 arg:
   nil
 predicate function:
@@ -1504,8 +1514,6 @@ predicate function:
 	expectedCheckFailure: `
 error:
   value does not satisfy predicate function
-result:
-  bool(false)
 arg:
   nil
 predicate function:
@@ -1521,8 +1529,6 @@ predicate function:
 	expectedCheckFailure: `
 error:
   value does not satisfy predicate function
-result:
-  bool(false)
 arg:
   "bad wolf"
 predicate function:
@@ -1804,13 +1810,6 @@ func TestCheckers(t *testing.T) {
 	}
 }
 
-func diff(got, want interface{}, opts ...cmp.Option) string {
-	// TODO frankban: should we put prefixf in an export_test.go file?
-	s := ""
-	for _, line := range strings.Split(cmp.Diff(got, want, opts...), "\n") {
-		if line != "" {
-			s += "  " + line + "\n"
-		}
-	}
-	return strings.TrimSuffix(s, "\n")
+func prefixf(format string, args ...interface{}) string {
+	return strings.TrimSuffix(qt.Prefixf("  ", format, args...), "\n")
 }

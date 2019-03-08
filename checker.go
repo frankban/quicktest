@@ -61,6 +61,9 @@ func (c *equalsChecker) Check(got interface{}, args []interface{}, note func(key
 		}
 	}()
 	if want := args[0]; got != want {
+		if _, ok := got.(error); ok && want == nil {
+			return errors.New("provided error is not nil")
+		}
 		return errors.New("values are not equal")
 	}
 	return nil
@@ -142,7 +145,6 @@ func (c *matchesChecker) Check(got interface{}, args []interface{}, note func(ke
 	case string:
 		return match(v, pattern, "value does not match regexp", note)
 	case fmt.Stringer:
-		note("value.String()", v.String())
 		return match(v.String(), pattern, "value.String() does not match regexp", note)
 	}
 	note("value", got)
@@ -174,7 +176,6 @@ func (c *errorMatchesChecker) Check(got interface{}, args []interface{}, note fu
 	if err == nil {
 		return errors.New("no error found")
 	}
-	note("error message", err.Error())
 	return match(err.Error(), args[0], "error does not match regexp", note)
 }
 
@@ -326,9 +327,7 @@ func (c *satisfiesChecker) Check(got interface{}, args []interface{}, note func(
 		note("predicate function", predicate)
 		return BadCheckf("cannot use value of type %v as type %v in argument to predicate function", v.Type(), t)
 	}
-	result := f.Call([]reflect.Value{v})[0].Interface().(bool)
-	note("result", result)
-	if result {
+	if f.Call([]reflect.Value{v})[0].Interface().(bool) {
 		return nil
 	}
 	return fmt.Errorf("value does not satisfy predicate function")

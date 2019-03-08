@@ -514,7 +514,14 @@ func assertPrefix(t testing.TB, got, prefix string) {
 		t.Fatal("prefix: empty value provided")
 	}
 	if !strings.HasPrefix(got, prefix) {
-		t.Fatalf("prefix:\ngot  %q\nwant %q:\n-----------------------------------\n%s", got, prefix, got)
+		t.Fatalf(`prefix:
+got  %q
+want %q
+-------------------- got --------------------
+%s
+-------------------- want -------------------
+%s
+---------------------------------------------`, got, prefix, got, prefix)
 	}
 }
 
