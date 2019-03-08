@@ -12,9 +12,24 @@ import (
 	"runtime"
 	"strings"
 	"text/tabwriter"
-
-	"github.com/kr/pretty"
 )
+
+// reportParams holds parameters for reporting a test error.
+type reportParams struct {
+	// argNames holds the names for the arguments passed to the checker.
+	argNames []string
+	// got holds the value that was checked.
+	got interface{}
+	// args holds all other arguments (if any) provided to the checker.
+	args []interface{}
+	// comment optionally holds the comment passed when performing the check.
+	comment Comment
+	// notes holds notes added while doing the check.
+	notes []note
+	// format holds the format function that must be used when outputting
+	// values.
+	format formatFunc
+}
 
 // Unquoted indicates that the string must not be pretty printed in the failure
 // output. This is useful when a checker calls note and does not want the
@@ -22,28 +37,28 @@ import (
 type Unquoted string
 
 // report generates a failure report for the given error, optionally including
-// in the output the given checker arguments, comment and notes.
-func report(argNames []string, got interface{}, args []interface{}, c Comment, ns []note, err error) string {
+// in the output the checker arguments, comment and notes included in the
+// provided report parameters.
+func report(err error, p reportParams) string {
 	var buf bytes.Buffer
 	buf.WriteByte('\n')
-	writeError(&buf, argNames, got, args, c, ns, err)
+	writeError(&buf, err, p)
 	writeInvocation(&buf)
 	return buf.String()
 }
 
-// writeError writes a pretty formatted output of the given error, comment and
-// notes into the provided writer.
-func writeError(w io.Writer, argNames []string, got interface{}, args []interface{}, c Comment, ns []note, err error) {
+// writeError writes a pretty formatted output of the given error using the
+// provided report parameters.
+func writeError(w io.Writer, err error, p reportParams) {
 	values := make(map[string]string)
 	printPair := func(key string, value interface{}) {
+		fmt.Fprintln(w, key+":")
 		var v string
 		if u, ok := value.(Unquoted); ok {
 			v = string(u)
 		} else {
-			// The pretty.Sprint equivalent does not quote string values.
-			v = fmt.Sprintf("%# v", pretty.Formatter(value))
+			v = p.format(value)
 		}
-		fmt.Fprintln(w, key+":")
 		if k := values[v]; k != "" {
 			fmt.Fprint(w, prefixf(prefix, "<same as %q>", k))
 			return
@@ -58,12 +73,12 @@ func writeError(w io.Writer, argNames []string, got interface{}, args []interfac
 	}
 
 	// Write the comment if provided.
-	if comment := c.String(); comment != "" {
+	if comment := p.comment.String(); comment != "" {
 		printPair("comment", Unquoted(comment))
 	}
 
 	// Write notes if present.
-	for _, n := range ns {
+	for _, n := range p.notes {
 		printPair(n.key, n.value)
 	}
 	if IsBadCheck(err) || err == ErrSilent {
@@ -73,8 +88,8 @@ func writeError(w io.Writer, argNames []string, got interface{}, args []interfac
 	}
 
 	// Write provided args.
-	for i, arg := range append([]interface{}{got}, args...) {
-		printPair(argNames[i], arg)
+	for i, arg := range append([]interface{}{p.got}, p.args...) {
+		printPair(p.argNames[i], arg)
 	}
 }
 
