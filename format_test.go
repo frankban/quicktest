@@ -4,7 +4,6 @@ package quicktest_test
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
@@ -17,7 +16,7 @@ var formatTests = []struct {
 }{{
 	about: "error value",
 	value: errBadWolf,
-	want:  fmt.Sprintf("%+v", errBadWolf),
+	want:  "bad wolf\n  file:line",
 }, {
 	about: "stringer",
 	value: bytes.NewBufferString("I am a stringer"),

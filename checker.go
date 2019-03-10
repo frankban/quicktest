@@ -62,7 +62,7 @@ func (c *equalsChecker) Check(got interface{}, args []interface{}, note func(key
 	}()
 	if want := args[0]; got != want {
 		if _, ok := got.(error); ok && want == nil {
-			return errors.New("provided error is not nil")
+			return errors.New("got non-nil error")
 		}
 		return errors.New("values are not equal")
 	}

@@ -4,7 +4,6 @@ package quicktest_test
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -16,10 +15,7 @@ import (
 	qt "github.com/frankban/quicktest"
 )
 
-var (
-	errBadWolf = errors.New("bad wolf")
-	goTime     = time.Date(2012, 3, 28, 0, 0, 0, 0, time.UTC)
-)
+var goTime = time.Date(2012, 3, 28, 0, 0, 0, 0, time.UTC)
 
 var (
 	sameInts = cmpopts.SortSlices(func(x, y int) bool {
@@ -88,9 +84,9 @@ want:
   "42"
 `,
 }, {
-	about:   "Equals: error is nil",
+	about:   "Equals: nil and nil",
 	checker: qt.Equals,
-	got:     (error)(nil),
+	got:     nil,
 	args:    []interface{}{nil},
 	expectedNegateFailure: `
 error:
@@ -105,14 +101,15 @@ want:
 	checker: qt.Equals,
 	got:     errBadWolf,
 	args:    []interface{}{nil},
-	expectedCheckFailure: fmt.Sprintf(`
+	expectedCheckFailure: `
 error:
-  provided error is not nil
+  got non-nil error
 got:
-%s
+  bad wolf
+    file:line
 want:
   nil
-`, prefixf("%+v", errBadWolf)),
+`,
 }, {
 	about:   "Equals: nil struct",
 	checker: qt.Equals,
@@ -235,7 +232,7 @@ want:
       },
       Ints: {42},
   }
-`, prefixf(cmp.Diff(cmpEqualsGot, cmpEqualsWant))),
+`, diff(cmpEqualsGot, cmpEqualsWant)),
 }, {
 	about:   "CmpEquals: same values with options",
 	checker: qt.CmpEquals(sameInts),
@@ -267,7 +264,7 @@ got:
   []int{1, 2, 4}
 want:
   []int{3, 2, 1}
-`, prefixf(cmp.Diff([]int{1, 2, 4}, []int{3, 2, 1}, sameInts))),
+`, diff([]int{1, 2, 4}, []int{3, 2, 1}, sameInts)),
 }, {
 	about:   "CmpEquals: structs with unexported fields not allowed",
 	checker: qt.CmpEquals(),
@@ -380,7 +377,7 @@ got:
   []int{1, 2, 3}
 want:
   []int{3, 2, 1}
-`, prefixf(cmp.Diff([]int{1, 2, 3}, []int{3, 2, 1}))),
+`, diff([]int{1, 2, 3}, []int{3, 2, 1})),
 }, {
 	about:   "DeepEquals: same times",
 	checker: qt.DeepEquals,
@@ -412,7 +409,7 @@ got:
   s"2012-03-29 00:00:00 +0000 UTC"
 want:
   s"2012-03-28 00:00:00 +0000 UTC"
-`, prefixf(cmp.Diff(goTime.Add(24*time.Hour), goTime))),
+`, diff(goTime.Add(24*time.Hour), goTime)),
 }, {
 	about:   "DeepEquals: not enough arguments",
 	checker: qt.DeepEquals,
@@ -595,7 +592,7 @@ want:
       "bad",
       "wolf",
   }
-`, prefixf(cmp.Diff([]string{"bad", "wolf"}, []interface{}{"bad", "wolf"}))),
+`, diff([]string{"bad", "wolf"}, []interface{}{"bad", "wolf"})),
 }, {
 	about:   "ContentEquals: not enough arguments",
 	checker: qt.ContentEquals,
@@ -819,66 +816,71 @@ want args:
 	checker: qt.ErrorMatches,
 	got:     errBadWolf,
 	args:    []interface{}{"bad wolf"},
-	expectedNegateFailure: fmt.Sprintf(`
+	expectedNegateFailure: `
 error:
   unexpected success
 got error:
-%s
+  bad wolf
+    file:line
 regexp:
   "bad wolf"
-`, prefixf("%+v", errBadWolf)),
+`,
 }, {
 	about:   "ErrorMatches: match",
 	checker: qt.ErrorMatches,
 	got:     errBadWolf,
 	args:    []interface{}{"bad .*"},
-	expectedNegateFailure: fmt.Sprintf(`
+	expectedNegateFailure: `
 error:
   unexpected success
 got error:
-%s
+  bad wolf
+    file:line
 regexp:
   "bad .*"
-`, prefixf("%+v", errBadWolf)),
+`,
 }, {
 	about:   "ErrorMatches: mismatch",
 	checker: qt.ErrorMatches,
 	got:     errBadWolf,
 	args:    []interface{}{"exterminate"},
-	expectedCheckFailure: fmt.Sprintf(`
+	expectedCheckFailure: `
 error:
   error does not match regexp
 got error:
-%s
+  bad wolf
+    file:line
 regexp:
   "exterminate"
-`, prefixf("%+v", errBadWolf)),
+`,
 }, {
 	about:   "ErrorMatches: empty pattern",
 	checker: qt.ErrorMatches,
 	got:     errBadWolf,
 	args:    []interface{}{""},
-	expectedCheckFailure: fmt.Sprintf(`
+	expectedCheckFailure: `
 error:
   error does not match regexp
 got error:
-%s
+  bad wolf
+    file:line
 regexp:
   ""
-`, prefixf("%+v", errBadWolf)),
+`,
 }, {
 	about:   "ErrorMatches: complex pattern",
 	checker: qt.ErrorMatches,
 	got:     errBadWolf,
 	args:    []interface{}{"bad wolf|end of the universe"},
-	expectedNegateFailure: fmt.Sprintf(`
+	expectedNegateFailure: `
 error:
   unexpected success
 got error:
-%s
+  bad wolf
+    file:line
 regexp:
   "bad wolf|end of the universe"
-`, prefixf("%+v", errBadWolf)),
+`,
 }, {
 	about:   "ErrorMatches: invalid pattern",
 	checker: qt.ErrorMatches,
@@ -1846,6 +1848,7 @@ func TestCheckers(t *testing.T) {
 	}
 }
 
-func prefixf(format string, args ...interface{}) string {
-	return strings.TrimSuffix(qt.Prefixf("  ", format, args...), "\n")
+func diff(x, y interface{}, opts ...cmp.Option) string {
+	d := cmp.Diff(x, y, opts...)
+	return strings.TrimSuffix(qt.Prefixf("  ", "%s", d), "\n")
 }
