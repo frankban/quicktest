@@ -8,9 +8,8 @@ import (
 	"github.com/kr/pretty"
 )
 
-// Format is the function used by default for formatting checker values and
-// notes. It can be replaced on a specific c *qt.C instance by calling
-// c.SetFormat().
+// Format formats the given value as a string. It is used to print values in
+// test failures unless that's changed by calling C.SetFormat.
 func Format(v interface{}) string {
 	switch v := v.(type) {
 	case error:

@@ -88,10 +88,10 @@ func (c *C) Cleanup() {
 	c.Done()
 }
 
-// SetFormat changes the format function used by this checker instance for
-// generating the string representation of values in case of errors. The
-// format function is called to format checker arguments and notes.
-// By default qt.Format is used.
+// SetFormat sets the function used to print values in test failures.
+// By default Format is used.
+// Any subsequent subtests invoked with c.Run will also use this function by
+// default.
 func (c *C) SetFormat(format func(interface{}) string) {
 	c.format = format
 }
