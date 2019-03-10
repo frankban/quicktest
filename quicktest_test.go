@@ -394,6 +394,26 @@ func TestCRunPanic(t *testing.T) {
 	assertBool(t, run, true)
 }
 
+func TestCRunFormat(t *testing.T) {
+	tt, innerTT := &testingT{}, &testingT{}
+	c := qt.New(tt)
+	c.SetFormat(func(v interface{}) string {
+		return fmt.Sprintf("myfmt(%v)", v)
+	})
+	c.Run("my test", func(innerC *qt.C) {
+		innerC.TB = innerTT
+		innerC.Check(42, qt.Equals, nil)
+	})
+	assertPrefix(t, innerTT.errorString(), `
+error:
+  values are not equal
+got:
+  myfmt(42)
+want:
+  myfmt(<nil>)
+`)
+}
+
 func TestCParallel(t *testing.T) {
 	tt := &testingT{}
 	c := qt.New(tt)

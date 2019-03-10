@@ -145,9 +145,10 @@ func (c *C) Run(name string, f func(c *C)) bool {
 		panic(fmt.Sprintf("cannot execute Run with underlying concrete type %T", c.TB))
 	}
 	return r.Run(name, func(t *testing.T) {
-		c := New(t)
-		defer c.Done()
-		f(c)
+		c2 := New(t)
+		defer c2.Done()
+		c2.SetFormat(c.format)
+		f(c2)
 	})
 }
 
