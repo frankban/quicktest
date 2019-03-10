@@ -18,6 +18,7 @@ var cTests = []struct {
 	checker         qt.Checker
 	got             interface{}
 	args            []interface{}
+	format          func(interface{}) string
 	expectedFailure string
 }{{
 	about:   "success",
@@ -251,6 +252,44 @@ arg4:
   <same as "note4">
 `,
 }, {
+	about: "many arguments and notes with custom format function",
+	checker: &testingChecker{
+		argNames: []string{"arg1", "arg2", "arg3"},
+		addNotes: func(note func(key string, value interface{})) {
+			note("note1", "these")
+			note("note2", qt.Unquoted("are"))
+			note("note3", "the")
+			note("note4", "voyages")
+			note("note5", true)
+		},
+		err: errors.New("bad wolf"),
+	},
+	got:  42,
+	args: []interface{}{"val2", "val3"},
+	format: func(v interface{}) string {
+		return fmt.Sprintf("bad wolf %v", v)
+	},
+	expectedFailure: `
+error:
+  bad wolf
+note1:
+  bad wolf these
+note2:
+  are
+note3:
+  bad wolf the
+note4:
+  bad wolf voyages
+note5:
+  bad wolf true
+arg1:
+  bad wolf 42
+arg2:
+  bad wolf val2
+arg3:
+  bad wolf val3
+`,
+}, {
 	about: "bad check with notes",
 	checker: &testingChecker{
 		argNames: []string{"got", "want"},
@@ -292,6 +331,9 @@ func TestCAssertCheck(t *testing.T) {
 		t.Run("Check: "+test.about, func(t *testing.T) {
 			tt := &testingT{}
 			c := qt.New(tt)
+			if test.format != nil {
+				c.SetFormat(test.format)
+			}
 			ok := c.Check(test.got, test.checker, test.args...)
 			checkResult(t, ok, tt.errorString(), test.expectedFailure)
 			if tt.fatalString() != "" {
@@ -301,6 +343,9 @@ func TestCAssertCheck(t *testing.T) {
 		t.Run("Assert: "+test.about, func(t *testing.T) {
 			tt := &testingT{}
 			c := qt.New(tt)
+			if test.format != nil {
+				c.SetFormat(test.format)
+			}
 			ok := c.Assert(test.got, test.checker, test.args...)
 			checkResult(t, ok, tt.fatalString(), test.expectedFailure)
 			if tt.errorString() != "" {
@@ -347,6 +392,26 @@ func TestCRunPanic(t *testing.T) {
 	}()
 	c.Run("panic", func(innerC *qt.C) {})
 	assertBool(t, run, true)
+}
+
+func TestCRunFormat(t *testing.T) {
+	tt, innerTT := &testingT{}, &testingT{}
+	c := qt.New(tt)
+	c.SetFormat(func(v interface{}) string {
+		return fmt.Sprintf("myfmt(%v)", v)
+	})
+	c.Run("my test", func(innerC *qt.C) {
+		innerC.TB = innerTT
+		innerC.Check(42, qt.Equals, nil)
+	})
+	assertPrefix(t, innerTT.errorString(), `
+error:
+  values are not equal
+got:
+  myfmt(42)
+want:
+  myfmt(<nil>)
+`)
 }
 
 func TestCParallel(t *testing.T) {
@@ -514,7 +579,14 @@ func assertPrefix(t testing.TB, got, prefix string) {
 		t.Fatal("prefix: empty value provided")
 	}
 	if !strings.HasPrefix(got, prefix) {
-		t.Fatalf("prefix:\ngot  %q\nwant %q:\n-----------------------------------\n%s", got, prefix, got)
+		t.Fatalf(`prefix:
+got  %q
+want %q
+-------------------- got --------------------
+%s
+-------------------- want -------------------
+%s
+---------------------------------------------`, got, prefix, got, prefix)
 	}
 }
 

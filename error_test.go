@@ -4,6 +4,7 @@ package quicktest_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	qt "github.com/frankban/quicktest"
@@ -22,4 +23,23 @@ func TestIsBadCheck(t *testing.T) {
 	assertBool(t, qt.IsBadCheck(err), true)
 	err = errors.New("bad wolf")
 	assertBool(t, qt.IsBadCheck(err), false)
+}
+
+var errBadWolf = &errTest{}
+
+// errTest is an error type used in tests.
+type errTest struct{}
+
+// Error implements error.
+func (*errTest) Error() string {
+	return "bad wolf"
+}
+
+// Format implements fmt.Formatter.
+func (err *errTest) Format(f fmt.State, c rune) {
+	if !f.Flag('+') || c != 'v' {
+		fmt.Fprint(f, "unexpected verb for formatting the error")
+	}
+	fmt.Fprint(f, err.Error())
+	fmt.Fprint(f, "\n  file:line")
 }

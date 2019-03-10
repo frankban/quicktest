@@ -36,6 +36,7 @@ func New(t testing.TB) *C {
 	return &C{
 		TB:       t,
 		deferred: func() {},
+		format:   Format,
 	}
 }
 
@@ -44,7 +45,9 @@ func New(t testing.TB) *C {
 // uses the wrapped TB value to fail the test appropriately.
 type C struct {
 	testing.TB
+
 	deferred func()
+	format   formatFunc
 }
 
 // Defer registers a function to be called when c.Done is
@@ -85,6 +88,14 @@ func (c *C) Cleanup() {
 	c.Done()
 }
 
+// SetFormat sets the function used to print values in test failures.
+// By default Format is used.
+// Any subsequent subtests invoked with c.Run will also use this function by
+// default.
+func (c *C) SetFormat(format func(interface{}) string) {
+	c.format = format
+}
+
 // Check runs the given check and continues execution in case of failure.
 // For instance:
 //
@@ -94,7 +105,7 @@ func (c *C) Cleanup() {
 // Additional args (not consumed by the checker), when provided, are included
 // as comments in the failure output when the check fails.
 func (c *C) Check(got interface{}, checker Checker, args ...interface{}) bool {
-	return check(c.TB.Error, checker, got, args)
+	return c.check(c.TB.Error, checker, got, args)
 }
 
 // Assert runs the given check and stops execution in case of failure.
@@ -106,7 +117,7 @@ func (c *C) Check(got interface{}, checker Checker, args ...interface{}) bool {
 // Additional args (not consumed by the checker), when provided, are included
 // as comments in the failure output when the check fails.
 func (c *C) Assert(got interface{}, checker Checker, args ...interface{}) bool {
-	return check(c.TB.Fatal, checker, got, args)
+	return c.check(c.TB.Fatal, checker, got, args)
 }
 
 // Run runs f as a subtest of t called name. It's a wrapper around
@@ -134,9 +145,10 @@ func (c *C) Run(name string, f func(c *C)) bool {
 		panic(fmt.Sprintf("cannot execute Run with underlying concrete type %T", c.TB))
 	}
 	return r.Run(name, func(t *testing.T) {
-		c := New(t)
-		defer c.Done()
-		f(c)
+		c2 := New(t)
+		defer c2.Done()
+		c2.SetFormat(c.format)
+		f(c2)
 	})
 }
 
@@ -157,37 +169,40 @@ func (c *C) Parallel() {
 
 // check performs the actual check and calls the provided fail function in case
 // of failure.
-func check(fail func(...interface{}), checker Checker, got interface{}, args []interface{}) bool {
+func (c *C) check(fail func(...interface{}), checker Checker, got interface{}, args []interface{}) bool {
 	// Allow checkers to annotate messages.
-	var ns []note
+	rp := reportParams{
+		got:    got,
+		args:   args,
+		format: c.format,
+	}
 	note := func(key string, value interface{}) {
-		ns = append(ns, note{
+		rp.notes = append(rp.notes, note{
 			key:   key,
 			value: value,
 		})
 	}
 	// Ensure that we have a checker.
 	if checker == nil {
-		fail(report(nil, got, args, Comment{}, ns, BadCheckf("nil checker provided")))
+		fail(report(BadCheckf("nil checker provided"), rp))
 		return false
 	}
 	// Extract a comment if it has been provided.
-	argNames := checker.ArgNames()
-	wantNumArgs := len(argNames) - 1
-	var c Comment
+	rp.argNames = checker.ArgNames()
+	wantNumArgs := len(rp.argNames) - 1
 	if len(args) > 0 {
 		if comment, ok := args[len(args)-1].(Comment); ok {
-			c = comment
-			args = args[:len(args)-1]
+			rp.comment = comment
+			rp.args = args[:len(args)-1]
 		}
 	}
 	// Validate that we have the correct number of arguments.
-	if gotNumArgs := len(args); gotNumArgs != wantNumArgs {
+	if gotNumArgs := len(rp.args); gotNumArgs != wantNumArgs {
 		if gotNumArgs > 0 {
-			note("got args", args)
+			note("got args", rp.args)
 		}
 		if wantNumArgs > 0 {
-			note("want args", Unquoted(strings.Join(argNames[1:], ", ")))
+			note("want args", Unquoted(strings.Join(rp.argNames[1:], ", ")))
 		}
 		var prefix string
 		if gotNumArgs > wantNumArgs {
@@ -195,13 +210,13 @@ func check(fail func(...interface{}), checker Checker, got interface{}, args []i
 		} else {
 			prefix = "not enough arguments provided to checker"
 		}
-		fail(report(argNames, got, args, c, ns, BadCheckf("%s: got %d, want %d", prefix, gotNumArgs, wantNumArgs)))
+		fail(report(BadCheckf("%s: got %d, want %d", prefix, gotNumArgs, wantNumArgs), rp))
 		return false
 	}
 
 	// Execute the check and report the failure if necessary.
 	if err := checker.Check(got, args, note); err != nil {
-		fail(report(argNames, got, args, c, ns, err))
+		fail(report(err, rp))
 		return false
 	}
 	return true
