@@ -15,7 +15,15 @@ import (
 	qt "github.com/frankban/quicktest"
 )
 
-var goTime = time.Date(2012, 3, 28, 0, 0, 0, 0, time.UTC)
+var (
+	goTime = time.Date(2012, 3, 28, 0, 0, 0, 0, time.UTC)
+	chInt  = func() chan int {
+		ch := make(chan int, 4)
+		ch <- 42
+		ch <- 47
+		return ch
+	}()
+)
 
 var (
 	sameInts = cmpopts.SortSlices(func(x, y int) bool {
@@ -189,7 +197,7 @@ want args:
 `,
 }, {
 	about:   "CmpEquals: same values",
-	checker: qt.CmpEquals(),
+	checker: qt.InternalCmpEquals(false),
 	got:     cmpEqualsGot,
 	args:    []interface{}{cmpEqualsGot},
 	expectedNegateFailure: `
@@ -208,7 +216,18 @@ want:
 `,
 }, {
 	about:   "CmpEquals: different values",
-	checker: qt.CmpEquals(),
+	checker: qt.InternalCmpEquals(false),
+	got:     cmpEqualsGot,
+	args:    []interface{}{cmpEqualsWant},
+	expectedCheckFailure: fmt.Sprintf(`
+error:
+  values are not deep equal
+diff (-got +want):
+%s
+`, diff(cmpEqualsGot, cmpEqualsWant)),
+}, {
+	about:   "CmpEquals: different values: verbose",
+	checker: qt.InternalCmpEquals(true),
 	got:     cmpEqualsGot,
 	args:    []interface{}{cmpEqualsWant},
 	expectedCheckFailure: fmt.Sprintf(`
@@ -235,7 +254,7 @@ want:
 `, diff(cmpEqualsGot, cmpEqualsWant)),
 }, {
 	about:   "CmpEquals: same values with options",
-	checker: qt.CmpEquals(sameInts),
+	checker: qt.InternalCmpEquals(false, sameInts),
 	got:     []int{1, 2, 3},
 	args: []interface{}{
 		[]int{3, 2, 1},
@@ -250,7 +269,20 @@ want:
 `,
 }, {
 	about:   "CmpEquals: different values with options",
-	checker: qt.CmpEquals(sameInts),
+	checker: qt.InternalCmpEquals(false, sameInts),
+	got:     []int{1, 2, 4},
+	args: []interface{}{
+		[]int{3, 2, 1},
+	},
+	expectedCheckFailure: fmt.Sprintf(`
+error:
+  values are not deep equal
+diff (-got +want):
+%s
+`, diff([]int{1, 2, 4}, []int{3, 2, 1}, sameInts)),
+}, {
+	about:   "CmpEquals: different values with options: verbose",
+	checker: qt.InternalCmpEquals(true, sameInts),
 	got:     []int{1, 2, 4},
 	args: []interface{}{
 		[]int{3, 2, 1},
@@ -267,7 +299,7 @@ want:
 `, diff([]int{1, 2, 4}, []int{3, 2, 1}, sameInts)),
 }, {
 	about:   "CmpEquals: structs with unexported fields not allowed",
-	checker: qt.CmpEquals(),
+	checker: qt.InternalCmpEquals(false),
 	got: struct{ answer int }{
 		answer: 42,
 	},
@@ -287,7 +319,7 @@ want:
 `,
 }, {
 	about:   "CmpEquals: structs with unexported fields ignored",
-	checker: qt.CmpEquals(cmpopts.IgnoreUnexported(struct{ answer int }{})),
+	checker: qt.InternalCmpEquals(false, cmpopts.IgnoreUnexported(struct{ answer int }{})),
 	got: struct{ answer int }{
 		answer: 42,
 	},
@@ -305,8 +337,40 @@ want:
   <same as "got">
 `,
 }, {
+	about:   "CmpEquals: same times",
+	checker: qt.InternalCmpEquals(false),
+	got:     goTime,
+	args: []interface{}{
+		goTime,
+	},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  s"2012-03-28 00:00:00 +0000 UTC"
+want:
+  <same as "got">
+`,
+}, {
+	about:   "CmpEquals: different times: verbose",
+	checker: qt.InternalCmpEquals(true),
+	got:     goTime.Add(24 * time.Hour),
+	args: []interface{}{
+		goTime,
+	},
+	expectedCheckFailure: fmt.Sprintf(`
+error:
+  values are not deep equal
+diff (-got +want):
+%s
+got:
+  s"2012-03-29 00:00:00 +0000 UTC"
+want:
+  s"2012-03-28 00:00:00 +0000 UTC"
+`, diff(goTime.Add(24*time.Hour), goTime)),
+}, {
 	about:   "CmpEquals: not enough arguments",
-	checker: qt.CmpEquals(),
+	checker: qt.InternalCmpEquals(false),
 	expectedCheckFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
@@ -321,7 +385,7 @@ want args:
 `,
 }, {
 	about:   "CmpEquals: too many arguments",
-	checker: qt.CmpEquals(),
+	checker: qt.InternalCmpEquals(false),
 	got:     []int{42},
 	args:    []interface{}{[]int{42}, "bad wolf"},
 	expectedCheckFailure: `
@@ -342,111 +406,6 @@ got args:
   []interface {}{
       []int{42},
       "bad wolf",
-  }
-want args:
-  want
-`,
-}, {
-	about:   "DeepEquals: same values",
-	checker: qt.DeepEquals,
-	got:     []int{1, 2, 3},
-	args: []interface{}{
-		[]int{1, 2, 3},
-	},
-	expectedNegateFailure: `
-error:
-  unexpected success
-got:
-  []int{1, 2, 3}
-want:
-  <same as "got">
-`,
-}, {
-	about:   "DeepEquals: different values",
-	checker: qt.DeepEquals,
-	got:     []int{1, 2, 3},
-	args: []interface{}{
-		[]int{3, 2, 1},
-	},
-	expectedCheckFailure: fmt.Sprintf(`
-error:
-  values are not deep equal
-diff (-got +want):
-%s
-got:
-  []int{1, 2, 3}
-want:
-  []int{3, 2, 1}
-`, diff([]int{1, 2, 3}, []int{3, 2, 1})),
-}, {
-	about:   "DeepEquals: same times",
-	checker: qt.DeepEquals,
-	got:     goTime,
-	args: []interface{}{
-		goTime,
-	},
-	expectedNegateFailure: `
-error:
-  unexpected success
-got:
-  s"2012-03-28 00:00:00 +0000 UTC"
-want:
-  <same as "got">
-`,
-}, {
-	about:   "DeepEquals: different times",
-	checker: qt.DeepEquals,
-	got:     goTime.Add(24 * time.Hour),
-	args: []interface{}{
-		goTime,
-	},
-	expectedCheckFailure: fmt.Sprintf(`
-error:
-  values are not deep equal
-diff (-got +want):
-%s
-got:
-  s"2012-03-29 00:00:00 +0000 UTC"
-want:
-  s"2012-03-28 00:00:00 +0000 UTC"
-`, diff(goTime.Add(24*time.Hour), goTime)),
-}, {
-	about:   "DeepEquals: not enough arguments",
-	checker: qt.DeepEquals,
-	expectedCheckFailure: `
-error:
-  bad check: not enough arguments provided to checker: got 0, want 1
-want args:
-  want
-`,
-	expectedNegateFailure: `
-error:
-  bad check: not enough arguments provided to checker: got 0, want 1
-want args:
-  want
-`,
-}, {
-	about:   "DeepEquals: too many arguments",
-	checker: qt.DeepEquals,
-	args:    []interface{}{nil, nil},
-	expectedCheckFailure: `
-error:
-  bad check: too many arguments provided to checker: got 2, want 1
-got args:
-  []interface {}{
-      nil,
-      nil,
-  }
-want args:
-  want
-`,
-	expectedNegateFailure: `
-error:
-  bad check: too many arguments provided to checker: got 2, want 1
-got args:
-  []interface {}{
-      nil,
-      nil,
   }
 want args:
   want
@@ -585,13 +544,6 @@ error:
   values are not deep equal
 diff (-got +want):
 %s
-got:
-  []string{"bad", "wolf"}
-want:
-  []interface {}{
-      "bad",
-      "wolf",
-  }
 `, diff([]string{"bad", "wolf"}, []interface{}{"bad", "wolf"})),
 }, {
 	about:   "ContentEquals: not enough arguments",
@@ -697,7 +649,8 @@ error:
 got value:
   s"voyages"
 regexp:
-  "these are the voyages"`,
+  "these are the voyages"
+`,
 }, {
 	about:   "Matches: empty pattern",
 	checker: qt.Matches,
@@ -731,10 +684,16 @@ regexp:
 	args:    []interface{}{"("},
 	expectedCheckFailure: `
 error:
-  bad check: cannot compile regexp: error parsing regexp: missing closing ):`,
+  bad check: cannot compile regexp: error parsing regexp: missing closing ): ` + "`^(()$`" + `
+regexp:
+  "("
+`,
 	expectedNegateFailure: `
 error:
-  bad check: cannot compile regexp: error parsing regexp: missing closing ):`,
+  bad check: cannot compile regexp: error parsing regexp: missing closing ): ` + "`^(()$`" + `
+regexp:
+  "("
+`,
 }, {
 	about:   "Matches: pattern not a string",
 	checker: qt.Matches,
@@ -888,10 +847,16 @@ regexp:
 	args:    []interface{}{"("},
 	expectedCheckFailure: `
 error:
-  bad check: cannot compile regexp: error parsing regexp: missing closing ):`,
+  bad check: cannot compile regexp: error parsing regexp: missing closing ): ` + "`^(()$`" + `
+regexp:
+  "("
+`,
 	expectedNegateFailure: `
 error:
-  bad check: cannot compile regexp: error parsing regexp: missing closing ):`,
+  bad check: cannot compile regexp: error parsing regexp: missing closing ): ` + "`^(()$`" + `
+regexp:
+  "("
+`,
 }, {
 	about:   "ErrorMatches: pattern not a string",
 	checker: qt.ErrorMatches,
@@ -1067,10 +1032,20 @@ regexp:
 	args:    []interface{}{"("},
 	expectedCheckFailure: `
 error:
-  bad check: cannot compile regexp: error parsing regexp: missing closing ):`,
+  bad check: cannot compile regexp: error parsing regexp: missing closing ): ` + "`^(()$`" + `
+panic value:
+  "error: bad wolf"
+regexp:
+  "("
+`,
 	expectedNegateFailure: `
 error:
-  bad check: cannot compile regexp: error parsing regexp: missing closing ):`,
+  bad check: cannot compile regexp: error parsing regexp: missing closing ): ` + "`^(()$`" + `
+panic value:
+  "error: bad wolf"
+regexp:
+  "("
+`,
 }, {
 	about:   "PanicMatches: pattern not a string",
 	checker: qt.PanicMatches,
@@ -1294,20 +1269,18 @@ want length:
 }, {
 	about:   "HasLen: channels with the same length",
 	checker: qt.HasLen,
-	got: func() chan int {
-		ch := make(chan int, 4)
-		ch <- 42
-		ch <- 47
-		return ch
-	}(),
-	args: []interface{}{2},
-	expectedNegateFailure: `
+	got:     chInt,
+	args:    []interface{}{2},
+	expectedNegateFailure: fmt.Sprintf(`
 error:
   unexpected success
 len(got):
   int(2)
 got:
-  (chan int)`,
+  (chan int)(%v)
+want length:
+  <same as "len(got)">
+`, chInt),
 }, {
 	about:   "HasLen: maps with the same length",
 	checker: qt.HasLen,
@@ -1371,15 +1344,18 @@ want length:
 }, {
 	about:   "HasLen: channels with different lengths",
 	checker: qt.HasLen,
-	got:     make(chan struct{}),
-	args:    []interface{}{2},
-	expectedCheckFailure: `
+	got:     chInt,
+	args:    []interface{}{4},
+	expectedCheckFailure: fmt.Sprintf(`
 error:
   unexpected length
 len(got):
-  int(0)
+  int(2)
 got:
-  (chan struct {})`,
+  (chan int)(%v)
+want length:
+  int(4)
+`, chInt),
 }, {
 	about:   "HasLen: maps with different lengths",
 	checker: qt.HasLen,

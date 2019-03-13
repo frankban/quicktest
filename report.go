@@ -3,15 +3,16 @@
 package quicktest
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/printer"
+	"go/token"
 	"io"
-	"os"
-	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
-	"text/tabwriter"
 )
 
 // reportParams holds parameters for reporting a test error.
@@ -43,7 +44,7 @@ func report(err error, p reportParams) string {
 	var buf bytes.Buffer
 	buf.WriteByte('\n')
 	writeError(&buf, err, p)
-	writeInvocation(&buf)
+	writeStack(&buf)
 	return buf.String()
 }
 
@@ -93,51 +94,81 @@ func writeError(w io.Writer, err error, p reportParams) {
 	}
 }
 
-// writeInvocation writes the source code context for the current failure into
-// the provided writer.
-func writeInvocation(w io.Writer) {
-	fmt.Fprintln(w, "sources:")
-	// TODO: we can do better than 4.
-	_, file, line, ok := runtime.Caller(4)
-	if !ok {
-		fmt.Fprint(w, prefixf(prefix, "<invocation not available>"))
-		return
+// writeStack writes the traceback information for the current failure into the
+// provided writer.
+func writeStack(w io.Writer) {
+	fmt.Fprintln(w, "stack:")
+	pc := make([]uintptr, 8)
+	sg := &stmtGetter{
+		fset:  token.NewFileSet(),
+		files: make(map[string]*ast.File, 8),
+		config: &printer.Config{
+			Mode:     printer.UseSpaces,
+			Tabwidth: 4,
+		},
 	}
-	fmt.Fprint(w, prefixf(prefix, "%s:%d:", filepath.Base(file), line))
-	prefix := prefix + prefix
-	f, err := os.Open(file)
-	if err != nil {
-		fmt.Fprint(w, prefixf(prefix, "<cannot open source file: %s>", err))
-		return
-	}
-	defer f.Close()
-	var current int
-	var found bool
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		current++
-		if current > line+contextLines {
+	runtime.Callers(5, pc)
+	frames := runtime.CallersFrames(pc)
+	thisPackage := reflect.TypeOf(C{}).PkgPath() + "."
+	for {
+		frame, more := frames.Next()
+		if strings.HasPrefix(frame.Function, "testing.") || strings.HasPrefix(frame.Function, thisPackage) {
+			// Do not include stdlib test runner and quicktest checker calls.
 			break
 		}
-		if current < line-contextLines {
-			continue
+		fmt.Fprint(w, prefixf(prefix, "%s:%d", frame.File, frame.Line))
+		stmt, err := sg.Get(frame.File, frame.Line)
+		if err != nil {
+			fmt.Fprint(w, prefixf(prefix+prefix, "<%s>", err))
+		} else {
+			fmt.Fprint(w, prefixf(prefix+prefix, "%s", stmt))
 		}
-		linePrefix := fmt.Sprintf("%s%d", prefix, current)
-		if current == line {
-			found = true
-			linePrefix += "!"
+		if !more {
+			// There are no more callers.
+			break
 		}
-		fmt.Fprint(tw, prefixf(linePrefix+"\t", "%s", sc.Text()))
 	}
-	tw.Flush()
-	if err = sc.Err(); err != nil {
-		fmt.Fprint(w, prefixf(prefix, "<cannot scan source file: %s>", err))
-		return
+}
+
+type stmtGetter struct {
+	fset   *token.FileSet
+	files  map[string]*ast.File
+	config *printer.Config
+}
+
+// Get returns the lines of code of the statement at the given file and line.
+func (sg *stmtGetter) Get(file string, line int) (string, error) {
+	f := sg.files[file]
+	if f == nil {
+		var err error
+		f, err = parser.ParseFile(sg.fset, file, nil, parser.ParseComments)
+		if err != nil {
+			return "", fmt.Errorf("cannot parse source file: %s", err)
+		}
+		sg.files[file] = f
 	}
-	if !found {
-		fmt.Fprint(w, prefixf(prefix, "<cannot find source lines>"))
-	}
+	var stmt string
+	ast.Inspect(f, func(n ast.Node) bool {
+		if n == nil || stmt != "" {
+			return false
+		}
+		pos := sg.fset.Position(n.Pos()).Line
+		end := sg.fset.Position(n.End()).Line
+		// Go < v1.9 reports the line where the statements ends, not the line
+		// where it begins.
+		if line == pos || line == end {
+			var buf bytes.Buffer
+			// TODO: include possible comment after the statement.
+			sg.config.Fprint(&buf, sg.fset, &printer.CommentedNode{
+				Node:     n,
+				Comments: f.Comments,
+			})
+			stmt = buf.String()
+			return false
+		}
+		return pos < line && line <= end
+	})
+	return stmt, nil
 }
 
 // prefixf formats the given string with the given args. It also inserts the
@@ -159,10 +190,5 @@ type note struct {
 	value interface{}
 }
 
-const (
-	// contextLines holds the number of lines of code to show when showing a
-	// failure context.
-	contextLines = 3
-	// prefix is the string used to indent blocks of output.
-	prefix = "  "
-)
+// prefix is the string used to indent blocks of output.
+const prefix = "  "
