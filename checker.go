@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -78,15 +79,21 @@ func (c *equalsChecker) Check(got interface{}, args []interface{}, note func(key
 //     c.Assert(got, qt.CmpEquals(), []int{42, 47}) // Same as qt.DeepEquals.
 //
 func CmpEquals(opts ...cmp.Option) Checker {
+	return cmpEquals(testing.Verbose(), opts...)
+}
+
+func cmpEquals(verbose bool, opts ...cmp.Option) Checker {
 	return &cmpEqualsChecker{
 		argNames: []string{"got", "want"},
 		opts:     opts,
+		verbose:  verbose,
 	}
 }
 
 type cmpEqualsChecker struct {
 	argNames
-	opts cmp.Options
+	opts    cmp.Options
+	verbose bool
 }
 
 // Check implements Checker.Check by checking that got == args[0] according to
@@ -102,8 +109,14 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}, note func(
 	}()
 	want := args[0]
 	if diff := cmp.Diff(got, want, c.opts...); diff != "" {
+		// Only output values when the verbose flag is set.
+		if c.verbose {
+			note("diff (-got +want)", Unquoted(diff))
+			return errors.New("values are not deep equal")
+		}
+		note("error", Unquoted("values are not deep equal"))
 		note("diff (-got +want)", Unquoted(diff))
-		return errors.New("values are not deep equal")
+		return ErrSilent
 	}
 	return nil
 }

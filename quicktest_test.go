@@ -513,7 +513,7 @@ func TestCRunDefer(t *testing.T) {
 
 func checkResult(t *testing.T, ok bool, got, want string) {
 	if want != "" {
-		assertPrefix(t, got, want)
+		assertPrefix(t, got, want+"stack:\n")
 		assertBool(t, ok, false)
 		return
 	}

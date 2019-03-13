@@ -2,4 +2,7 @@
 
 package quicktest
 
-var Prefixf = prefixf
+var (
+	InternalCmpEquals = cmpEquals
+	Prefixf           = prefixf
+)
