@@ -25,14 +25,20 @@ func TestIsBadCheck(t *testing.T) {
 	assertBool(t, qt.IsBadCheck(err), false)
 }
 
-var errBadWolf = &errTest{}
+var errBadWolf = &errTest{
+	msg:       "bad wolf",
+	formatted: true,
+}
 
 // errTest is an error type used in tests.
-type errTest struct{}
+type errTest struct {
+	msg       string
+	formatted bool
+}
 
 // Error implements error.
-func (*errTest) Error() string {
-	return "bad wolf"
+func (err *errTest) Error() string {
+	return err.msg
 }
 
 // Format implements fmt.Formatter.
@@ -41,5 +47,7 @@ func (err *errTest) Format(f fmt.State, c rune) {
 		fmt.Fprint(f, "unexpected verb for formatting the error")
 	}
 	fmt.Fprint(f, err.Error())
-	fmt.Fprint(f, "\n  file:line")
+	if err.formatted {
+		fmt.Fprint(f, "\n  file:line")
+	}
 }

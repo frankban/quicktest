@@ -79,6 +79,19 @@ want:
   "47"
 `,
 }, {
+	about:   "Equals: different strings with quotes",
+	checker: qt.Equals,
+	got:     `string "foo"`,
+	args:    []interface{}{`string "bar"`},
+	expectedCheckFailure: strings.Replace(`
+error:
+  values are not equal
+got:
+  ~string "foo"~
+want:
+  ~string "bar"~
+`, "~", "`", -1),
+}, {
 	about:   "Equals: different types",
 	checker: qt.Equals,
 	got:     42,
@@ -118,6 +131,36 @@ got:
 want:
   nil
 `,
+}, {
+	about:   "Equals: error is not nil: not formatted",
+	checker: qt.Equals,
+	got: &errTest{
+		msg: "bad wolf",
+	},
+	args: []interface{}{nil},
+	expectedCheckFailure: `
+error:
+  got non-nil error
+got:
+  e"bad wolf"
+want:
+  nil
+`,
+}, {
+	about:   "Equals: error is not nil: not formatted and with quotes",
+	checker: qt.Equals,
+	got: &errTest{
+		msg: `failure: "bad wolf"`,
+	},
+	args: []interface{}{nil},
+	expectedCheckFailure: strings.Replace(`
+error:
+  got non-nil error
+got:
+  e~failure: "bad wolf"~
+want:
+  nil
+`, "~", "`", -1),
 }, {
 	about:   "Equals: nil struct",
 	checker: qt.Equals,
@@ -1486,7 +1529,7 @@ want args:
 error:
   unexpected success
 arg:
-  bad check: bad wolf
+  e"bad check: bad wolf"
 predicate function:
   func(error) bool {...}
 `,
