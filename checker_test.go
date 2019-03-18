@@ -23,9 +23,6 @@ var (
 		ch <- 47
 		return ch
 	}()
-)
-
-var (
 	sameInts = cmpopts.SortSlices(func(x, y int) bool {
 		return x < y
 	})
@@ -50,6 +47,7 @@ var checkerTests = []struct {
 	checker               qt.Checker
 	got                   interface{}
 	args                  []interface{}
+	verbose               bool
 	expectedCheckFailure  string
 	expectedNegateFailure string
 }{{
@@ -240,7 +238,7 @@ want args:
 `,
 }, {
 	about:   "CmpEquals: same values",
-	checker: qt.InternalCmpEquals(false),
+	checker: qt.CmpEquals(),
 	got:     cmpEqualsGot,
 	args:    []interface{}{cmpEqualsGot},
 	expectedNegateFailure: `
@@ -259,7 +257,7 @@ want:
 `,
 }, {
 	about:   "CmpEquals: different values",
-	checker: qt.InternalCmpEquals(false),
+	checker: qt.CmpEquals(),
 	got:     cmpEqualsGot,
 	args:    []interface{}{cmpEqualsWant},
 	expectedCheckFailure: fmt.Sprintf(`
@@ -270,9 +268,10 @@ diff (-got +want):
 `, diff(cmpEqualsGot, cmpEqualsWant)),
 }, {
 	about:   "CmpEquals: different values: verbose",
-	checker: qt.InternalCmpEquals(true),
+	checker: qt.CmpEquals(),
 	got:     cmpEqualsGot,
 	args:    []interface{}{cmpEqualsWant},
+	verbose: true,
 	expectedCheckFailure: fmt.Sprintf(`
 error:
   values are not deep equal
@@ -297,7 +296,7 @@ want:
 `, diff(cmpEqualsGot, cmpEqualsWant)),
 }, {
 	about:   "CmpEquals: same values with options",
-	checker: qt.InternalCmpEquals(false, sameInts),
+	checker: qt.CmpEquals(sameInts),
 	got:     []int{1, 2, 3},
 	args: []interface{}{
 		[]int{3, 2, 1},
@@ -312,7 +311,7 @@ want:
 `,
 }, {
 	about:   "CmpEquals: different values with options",
-	checker: qt.InternalCmpEquals(false, sameInts),
+	checker: qt.CmpEquals(sameInts),
 	got:     []int{1, 2, 4},
 	args: []interface{}{
 		[]int{3, 2, 1},
@@ -325,11 +324,12 @@ diff (-got +want):
 `, diff([]int{1, 2, 4}, []int{3, 2, 1}, sameInts)),
 }, {
 	about:   "CmpEquals: different values with options: verbose",
-	checker: qt.InternalCmpEquals(true, sameInts),
+	checker: qt.CmpEquals(sameInts),
 	got:     []int{1, 2, 4},
 	args: []interface{}{
 		[]int{3, 2, 1},
 	},
+	verbose: true,
 	expectedCheckFailure: fmt.Sprintf(`
 error:
   values are not deep equal
@@ -342,7 +342,7 @@ want:
 `, diff([]int{1, 2, 4}, []int{3, 2, 1}, sameInts)),
 }, {
 	about:   "CmpEquals: structs with unexported fields not allowed",
-	checker: qt.InternalCmpEquals(false),
+	checker: qt.CmpEquals(),
 	got: struct{ answer int }{
 		answer: 42,
 	},
@@ -354,7 +354,7 @@ want:
 	expectedCheckFailure: `
 error:
   cannot handle unexported field: root.answer
-  consider using AllowUnexported or cmpopts.IgnoreUnexported
+  consider using a custom Comparer; if you control the implementation of type, you can also consider AllowUnexported or cmpopts.IgnoreUnexported
 got:
   struct { answer int }{answer:42}
 want:
@@ -362,7 +362,7 @@ want:
 `,
 }, {
 	about:   "CmpEquals: structs with unexported fields ignored",
-	checker: qt.InternalCmpEquals(false, cmpopts.IgnoreUnexported(struct{ answer int }{})),
+	checker: qt.CmpEquals(cmpopts.IgnoreUnexported(struct{ answer int }{})),
 	got: struct{ answer int }{
 		answer: 42,
 	},
@@ -381,7 +381,7 @@ want:
 `,
 }, {
 	about:   "CmpEquals: same times",
-	checker: qt.InternalCmpEquals(false),
+	checker: qt.CmpEquals(),
 	got:     goTime,
 	args: []interface{}{
 		goTime,
@@ -396,11 +396,12 @@ want:
 `,
 }, {
 	about:   "CmpEquals: different times: verbose",
-	checker: qt.InternalCmpEquals(true),
+	checker: qt.CmpEquals(),
 	got:     goTime.Add(24 * time.Hour),
 	args: []interface{}{
 		goTime,
 	},
+	verbose: true,
 	expectedCheckFailure: fmt.Sprintf(`
 error:
   values are not deep equal
@@ -413,7 +414,7 @@ want:
 `, diff(goTime.Add(24*time.Hour), goTime)),
 }, {
 	about:   "CmpEquals: not enough arguments",
-	checker: qt.InternalCmpEquals(false),
+	checker: qt.CmpEquals(),
 	expectedCheckFailure: `
 error:
   bad check: not enough arguments provided to checker: got 0, want 1
@@ -428,7 +429,7 @@ want args:
 `,
 }, {
 	about:   "CmpEquals: too many arguments",
-	checker: qt.InternalCmpEquals(false),
+	checker: qt.CmpEquals(),
 	got:     []int{42},
 	args:    []interface{}{[]int{42}, "bad wolf"},
 	expectedCheckFailure: `
@@ -453,6 +454,45 @@ got args:
 want args:
   want
 `,
+}, {
+	about:   "DeepEquals: different values",
+	checker: qt.DeepEquals,
+	got:     cmpEqualsGot,
+	args:    []interface{}{cmpEqualsWant},
+	expectedCheckFailure: fmt.Sprintf(`
+error:
+  values are not deep equal
+diff (-got +want):
+%s
+`, diff(cmpEqualsGot, cmpEqualsWant)),
+}, {
+	about:   "DeepEquals: different values: verbose",
+	checker: qt.DeepEquals,
+	got:     cmpEqualsGot,
+	args:    []interface{}{cmpEqualsWant},
+	verbose: true,
+	expectedCheckFailure: fmt.Sprintf(`
+error:
+  values are not deep equal
+diff (-got +want):
+%s
+got:
+  struct { Strings []interface {}; Ints []int }{
+      Strings: {
+          "who",
+          "dalek",
+      },
+      Ints: {42, 47},
+  }
+want:
+  struct { Strings []interface {}; Ints []int }{
+      Strings: {
+          "who",
+          "dalek",
+      },
+      Ints: {42},
+  }
+`, diff(cmpEqualsGot, cmpEqualsWant)),
 }, {
 	about:   "ContentEquals: same values",
 	checker: qt.ContentEquals,
@@ -1852,16 +1892,17 @@ want args:
 
 func TestCheckers(t *testing.T) {
 	for _, test := range checkerTests {
+		checker := qt.WithVerbosity(test.checker, test.verbose)
 		t.Run(test.about, func(t *testing.T) {
 			tt := &testingT{}
 			c := qt.New(tt)
-			ok := c.Check(test.got, test.checker, test.args...)
+			ok := c.Check(test.got, checker, test.args...)
 			checkResult(t, ok, tt.errorString(), test.expectedCheckFailure)
 		})
 		t.Run("Not "+test.about, func(t *testing.T) {
 			tt := &testingT{}
 			c := qt.New(tt)
-			ok := c.Check(test.got, qt.Not(test.checker), test.args...)
+			ok := c.Check(test.got, qt.Not(checker), test.args...)
 			checkResult(t, ok, tt.errorString(), test.expectedNegateFailure)
 		})
 	}
