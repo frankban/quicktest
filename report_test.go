@@ -89,8 +89,70 @@ stack:
 	assertReport(t, tt, want)
 }
 
+func TestCmpReportOutput(t *testing.T) {
+	tt := &testingT{}
+	c := qt.New(tt)
+	gotExamples := []*reportExample{{
+		AnInt:  42,
+		ASlice: []string{},
+	}, {
+		AnInt:  47,
+		ASlice: []string{"these", "are", "the", "voyages"},
+	}, {
+		AnInt: 1,
+	}, {
+		AnInt: 2,
+	}, {
+		ASlice: []string{"foo", "bar"},
+	}}
+	wantExamples := []*reportExample{{
+		AnInt: 42,
+	}, {
+		AnInt:  47,
+		ASlice: []string{"these", "are", "the", "voyages"},
+	}, {
+		AnInt: 2,
+	}, {
+		AnInt: 1,
+	}, {
+		ASlice: []string{"foo"},
+	}, {}}
+	checker := qt.WithVerbosity(qt.DeepEquals, false)
+	c.Assert(gotExamples, checker, wantExamples)
+	want := `
+error:
+  values are not deep equal
+diff (-got +want):
+    []*quicktest_test.reportExample{
+            &{
+                    AnInt:  42,
+  -                 ASlice: []string{},
+  +                 ASlice: nil,
+            },
+            &{AnInt: 47, ASlice: []string{"these", "are", "the", "voyages"}},
+  +         &{AnInt: 2},
+            &{AnInt: 1},
+  -         &{AnInt: 2},
+            &{
+                    AnInt: 0,
+                    ASlice: []string{
+                            "foo",
+  -                         "bar",
+                    },
+            },
+  +         &{},
+    }
+stack:
+  $file:121
+    c.Assert(gotExamples, checker, wantExamples)
+`
+	assertReport(t, tt, want)
+}
+
 func assertReport(t *testing.T, tt *testingT, want string) {
 	got := strings.Replace(tt.fatalString(), "\t", "        ", -1)
+	// go-cmp can include non-breaking spaces in its output.
+	got = strings.Replace(got, "\u00a0", " ", -1)
 	// Adjust for file names in different systems.
 	_, file, _, ok := runtime.Caller(0)
 	assertBool(t, ok, true)
@@ -105,9 +167,16 @@ func assertReport(t *testing.T, tt *testingT, want string) {
 	want = strings.Replace(want, "$line", strconv.Itoa(line), 1)
 	if got != want {
 		t.Fatalf(`failure:
+%q
+%q
 ------------------------------ got ------------------------------
 %s------------------------------ want -----------------------------
 %s-----------------------------------------------------------------`,
-			got, want)
+			got, want, got, want)
 	}
+}
+
+type reportExample struct {
+	AnInt  int
+	ASlice []string
 }
