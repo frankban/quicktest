@@ -5,12 +5,10 @@ go:
   - "1.8"
   - "1.9"
   - "1.10"
-  - "1.11"
+  - "1.11.x"
+  - "1.12.x"
   - 1.x
   - master
 
 script:
-  - go get -v github.com/rogpeppe/godeps
-  - $GOPATH/bin/godeps -u dependencies.tsv
-  - GO111MODULE=on go test ./...
-  - GO111MODULE=on go test -v ./...
+  - GO111MODULE=on go test -race ./...
