@@ -381,17 +381,89 @@ func TestCRunSuccess(t *testing.T) {
 	assertBool(t, ok, true)
 }
 
+func TestCRunOnBenchmark(t *testing.T) {
+	called := false
+	testing.Benchmark(func(b *testing.B) {
+		c := qt.New(b)
+		c.Run("c", func(c *qt.C) {
+			b1, ok := c.TB.(*testing.B)
+			if !ok {
+				t.Errorf("c.TB is type %T not *testing.B", c.TB)
+				return
+			}
+			if b1 == b {
+				t.Errorf("c.TB hasn't been given a new B value")
+				return
+			}
+			called = true
+		})
+	})
+	if !called {
+		t.Fatalf("sub-benchmark was never called")
+	}
+}
+
+// wrongRun1 has Run method with wrong arg count.
+type wrongRun1 struct {
+	testing.TB
+}
+
+func (wrongRun1) Run() {}
+
+// wrongRun2 has no Run method.
+type wrongRun2 struct {
+	testing.TB
+}
+
+// wrongRun3 has Run method that takes a type not
+// assignable to testing.TB.
+type wrongRun3 struct {
+	testing.TB
+}
+
+func (wrongRun3) Run(string, func(string)) bool { return false }
+
+// wrongRun4 has Run method that doesn't return bool.
+type wrongRun4 struct {
+	testing.TB
+}
+
+func (wrongRun4) Run(string, func(*testing.T)) {}
+
+var CRunPanicTests = []struct {
+	tb          testing.TB
+	expectPanic string
+}{{
+	tb:          wrongRun1{},
+	expectPanic: "wrong argument count for Run method",
+}, {
+	tb:          wrongRun2{},
+	expectPanic: "no Run method",
+}, {
+	tb:          wrongRun3{},
+	expectPanic: "bad first argument type for Run method",
+}, {
+	tb:          wrongRun4{},
+	expectPanic: "wrong argument count for Run method",
+}}
+
 func TestCRunPanic(t *testing.T) {
-	c := qt.New(&testing.B{})
-	var run bool
-	defer func() {
-		r := recover()
-		if r != "cannot execute Run with underlying concrete type *testing.B" {
-			t.Fatalf("unexpected panic recover: %v", r)
-		}
-	}()
-	c.Run("panic", func(innerC *qt.C) {})
-	assertBool(t, run, true)
+	for _, test := range CRunPanicTests {
+		t.Run(fmt.Sprintf("%T", test.tb), func(t *testing.T) {
+			c := qt.New(test.tb)
+			defer func() {
+				got := recover()
+				want := fmt.Sprintf(
+					"cannot execute Run with underlying concrete type %T (%s)",
+					test.tb, test.expectPanic,
+				)
+				if got != want {
+					t.Fatalf("unexpected panic recover message; got %q want %q", got, want)
+				}
+			}()
+			c.Run("panic", func(innerC *qt.C) {})
+		})
+	}
 }
 
 func TestCRunFormat(t *testing.T) {
@@ -509,6 +581,39 @@ func TestCRunDefer(t *testing.T) {
 	})
 	c.Assert(innerDefer, qt.Equals, 1)
 	c.Assert(outerDefer, qt.Equals, 0)
+}
+
+type customT struct {
+	*testing.T
+	data int
+}
+
+func (t *customT) Run(name string, f func(*customT)) bool {
+	return t.T.Run(name, func(t1 *testing.T) {
+		f(&customT{t1, t.data})
+	})
+}
+
+func TestCRunCustomType(t *testing.T) {
+	ct := &customT{t, 99}
+	c := qt.New(ct)
+	called := 0
+	c.Run("test", func(c *qt.C) {
+		called++
+		ct1, ok := c.TB.(*customT)
+		if !ok {
+			t.Error("TB isn't expected type")
+		}
+		if ct1.data != ct.data {
+			t.Errorf("data not copied correctly; got %v want %v", ct1.data, ct.data)
+		}
+		if ct1 == ct {
+			t.Errorf("old instance passed, not new")
+		}
+	})
+	if called != 1 {
+		t.Fatalf("subtest was called %d times, not once", called)
+	}
 }
 
 func checkResult(t *testing.T, ok bool, got, want string) {
