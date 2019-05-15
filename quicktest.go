@@ -5,6 +5,7 @@ package quicktest
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -32,11 +33,21 @@ import (
 //             c.Setenv("HOME", "/non-existent")
 //             c.Assert(os.Getenv("HOME"), qt.Equals, "/non-existent")
 //     })
+//
+// A value of C that's has a non-nil TB field but is otherwise zero is valid.
+// So:
+//
+//	c := &qt.C{TB: t}
+//
+// is valid a way to create a C value; it's exactly the same as:
+//
+//	c := qt.New(t)
+//
+// Methods on C may be called concurrently, assuming the underlying
+// `testing.TB` implementation also allows that.
 func New(t testing.TB) *C {
 	return &C{
-		TB:       t,
-		deferred: func() {},
-		format:   Format,
+		TB: t,
 	}
 }
 
@@ -46,6 +57,7 @@ func New(t testing.TB) *C {
 type C struct {
 	testing.TB
 
+	mu       sync.Mutex
 	deferred func()
 	format   formatFunc
 }
@@ -54,9 +66,13 @@ type C struct {
 // called. Deferred functions will be called in last added, first called
 // order.
 func (c *C) Defer(f func()) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	oldDeferred := c.deferred
 	c.deferred = func() {
-		defer oldDeferred()
+		if oldDeferred != nil {
+			defer oldDeferred()
+		}
 		f()
 	}
 }
@@ -68,21 +84,25 @@ func (c *C) Defer(f func()) {
 // When a test function is called by Run, Done will be called
 // automatically on the C value passed into it.
 func (c *C) Done() {
-	// Note: we need to use defer in case the deferred function panics
-	// or Goexits.
-	defer func() {
-		c.deferred = func() {}
-	}()
-	c.deferred()
+	c.mu.Lock()
+	deferred := c.deferred
+	c.deferred = nil
+	c.mu.Unlock()
+
+	if deferred != nil {
+		deferred()
+	}
 }
 
 // AddCleanup is the old name for Defer.
+//
 // Deprecated: this will be removed in a subsequent version.
 func (c *C) AddCleanup(f func()) {
 	c.Defer(f)
 }
 
 // Cleanup is the old name for Done.
+//
 // Deprecated: this will be removed in a subsequent version.
 func (c *C) Cleanup() {
 	c.Done()
@@ -93,7 +113,17 @@ func (c *C) Cleanup() {
 // Any subsequent subtests invoked with c.Run will also use this function by
 // default.
 func (c *C) SetFormat(format func(interface{}) string) {
+	c.mu.Lock()
 	c.format = format
+	c.mu.Unlock()
+}
+
+// getFormat returns the format function
+// safely acquired under lock.
+func (c *C) getFormat() func(interface{}) string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.format
 }
 
 // Check runs the given check and continues execution in case of failure.
@@ -147,7 +177,7 @@ func (c *C) Run(name string, f func(c *C)) bool {
 	return r.Run(name, func(t *testing.T) {
 		c2 := New(t)
 		defer c2.Done()
-		c2.SetFormat(c.format)
+		c2.SetFormat(c.getFormat())
 		f(c2)
 	})
 }
@@ -174,7 +204,11 @@ func (c *C) check(fail func(...interface{}), checker Checker, got interface{}, a
 	rp := reportParams{
 		got:    got,
 		args:   args,
-		format: c.format,
+		format: c.getFormat(),
+	}
+	if rp.format == nil {
+		// No format set; use the default: Format.
+		rp.format = Format
 	}
 	note := func(key string, value interface{}) {
 		rp.notes = append(rp.notes, note{
