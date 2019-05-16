@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -375,6 +376,144 @@ func (c *notChecker) Check(got interface{}, args []interface{}, note func(key st
 		return nil
 	}
 	return errors.New("unexpected success")
+}
+
+// Contains is a checker that checks that a map, slice, array
+// or string contains a value. It's the same as using
+// Any(Equals), except that it has a special case
+// for strings - if the first argument is a string,
+// the second argument must also be a string
+// and strings.Contains will be used.
+//
+// For example:
+//
+//	c.Assert("hello world", qt.Contains, "world")
+//	c.Assert([]int{3,5,7,99}, qt.Any, qt.Equals, 7)
+var Contains Checker = &containsChecker{
+	argNames: []string{"got", "want"},
+}
+
+type containsChecker struct {
+	argNames
+}
+
+func (c *containsChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
+	if got, ok := got.(string); ok {
+		want, ok := args[0].(string)
+		if !ok {
+			return BadCheckf("strings can only contain strings, not %T", args[0])
+		}
+		if strings.Contains(got, want) {
+			return nil
+		}
+		return errors.New("no substring match found")
+	}
+	return Any(Equals).Check(got, args, note)
+}
+
+// Any returns a Checker that uses the given checker to check elements
+// of a map, slice or array. It succeeds if any element passes the
+// check.
+//
+// For example:
+//
+//	c.Assert([]int{3,5,7,99}, qt.Any(qt.Equals), 7)
+//	c.Assert([][]string{{"a", "b"}, {"c", "d"}, qt.Any(qt.DeepEquals), []string{"c", "d"})
+//
+// See also All and Contains.
+func Any(c Checker) Checker {
+	return &anyChecker{
+		argNames:    append([]string{"container"}, c.ArgNames()[1:]...),
+		elemChecker: c,
+	}
+}
+
+type anyChecker struct {
+	argNames
+	elemChecker Checker
+}
+
+func (c *anyChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
+	iter, err := newIter(got)
+	if err != nil {
+		return BadCheckf("%v", err)
+	}
+	for iter.next() {
+		err := c.elemChecker.Check(
+			iter.value().Interface(),
+			args,
+			func(key string, value interface{}) {},
+		)
+		if err == nil {
+			return nil
+		}
+		if IsBadCheck(err) {
+			return BadCheckf("at %s: %v", iter.key(), err)
+		}
+	}
+	return errors.New("no matching element found")
+}
+
+// All returns a Checker that uses the given checker to check elements
+// of a map, slice or array. It succeeds if all elements pass the check.
+// On failure it prints the error from the first index that failed.
+//
+// For example:
+//
+//	c.Assert([]int{3, 5, 8}, qt.All(qt.Not(qt.Equals)), 0)
+//	c.Assert([][]string{{"a", "b"}, {"a", "b"}}, qt.All(qt.DeepEquals), []string{"c", "d"})
+//
+// See also Any and Contains.
+func All(c Checker) Checker {
+	return &allChecker{
+		argNames:    append([]string{"container"}, c.ArgNames()[1:]...),
+		elemChecker: c,
+	}
+}
+
+type allChecker struct {
+	argNames
+	elemChecker Checker
+}
+
+func (c *allChecker) Check(got interface{}, args []interface{}, notef func(key string, value interface{})) error {
+	iter, err := newIter(got)
+	if err != nil {
+		return BadCheckf("%v", err)
+	}
+	for iter.next() {
+		// Store any notes added by the checker so
+		// we can add our own note at the start
+		// to say which element failed.
+		var notes []note
+		err := c.elemChecker.Check(
+			iter.value().Interface(),
+			args,
+			func(key string, val interface{}) {
+				notes = append(notes, note{key, val})
+			},
+		)
+		if err == nil {
+			continue
+		}
+		if IsBadCheck(err) {
+			return BadCheckf("at %s: %v", iter.key(), err)
+		}
+		notef("error", Unquoted("mismatch at "+iter.key()))
+		// TODO should we print the whole container value in
+		// verbose mode?
+		if err != ErrSilent {
+			// If the error's not silent, the checker is expecting
+			// the caller to print the error and the value that failed.
+			notef("error", Unquoted(err.Error()))
+			notef("first mismatched element", iter.value().Interface())
+		}
+		for _, n := range notes {
+			notef(n.key, n.value)
+		}
+		return ErrSilent
+	}
+	return nil
 }
 
 // argNames helps implementing Checker.ArgNames.
