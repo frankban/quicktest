@@ -4,6 +4,7 @@ package quicktest
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -150,12 +151,26 @@ func (c *C) Assert(got interface{}, checker Checker, args ...interface{}) bool {
 	return c.check(c.TB.Fatal, checker, got, args)
 }
 
+var (
+	stringType = reflect.TypeOf("")
+	boolType   = reflect.TypeOf(true)
+	tbType     = reflect.TypeOf(new(testing.TB)).Elem()
+)
+
 // Run runs f as a subtest of t called name. It's a wrapper around
-// *testing.T.Run that provides the quicktest checker to f. When
+// the Run method of c.TB that provides the quicktest checker to f. When
 // the function completes, c.Done will be called to run any
 // functions registered with c.Defer.
 //
-// For instance:
+// c.TB must implement a Run method of the following form:
+//
+//	Run(string, func(T)) bool
+//
+// where T is any type that is assignable to testing.TB.
+// Implementations include *testing.T, *testing.B and *C itself.
+//
+// The TB field in the subtest will hold the value passed
+// by Run to its argument function.
 //
 //     func TestFoo(t *testing.T) {
 //         c := qt.New(t)
@@ -166,20 +181,40 @@ func (c *C) Assert(got interface{}, checker Checker, args ...interface{}) bool {
 //     }
 //
 // A panic is raised when Run is called and the embedded concrete type does not
-// implement Run, for instance if TB's concrete type is a benchmark.
+// implement a Run method with a correct signature.
 func (c *C) Run(name string, f func(c *C)) bool {
-	r, ok := c.TB.(interface {
-		Run(string, func(*testing.T)) bool
-	})
-	if !ok {
-		panic(fmt.Sprintf("cannot execute Run with underlying concrete type %T", c.TB))
+	badType := func(m string) {
+		panic(fmt.Sprintf("cannot execute Run with underlying concrete type %T (%s)", c.TB, m))
 	}
-	return r.Run(name, func(t *testing.T) {
-		c2 := New(t)
+	m := reflect.ValueOf(c.TB).MethodByName("Run")
+	if !m.IsValid() {
+		// c.TB doesn't implement a Run method.
+		badType("no Run method")
+	}
+	mt := m.Type()
+	if mt.NumIn() != 2 ||
+		mt.In(0) != stringType ||
+		mt.NumOut() != 1 ||
+		mt.Out(0) != boolType {
+		// The Run method doesn't have the right argument counts and types.
+		badType("wrong argument count for Run method")
+	}
+	farg := mt.In(1)
+	if farg.Kind() != reflect.Func ||
+		farg.NumIn() != 1 ||
+		farg.NumOut() != 0 ||
+		!farg.In(0).AssignableTo(tbType) {
+		// The first argument to the Run function arg isn't right.
+		badType("bad first argument type for Run method")
+	}
+	fv := reflect.MakeFunc(farg, func(args []reflect.Value) []reflect.Value {
+		c2 := New(args[0].Interface().(testing.TB))
 		defer c2.Done()
 		c2.SetFormat(c.getFormat())
 		f(c2)
+		return nil
 	})
+	return m.Call([]reflect.Value{reflect.ValueOf(name), fv})[0].Interface().(bool)
 }
 
 // Parallel signals that this test is to be run in parallel with (and only with) other parallel tests.
