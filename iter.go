@@ -1,3 +1,5 @@
+// Licensed under the MIT license, see LICENCE file for details.
+
 package quicktest
 
 import (
@@ -5,12 +7,19 @@ import (
 	"reflect"
 )
 
+// containerIter provides an interface for iterating over a container
+// (map, slice or array).
 type containerIter interface {
+	// next advances to the next item in the container.
 	next() bool
+	// key returns the current key as a string.
 	key() string
+	// value returns the current value.
 	value() reflect.Value
 }
 
+// newIter returns an iterator over x which must be a map, slice
+// or array.
 func newIter(x interface{}) (containerIter, error) {
 	v := reflect.ValueOf(x)
 	switch v.Kind() {
@@ -26,6 +35,7 @@ func newIter(x interface{}) (containerIter, error) {
 	}
 }
 
+// sliceIter implements containerIter for slices and arrays.
 type sliceIter struct {
 	v     reflect.Value
 	index int

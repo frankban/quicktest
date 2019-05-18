@@ -1983,6 +1983,38 @@ regexp:
   ".*e.*"
 `,
 }, {
+	about:   "All nested match",
+	checker: qt.All(qt.All(qt.Matches)),
+	got:     [][]string{{"hello", "goodbye"}, {"red", "blue"}, {}},
+	args:    []interface{}{".*e.*"},
+	expectedNegateFailure: `
+error:
+  unexpected success
+container:
+  [][]string{
+      {"hello", "goodbye"},
+      {"red", "blue"},
+      {},
+  }
+regexp:
+  ".*e.*"
+`,
+}, {
+	about:   "All nested mismatch",
+	checker: qt.All(qt.All(qt.Matches)),
+	got:     [][]string{{"hello", "goodbye"}, {"black", "blue"}, {}},
+	args:    []interface{}{".*e.*"},
+	expectedCheckFailure: `
+error:
+  mismatch at index 1
+error:
+  mismatch at index 0
+error:
+  value does not match regexp
+first mismatched element:
+  "black"
+`,
+}, {
 	about:   "All slice mismatch",
 	checker: qt.All(qt.Matches),
 	got:     []string{"red", "black"},
@@ -2043,19 +2075,6 @@ error:
   bad check: at index 0: bad check: regexp is not a string
 `,
 }, {
-	about:   "Any with non-container",
-	checker: qt.Any(qt.Equals),
-	got:     5,
-	args:    []interface{}{5},
-	expectedCheckFailure: `
-error:
-  bad check: map, slice or array required
-`,
-	expectedNegateFailure: `
-error:
-  bad check: map, slice or array required
-`,
-}, {
 	about:   "All with non-container",
 	checker: qt.All(qt.Equals),
 	got:     5,
@@ -2080,6 +2099,19 @@ error:
   value does not match regexp
 first mismatched element:
   "black"
+`,
+}, {
+	about:   "Any with non-container",
+	checker: qt.Any(qt.Equals),
+	got:     5,
+	args:    []interface{}{5},
+	expectedCheckFailure: `
+error:
+  bad check: map, slice or array required
+`,
+	expectedNegateFailure: `
+error:
+  bad check: map, slice or array required
 `,
 }, {
 	about:   "Any no match",

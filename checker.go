@@ -388,7 +388,7 @@ func (c *notChecker) Check(got interface{}, args []interface{}, note func(key st
 // For example:
 //
 //	c.Assert("hello world", qt.Contains, "world")
-//	c.Assert([]int{3,5,7,99}, qt.Any, qt.Equals, 7)
+//	c.Assert([]int{3,5,7,99}, qt.Contains, 7)
 var Contains Checker = &containsChecker{
 	argNames: []string{"got", "want"},
 }
@@ -397,6 +397,7 @@ type containsChecker struct {
 	argNames
 }
 
+// Check implements Checker.Check by checking that got contains args[0].
 func (c *containsChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
 	if got, ok := got.(string); ok {
 		want, ok := args[0].(string)
@@ -412,13 +413,13 @@ func (c *containsChecker) Check(got interface{}, args []interface{}, note func(k
 }
 
 // Any returns a Checker that uses the given checker to check elements
-// of a map, slice or array. It succeeds if any element passes the
-// check.
+// of a slice or array or the values from a map. It succeeds if any element
+// passes the check.
 //
 // For example:
 //
 //	c.Assert([]int{3,5,7,99}, qt.Any(qt.Equals), 7)
-//	c.Assert([][]string{{"a", "b"}, {"c", "d"}, qt.Any(qt.DeepEquals), []string{"c", "d"})
+//	c.Assert([][]string{{"a", "b"}, {"c", "d"}}, qt.Any(qt.DeepEquals), []string{"c", "d"})
 //
 // See also All and Contains.
 func Any(c Checker) Checker {
@@ -433,12 +434,19 @@ type anyChecker struct {
 	elemChecker Checker
 }
 
+// Check implements Checker.Check by checking that one of the elements of
+// got passes the c.elemChecker check.
 func (c *anyChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
 	iter, err := newIter(got)
 	if err != nil {
 		return BadCheckf("%v", err)
 	}
 	for iter.next() {
+		// For the time being, discard the notes added by the sub-checker,
+		// because it's not clear what a good behaviour would be.
+		// Should we print all the failed check for all elements? If there's only
+		// one element in the container, the answer is probably yes,
+		// but let's leave it for now.
 		err := c.elemChecker.Check(
 			iter.value().Interface(),
 			args,
@@ -455,7 +463,8 @@ func (c *anyChecker) Check(got interface{}, args []interface{}, note func(key st
 }
 
 // All returns a Checker that uses the given checker to check elements
-// of a map, slice or array. It succeeds if all elements pass the check.
+// of slice or array or the values of a map. It succeeds if all elements
+// pass the check.
 // On failure it prints the error from the first index that failed.
 //
 // For example:
@@ -476,6 +485,8 @@ type allChecker struct {
 	elemChecker Checker
 }
 
+// Check implement Checker.Check by checking that all the elements of got
+// pass the c.elemChecker check.
 func (c *allChecker) Check(got interface{}, args []interface{}, notef func(key string, value interface{})) error {
 	iter, err := newIter(got)
 	if err != nil {

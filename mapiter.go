@@ -1,3 +1,5 @@
+// Licensed under the MIT license, see LICENCE file for details.
+
 // +build go1.12
 
 package quicktest
@@ -11,6 +13,7 @@ func newMapIter(v reflect.Value) containerIter {
 	return mapIter{v.MapRange()}
 }
 
+// mapIter implements containerIter for maps.
 type mapIter struct {
 	iter *reflect.MapIter
 }
