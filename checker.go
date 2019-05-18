@@ -181,13 +181,13 @@ type errorMatchesChecker struct {
 // Check implements Checker.Check by checking that got is an error whose
 // Error() matches args[0].
 func (c *errorMatchesChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
+	if got == nil {
+		return errors.New("got nil error but want non-nil")
+	}
 	err, ok := got.(error)
 	if !ok {
 		note("got", got)
 		return BadCheckf("first argument is not an error")
-	}
-	if err == nil {
-		return errors.New("no error found")
 	}
 	return match(err.Error(), args[0], "error does not match regexp", note)
 }
