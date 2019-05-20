@@ -1884,6 +1884,278 @@ got args:
 want args:
   want
 `,
+}, {
+	about:   "Contains with string",
+	checker: qt.Contains,
+	got:     "hello, world",
+	args:    []interface{}{"world"},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  "hello, world"
+want:
+  "world"
+`,
+}, {
+	about:   "Contains with string no match",
+	checker: qt.Contains,
+	got:     "hello, world",
+	args:    []interface{}{"worlds"},
+	expectedCheckFailure: `
+error:
+  no substring match found
+got:
+  "hello, world"
+want:
+  "worlds"
+`,
+}, {
+	about:   "Contains with slice",
+	checker: qt.Contains,
+	got:     []string{"a", "b", "c"},
+	args:    []interface{}{"a"},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  []string{"a", "b", "c"}
+want:
+  "a"
+`,
+}, {
+	about:   "Contains with map",
+	checker: qt.Contains,
+	// Note: we can't use more than one element here because
+	// pretty.Print output is non-deterministic.
+	// https://github.com/kr/pretty/issues/47
+	got:  map[string]string{"a": "d"},
+	args: []interface{}{"d"},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  map[string]string{"a":"d"}
+want:
+  "d"
+`,
+}, {
+	about:   "Contains with non-string",
+	checker: qt.Contains,
+	got:     "aa",
+	args:    []interface{}{5},
+	expectedCheckFailure: `
+error:
+  bad check: strings can only contain strings, not int
+`,
+	expectedNegateFailure: `
+error:
+  bad check: strings can only contain strings, not int
+`,
+}, {
+	about:   "All slice equals",
+	checker: qt.All(qt.Equals),
+	got:     []string{"a", "a"},
+	args:    []interface{}{"a"},
+	expectedNegateFailure: `
+error:
+  unexpected success
+container:
+  []string{"a", "a"}
+want:
+  "a"
+`,
+}, {
+	about:   "All slice match",
+	checker: qt.All(qt.Matches),
+	got:     []string{"red", "blue", "green"},
+	args:    []interface{}{".*e.*"},
+	expectedNegateFailure: `
+error:
+  unexpected success
+container:
+  []string{"red", "blue", "green"}
+regexp:
+  ".*e.*"
+`,
+}, {
+	about:   "All nested match",
+	checker: qt.All(qt.All(qt.Matches)),
+	got:     [][]string{{"hello", "goodbye"}, {"red", "blue"}, {}},
+	args:    []interface{}{".*e.*"},
+	expectedNegateFailure: `
+error:
+  unexpected success
+container:
+  [][]string{
+      {"hello", "goodbye"},
+      {"red", "blue"},
+      {},
+  }
+regexp:
+  ".*e.*"
+`,
+}, {
+	about:   "All nested mismatch",
+	checker: qt.All(qt.All(qt.Matches)),
+	got:     [][]string{{"hello", "goodbye"}, {"black", "blue"}, {}},
+	args:    []interface{}{".*e.*"},
+	expectedCheckFailure: `
+error:
+  mismatch at index 1
+error:
+  mismatch at index 0
+error:
+  value does not match regexp
+first mismatched element:
+  "black"
+`,
+}, {
+	about:   "All slice mismatch",
+	checker: qt.All(qt.Matches),
+	got:     []string{"red", "black"},
+	args:    []interface{}{".*e.*"},
+	expectedCheckFailure: `
+error:
+  mismatch at index 1
+error:
+  value does not match regexp
+first mismatched element:
+  "black"
+`,
+}, {
+	about:   "All slice mismatch with DeepEqual",
+	checker: qt.All(qt.DeepEquals),
+	got:     [][]string{{"a", "b"}, {"a", "c"}},
+	args:    []interface{}{[]string{"a", "b"}},
+	expectedCheckFailure: `
+error:
+  mismatch at index 1
+error:
+  values are not deep equal
+diff (-got +want):
+` + diff([]string{"a", "c"}, []string{"a", "b"}) + `
+`,
+}, {
+	about:   "All bad checker args count",
+	checker: qt.All(qt.IsNil),
+	got:     []int{},
+	args:    []interface{}{5},
+	expectedCheckFailure: `
+error:
+  bad check: too many arguments provided to checker: got 1, want 0
+got args:
+  []interface {}{
+      int(5),
+  }
+`,
+	expectedNegateFailure: `
+error:
+  bad check: too many arguments provided to checker: got 1, want 0
+got args:
+  []interface {}{
+      int(5),
+  }
+`,
+}, {
+	about:   "All bad checker args",
+	checker: qt.All(qt.Matches),
+	got:     []string{"hello"},
+	args:    []interface{}{5},
+	expectedCheckFailure: `
+error:
+  bad check: at index 0: bad check: regexp is not a string
+`,
+	expectedNegateFailure: `
+error:
+  bad check: at index 0: bad check: regexp is not a string
+`,
+}, {
+	about:   "All with non-container",
+	checker: qt.All(qt.Equals),
+	got:     5,
+	args:    []interface{}{5},
+	expectedCheckFailure: `
+error:
+  bad check: map, slice or array required
+`,
+	expectedNegateFailure: `
+error:
+  bad check: map, slice or array required
+`,
+}, {
+	about:   "All mismatch with map",
+	checker: qt.All(qt.Matches),
+	got:     map[string]string{"a": "red", "b": "black"},
+	args:    []interface{}{".*e.*"},
+	expectedCheckFailure: `
+error:
+  mismatch at key "b"
+error:
+  value does not match regexp
+first mismatched element:
+  "black"
+`,
+}, {
+	about:   "Any with non-container",
+	checker: qt.Any(qt.Equals),
+	got:     5,
+	args:    []interface{}{5},
+	expectedCheckFailure: `
+error:
+  bad check: map, slice or array required
+`,
+	expectedNegateFailure: `
+error:
+  bad check: map, slice or array required
+`,
+}, {
+	about:   "Any no match",
+	checker: qt.Any(qt.Equals),
+	got:     []int{},
+	args:    []interface{}{5},
+	expectedCheckFailure: `
+error:
+  no matching element found
+container:
+  []int{}
+want:
+  int(5)
+`,
+}, {
+	about:   "Any bad checker arg count",
+	checker: qt.Any(qt.IsNil),
+	got:     []int{},
+	args:    []interface{}{5},
+	expectedCheckFailure: `
+error:
+  bad check: too many arguments provided to checker: got 1, want 0
+got args:
+  []interface {}{
+      int(5),
+  }
+`,
+	expectedNegateFailure: `
+error:
+  bad check: too many arguments provided to checker: got 1, want 0
+got args:
+  []interface {}{
+      int(5),
+  }
+`,
+}, {
+	about:   "Any bad checker args",
+	checker: qt.Any(qt.Matches),
+	got:     []string{"hello"},
+	args:    []interface{}{5},
+	expectedCheckFailure: `
+error:
+  bad check: at index 0: bad check: regexp is not a string
+`,
+	expectedNegateFailure: `
+error:
+  bad check: at index 0: bad check: regexp is not a string
+`,
 }}
 
 func TestCheckers(t *testing.T) {
