@@ -5,10 +5,19 @@ package quicktest
 var Prefixf = prefixf
 
 // WithVerbosity returns the given checker with a verbosity level of v.
-// A copy of the original checker is made if mutating it is required.
+// A copy of the original checker is made if mutating is required.
 func WithVerbosity(c Checker, v bool) Checker {
-	if c, ok := c.(*cmpEqualsChecker); ok {
-		c := *c
+	switch checker := c.(type) {
+	case *allChecker:
+		c := *checker
+		c.elemChecker = WithVerbosity(c.elemChecker, v)
+		return &c
+	case *anyChecker:
+		c := *checker
+		c.elemChecker = WithVerbosity(c.elemChecker, v)
+		return &c
+	case *cmpEqualsChecker:
+		c := *checker
 		c.verbose = func() bool {
 			return v
 		}
