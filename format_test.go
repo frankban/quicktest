@@ -43,6 +43,10 @@ var formatTests = []struct {
 	},
 	want: `e"cannot ` + "`open`" + ` \"file\""`,
 }, {
+	about: "error value: not guarding against nil",
+	value: (*errTest)(nil),
+	want:  `e<nil>`,
+}, {
 	about: "stringer",
 	value: bytes.NewBufferString("I am a stringer"),
 	want:  `s"I am a stringer"`,
@@ -50,6 +54,10 @@ var formatTests = []struct {
 	about: "stringer: with quotes",
 	value: bytes.NewBufferString(`I say "hello"`),
 	want:  "s`I say \"hello\"`",
+}, {
+	about: "stringer: not guarding against nil",
+	value: (*nilStringer)(nil),
+	want:  "s<nil>",
 }, {
 	about: "string",
 	value: "these are the voyages",
@@ -87,4 +95,13 @@ func TestFormat(t *testing.T) {
 			}
 		})
 	}
+}
+
+// nilStringer is a stringer not guarding against nil.
+type nilStringer struct {
+	msg string
+}
+
+func (s *nilStringer) String() string {
+	return s.msg
 }
