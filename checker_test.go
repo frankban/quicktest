@@ -4,6 +4,7 @@ package quicktest_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -41,6 +42,17 @@ var (
 		Ints:    []int{42},
 	}
 )
+
+type InnerJSON struct {
+	First  string
+	Second int             `json:",omitempty" yaml:",omitempty"`
+	Third  map[string]bool `json:",omitempty" yaml:",omitempty"`
+}
+
+type OuterJSON struct {
+	First  float64
+	Second []*InnerJSON `json:"Last,omitempty" yaml:"last,omitempty"`
+}
 
 var checkerTests = []struct {
 	about                 string
@@ -81,14 +93,14 @@ want:
 	checker: qt.Equals,
 	got:     `string "foo"`,
 	args:    []interface{}{`string "bar"`},
-	expectedCheckFailure: strings.Replace(`
+	expectedCheckFailure: tilde2bq(`
 error:
   values are not equal
 got:
   ~string "foo"~
 want:
   ~string "bar"~
-`, "~", "`", -1),
+`),
 }, {
 	about:   "Equals: different types",
 	checker: qt.Equals,
@@ -164,14 +176,14 @@ want:
 		msg: `failure: "bad wolf"`,
 	},
 	args: []interface{}{nil},
-	expectedCheckFailure: strings.Replace(`
+	expectedCheckFailure: tilde2bq(`
 error:
   got non-nil error
 got:
   e~failure: "bad wolf"~
 want:
   nil
-`, "~", "`", -1),
+`),
 }, {
 	about:   "Equals: nil struct",
 	checker: qt.Equals,
@@ -2179,7 +2191,202 @@ error:
 error:
   bad check: at index 0: bad check: regexp is not a string
 `,
+}, {
+	about:   "JSONEquals simple",
+	checker: qt.JSONEquals,
+	got:     `{"First": 47.11}`,
+	args: []interface{}{
+		&OuterJSON{
+			First: 47.11,
+		},
+	},
+	expectedNegateFailure: tilde2bq(`
+error:
+  unexpected success
+got:
+  ~{"First": 47.11}~
+want:
+  &quicktest_test.OuterJSON{
+      First:  47.11,
+      Second: nil,
+  }
+`),
+}, {
+	about:   "JSONEquals nested",
+	checker: qt.JSONEquals,
+	got:     `{"First": 47.11, "Last": [{"First": "Hello", "Second": 42}]}`,
+	args: []interface{}{
+		&OuterJSON{
+			First: 47.11,
+			Second: []*InnerJSON{
+				{First: "Hello", Second: 42},
+			},
+		},
+	},
+	expectedNegateFailure: tilde2bq(`
+error:
+  unexpected success
+got:
+  ~{"First": 47.11, "Last": [{"First": "Hello", "Second": 42}]}~
+want:
+  &quicktest_test.OuterJSON{
+      First:  47.11,
+      Second: {
+          &quicktest_test.InnerJSON{
+              First:  "Hello",
+              Second: 42,
+              Third:  {},
+          },
+      },
+  }
+`),
+}, {
+	about:   "JSONEquals nested with newline",
+	checker: qt.JSONEquals,
+	got: `{"First": 47.11, "Last": [{"First": "Hello", "Second": 42},
+			{"First": "World", "Third": {"F": false}}]}`,
+	args: []interface{}{
+		&OuterJSON{
+			First: 47.11,
+			Second: []*InnerJSON{
+				{First: "Hello", Second: 42},
+				{First: "World", Third: map[string]bool{
+					"F": false,
+				}},
+			},
+		},
+	},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  "{\"First\": 47.11, \"Last\": [{\"First\": \"Hello\", \"Second\": 42},\n\t\t\t{\"First\": \"World\", \"Third\": {\"F\": false}}]}"
+want:
+  &quicktest_test.OuterJSON{
+      First:  47.11,
+      Second: {
+          &quicktest_test.InnerJSON{
+              First:  "Hello",
+              Second: 42,
+              Third:  {},
+          },
+          &quicktest_test.InnerJSON{
+              First:  "World",
+              Second: 0,
+              Third:  {"F":false},
+          },
+      },
+  }
+`,
+}, {
+	about:   "JSONEquals extra field",
+	checker: qt.JSONEquals,
+	got:     `{"NotThere": 1}`,
+	args: []interface{}{
+		&OuterJSON{
+			First: 2,
+		},
+	},
+	expectedCheckFailure: fmt.Sprintf(`
+error:
+  values are not deep equal
+diff (-got +want):
+%s
+`, diff(map[string]interface{}{"NotThere": 1.0}, map[string]interface{}{"First": 2.0})),
+}, {
+	about:   "JSONEquals cannot unmarshal obtained value",
+	checker: qt.JSONEquals,
+	got:     `{"NotThere": `,
+	args:    []interface{}{nil},
+	expectedCheckFailure: tilde2bq(`
+error:
+  cannot unmarshal obtained contents: unexpected end of JSON input; "{\"NotThere\": "
+got:
+  ~{"NotThere": ~
+want:
+  nil
+`),
+}, {
+	about:   "JSONEquals cannot marshal expected value",
+	checker: qt.JSONEquals,
+	got:     `null`,
+	args: []interface{}{
+		jsonErrorMarshaler{},
+	},
+	expectedCheckFailure: `
+error:
+  bad check: cannot marshal expected contents: json: error calling MarshalJSON for type quicktest_test.jsonErrorMarshaler: qt json marshal error
+`,
+	expectedNegateFailure: `
+error:
+  bad check: cannot marshal expected contents: json: error calling MarshalJSON for type quicktest_test.jsonErrorMarshaler: qt json marshal error
+`,
+}, {
+	about:   "JSONEquals with []byte",
+	checker: qt.JSONEquals,
+	got:     []byte("null"),
+	args:    []interface{}{nil},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  []uint8{0x6e, 0x75, 0x6c, 0x6c}
+want:
+  nil
+`,
+}, {
+	about:   "JSONEquals with bad type",
+	checker: qt.JSONEquals,
+	got:     0,
+	args:    []interface{}{nil},
+	expectedCheckFailure: `
+error:
+  bad check: expected string or byte, got int
+`,
+	expectedNegateFailure: `
+error:
+  bad check: expected string or byte, got int
+`,
+}, {
+	about: "CodecEquals with bad marshal",
+	checker: qt.CodecEquals(
+		func(x interface{}) ([]byte, error) { return []byte("bad json"), nil },
+		json.Unmarshal,
+	),
+	got:  "null",
+	args: []interface{}{nil},
+	expectedCheckFailure: `
+error:
+  bad check: cannot unmarshal expected contents: invalid character 'b' looking for beginning of value
+`,
+	expectedNegateFailure: `
+error:
+  bad check: cannot unmarshal expected contents: invalid character 'b' looking for beginning of value
+`,
+}, {
+	about: "CodecEquals with options",
+	checker: qt.CodecEquals(
+		json.Marshal,
+		json.Unmarshal,
+		cmpopts.SortSlices(func(x, y interface{}) bool { return x.(string) < y.(string) }),
+	),
+	got:  `["b", "z", "c", "a"]`,
+	args: []interface{}{[]string{"a", "c", "z", "b"}},
+	expectedNegateFailure: tilde2bq(`
+error:
+  unexpected success
+got:
+  ~["b", "z", "c", "a"]~
+want:
+  []string{"a", "c", "z", "b"}
+`),
 }}
+
+type jsonErrorMarshaler struct{}
+
+func (jsonErrorMarshaler) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("qt json marshal error")
+}
 
 func TestCheckers(t *testing.T) {
 	for _, test := range checkerTests {
@@ -2202,4 +2409,8 @@ func TestCheckers(t *testing.T) {
 func diff(x, y interface{}, opts ...cmp.Option) string {
 	d := cmp.Diff(x, y, opts...)
 	return strings.TrimSuffix(qt.Prefixf("  ", "%s", d), "\n")
+}
+
+func tilde2bq(s string) string {
+	return strings.Replace(s, "~", "`", -1)
 }
