@@ -145,6 +145,19 @@ want:
   nil
 `,
 }, {
+	about:   "Equals: error does not guard against nil",
+	checker: qt.Equals,
+	got:     (*errTest)(nil),
+	args:    []interface{}{nil},
+	expectedCheckFailure: `
+error:
+  got non-nil error
+got:
+  e<nil>
+want:
+  nil
+`,
+}, {
 	about:   "Equals: error is not nil: not formatted and with quotes",
 	checker: qt.Equals,
 	got: &errTest{
@@ -1299,6 +1312,16 @@ error:
   unexpected success
 got:
   []int(nil)
+`,
+}, {
+	about:   "IsNil: error does not guard against nil",
+	checker: qt.IsNil,
+	got:     (*errTest)(nil),
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  e<nil>
 `,
 }, {
 	about:   "IsNil: not nil",
