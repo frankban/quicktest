@@ -75,7 +75,7 @@ func (c *equalsChecker) Check(got interface{}, args []interface{}, note func(key
 // CmpEquals returns a Checker checking equality of two arbitrary values
 // according to the provided compare options. See DeepEquals as an example of
 // such a checker, commonly used when no compare options are required.
-// For instance:
+// Example calls:
 //
 //     c.Assert(list, qt.CmpEquals(cmpopts.SortSlices), []int{42, 47})
 //     c.Assert(got, qt.CmpEquals(), []int{42, 47}) // Same as qt.DeepEquals.
@@ -124,7 +124,10 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}, note func(
 }
 
 // DeepEquals is a Checker deeply checking equality of two arbitrary values.
-// For instance:
+// The comparison is done using the github.com/google/go-cmp/cmp package.
+// When comparing structs, by default no exported fields are allowed. CmpEquals
+// can be used when more customized compare options are required.
+// Example call:
 //
 //     c.Assert(got, qt.DeepEquals, []int{42, 47})
 //
