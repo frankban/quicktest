@@ -22,6 +22,10 @@ func WithVerbosity(c Checker, v bool) Checker {
 			return v
 		}
 		return &c
+	case *codecEqualChecker:
+		c := *checker
+		c.deepEquals = WithVerbosity(c.deepEquals, v)
+		return &c
 	}
 	return c
 }
