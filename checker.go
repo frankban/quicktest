@@ -38,6 +38,7 @@ type Checker interface {
 }
 
 // Equals is a Checker checking equality of two comparable values.
+//
 // For instance:
 //
 //     c.Assert(answer, qt.Equals, 42)
@@ -75,6 +76,7 @@ func (c *equalsChecker) Check(got interface{}, args []interface{}, note func(key
 // CmpEquals returns a Checker checking equality of two arbitrary values
 // according to the provided compare options. See DeepEquals as an example of
 // such a checker, commonly used when no compare options are required.
+//
 // Example calls:
 //
 //     c.Assert(list, qt.CmpEquals(cmpopts.SortSlices), []int{42, 47})
@@ -127,6 +129,7 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}, note func(
 // The comparison is done using the github.com/google/go-cmp/cmp package.
 // When comparing structs, by default no exported fields are allowed. CmpEquals
 // can be used when more customized compare options are required.
+//
 // Example call:
 //
 //     c.Assert(got, qt.DeepEquals, []int{42, 47})
@@ -142,6 +145,7 @@ var ContentEquals = CmpEquals(cmpopts.SortSlices(func(x, y interface{}) bool {
 
 // Matches is a Checker checking that the provided string or fmt.Stringer
 // matches the provided regular expression pattern.
+//
 // For instance:
 //
 //     c.Assert("these are the voyages", qt.Matches, "these are .*")
@@ -171,6 +175,7 @@ func (c *matchesChecker) Check(got interface{}, args []interface{}, note func(ke
 
 // ErrorMatches is a Checker checking that the provided value is an error whose
 // message matches the provided regular expression pattern.
+//
 // For instance:
 //
 //     c.Assert(err, qt.ErrorMatches, "bad wolf .*")
@@ -199,6 +204,7 @@ func (c *errorMatchesChecker) Check(got interface{}, args []interface{}, note fu
 
 // PanicMatches is a Checker checking that the provided function panics with a
 // message matching the provided regular expression pattern.
+//
 // For instance:
 //
 //     c.Assert(func() {panic("bad wolf ...")}, qt.PanicMatches, "bad wolf .*")
@@ -241,6 +247,7 @@ func (c *panicMatchesChecker) Check(got interface{}, args []interface{}, note fu
 }
 
 // IsNil is a Checker checking that the provided value is nil.
+//
 // For instance:
 //
 //     c.Assert(got, qt.IsNil)
@@ -266,6 +273,7 @@ func (c *isNilChecker) Check(got interface{}, args []interface{}, note func(key 
 }
 
 // HasLen is a Checker checking that the provided value has the given length.
+//
 // For instance:
 //
 //     c.Assert([]int{42, 47}, qt.HasLen, 2)
@@ -304,6 +312,7 @@ func (c *hasLenChecker) Check(got interface{}, args []interface{}, note func(key
 // Satisfies is a Checker checking that the provided value, when used as
 // argument of the provided predicate function, causes the function to return
 // true. The function must be of type func(T) bool, having got assignable to T.
+//
 // For instance:
 //
 //     // Check that an error from os.Open satisfies os.IsNotExist.
@@ -352,6 +361,7 @@ func (c *satisfiesChecker) Check(got interface{}, args []interface{}, note func(
 }
 
 // Not returns a Checker negating the given Checker.
+//
 // For instance:
 //
 //     c.Assert(got, qt.Not(qt.IsNil))
@@ -391,8 +401,9 @@ func (c *notChecker) Check(got interface{}, args []interface{}, note func(key st
 //
 // For example:
 //
-//	c.Assert("hello world", qt.Contains, "world")
-//	c.Assert([]int{3,5,7,99}, qt.Contains, 7)
+//     c.Assert("hello world", qt.Contains, "world")
+//     c.Assert([]int{3,5,7,99}, qt.Contains, 7)
+//
 var Contains Checker = &containsChecker{
 	argNames: []string{"got", "want"},
 }
@@ -422,8 +433,8 @@ func (c *containsChecker) Check(got interface{}, args []interface{}, note func(k
 //
 // For example:
 //
-//	c.Assert([]int{3,5,7,99}, qt.Any(qt.Equals), 7)
-//	c.Assert([][]string{{"a", "b"}, {"c", "d"}}, qt.Any(qt.DeepEquals), []string{"c", "d"})
+//     c.Assert([]int{3,5,7,99}, qt.Any(qt.Equals), 7)
+//     c.Assert([][]string{{"a", "b"}, {"c", "d"}}, qt.Any(qt.DeepEquals), []string{"c", "d"})
 //
 // See also All and Contains.
 func Any(c Checker) Checker {
@@ -473,8 +484,8 @@ func (c *anyChecker) Check(got interface{}, args []interface{}, note func(key st
 //
 // For example:
 //
-//	c.Assert([]int{3, 5, 8}, qt.All(qt.Not(qt.Equals)), 0)
-//	c.Assert([][]string{{"a", "b"}, {"a", "b"}}, qt.All(qt.DeepEquals), []string{"c", "d"})
+//     c.Assert([]int{3, 5, 8}, qt.All(qt.Not(qt.Equals)), 0)
+//     c.Assert([][]string{{"a", "b"}, {"a", "b"}}, qt.All(qt.DeepEquals), []string{"c", "d"})
 //
 // See also Any and Contains.
 func All(c Checker) Checker {
@@ -537,6 +548,11 @@ func (c *allChecker) Check(got interface{}, args []interface{}, notef func(key s
 //
 // It uses DeepEquals to do the comparison. If a more sophisticated
 // comparison is required, use CodecEquals directly.
+//
+// For instance:
+//
+//     c.Assert(`{"First": 47.11}`, qt.JSONEquals, &MyStruct{First: 47.11})
+//
 var JSONEquals = CodecEquals(json.Marshal, json.Unmarshal)
 
 type codecEqualChecker struct {
@@ -548,15 +564,15 @@ type codecEqualChecker struct {
 
 // CodecEquals returns a checker that checks for codec value equivalence.
 //
-// It expects two arguments: a byte slice or a string containing some codec-marshaled
-// data, and a Go value.
+// It expects two arguments: a byte slice or a string containing some
+// codec-marshaled data, and a Go value.
 //
 // It uses unmarshal to unmarshal the data into an interface{} value.
 // It marshals the Go value using marshal, then unmarshals the result into
 // an interface{} value.
 //
-// It then checks that the two interface{} values are deep-equal to one another,
-// using CmpEquals(opts) to perform the check.
+// It then checks that the two interface{} values are deep-equal to one
+// another, using CmpEquals(opts) to perform the check.
 //
 // See JSONEquals for an example of this in use.
 func CodecEquals(
