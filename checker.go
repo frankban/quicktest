@@ -3,6 +3,7 @@
 package quicktest
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -525,6 +526,73 @@ func (c *allChecker) Check(got interface{}, args []interface{}, notef func(key s
 		return ErrSilent
 	}
 	return nil
+}
+
+// JSONEquals is a checker that checks whether a byte slice
+// or string is JSON-equivalent to a Go value. See CodecEquals for
+// more information.
+//
+// It uses DeepEquals to do the comparison. If a more sophisticated
+// comparison is required, use CodecEquals directly.
+var JSONEquals = CodecEquals(json.Marshal, json.Unmarshal)
+
+type codecEqualChecker struct {
+	argNames
+	marshal    func(interface{}) ([]byte, error)
+	unmarshal  func([]byte, interface{}) error
+	deepEquals Checker
+}
+
+// CodecEquals returns a checker that checks for codec value equivalence.
+//
+// It expects two arguments: a byte slice or a string containing some codec-marshaled
+// data, and a Go value.
+//
+// It uses unmarshal to unmarshal the data into an interface{} value.
+// It marshals the Go value using marshal, then unmarshals the result into
+// an interface{} value.
+//
+// It then checks that the two interface{} values are deep-equal to one another,
+// using CmpEquals(opts) to perform the check.
+//
+// See JSONEquals for an example of this in use.
+func CodecEquals(
+	marshal func(interface{}) ([]byte, error),
+	unmarshal func([]byte, interface{}) error,
+	opts ...cmp.Option,
+) Checker {
+	return &codecEqualChecker{
+		argNames:   argNames{"got", "want"},
+		marshal:    marshal,
+		unmarshal:  unmarshal,
+		deepEquals: CmpEquals(opts...),
+	}
+}
+
+func (c *codecEqualChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
+	var gotContent []byte
+	switch got := got.(type) {
+	case string:
+		gotContent = []byte(got)
+	case []byte:
+		gotContent = got
+	default:
+		return BadCheckf("expected string or byte, got %T", got)
+	}
+	wantContent := args[0]
+	wantContentBytes, err := c.marshal(wantContent)
+	if err != nil {
+		return BadCheckf("cannot marshal expected contents: %v", err)
+	}
+	var wantContentVal interface{}
+	if err := c.unmarshal(wantContentBytes, &wantContentVal); err != nil {
+		return BadCheckf("cannot unmarshal expected contents: %v", err)
+	}
+	var gotContentVal interface{}
+	if err := c.unmarshal([]byte(gotContent), &gotContentVal); err != nil {
+		return fmt.Errorf("cannot unmarshal obtained contents: %v; %q", err, gotContent)
+	}
+	return c.deepEquals.Check(gotContentVal, []interface{}{wantContentVal}, note)
 }
 
 // argNames helps implementing Checker.ArgNames.
