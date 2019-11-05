@@ -13,6 +13,8 @@ import (
 	qt "github.com/frankban/quicktest"
 )
 
+var _ testing.TB = (*qt.C)(nil)
+
 var cTests = []struct {
 	about           string
 	checker         qt.Checker

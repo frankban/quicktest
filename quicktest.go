@@ -95,20 +95,6 @@ func (c *C) Done() {
 	}
 }
 
-// AddCleanup is the old name for Defer.
-//
-// Deprecated: this will be removed in a subsequent version.
-func (c *C) AddCleanup(f func()) {
-	c.Defer(f)
-}
-
-// Cleanup is the old name for Done.
-//
-// Deprecated: this will be removed in a subsequent version.
-func (c *C) Cleanup() {
-	c.Done()
-}
-
 // SetFormat sets the function used to print values in test failures.
 // By default Format is used.
 // Any subsequent subtests invoked with c.Run will also use this function by
