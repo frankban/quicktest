@@ -58,17 +58,48 @@ func New(t testing.TB) *C {
 type C struct {
 	testing.TB
 
-	mu       sync.Mutex
-	deferred func()
-	format   formatFunc
+	mu         sync.Mutex
+	doneNeeded bool
+	deferred   func()
+	format     formatFunc
+}
+
+// cleaner is implemented by testing.TB on Go 1.14 and later.
+type cleaner interface {
+	Cleanup(func())
 }
 
 // Defer registers a function to be called when c.Done is
 // called. Deferred functions will be called in last added, first called
-// order.
+// order. If c.Done is not called by the end of the test, the test
+// may panic. Note that if Cleanup is called, there is no
+// need to call Done.
 func (c *C) Defer(f func()) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if cleaner, ok := c.TB.(cleaner); ok {
+		// Use TB.Cleanup when available, but add a check
+		// that Done has been called so that we don't run
+		// into unexpected Go version incompatibilities.
+		if c.doneNeeded {
+			// We've already installed the wrapper func that checks for Done
+			// so we can avoid doing it again.
+			cleaner.Cleanup(f)
+			return
+		}
+		c.doneNeeded = true
+		cleaner.Cleanup(func() {
+			c.mu.Lock()
+			doneNeeded := c.doneNeeded
+			c.mu.Unlock()
+			if doneNeeded {
+				panic("Done not called after Defer")
+			}
+			f()
+		})
+		return
+	}
+
 	oldDeferred := c.deferred
 	c.deferred = func() {
 		if oldDeferred != nil {
@@ -88,6 +119,7 @@ func (c *C) Done() {
 	c.mu.Lock()
 	deferred := c.deferred
 	c.deferred = nil
+	c.doneNeeded = false
 	c.mu.Unlock()
 
 	if deferred != nil {

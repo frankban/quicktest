@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -511,42 +510,13 @@ func TestCParallelPanic(t *testing.T) {
 func TestCDefer(t *testing.T) {
 	c := qt.New(t)
 	var defers []int
-	c.Defer(func() { defers = append(defers, 1) })
-	c.Defer(func() { defers = append(defers, 2) })
-	c.Done()
-	c.Assert(defers, qt.DeepEquals, []int{2, 1})
-	// Calling Done again should not do anything.
-	c.Done()
-	c.Assert(defers, qt.DeepEquals, []int{2, 1})
-}
-
-func TestCDeferCalledEvenAfterDeferPanic(t *testing.T) {
-	c := qt.New(t)
-	deferred1 := 0
-	deferred2 := 0
-	c.Defer(func() {
-		deferred1++
-	})
-	c.Defer(func() {
-		panic("scream and shout")
-	})
-	c.Defer(func() {
-		deferred2++
-	})
-	c.Defer(func() {
-		panic("run in circles")
-	})
-	func() {
-		defer func() {
-			c.Check(recover(), qt.Equals, "scream and shout")
-		}()
+	testDefer(c, func(c *qt.C) {
+		c.Defer(func() { defers = append(defers, 1) })
+		c.Defer(func() { defers = append(defers, 2) })
+		// Calling Done twice should not do anything more.
 		c.Done()
-	}()
-	c.Assert(deferred1, qt.Equals, 1)
-	c.Assert(deferred2, qt.Equals, 1)
-	c.Done()
-	c.Assert(deferred1, qt.Equals, 1)
-	c.Assert(deferred2, qt.Equals, 1)
+	})
+	c.Assert(defers, qt.DeepEquals, []int{2, 1})
 }
 
 func TestCDeferCalledEvenAfterGoexit(t *testing.T) {
@@ -555,34 +525,26 @@ func TestCDeferCalledEvenAfterGoexit(t *testing.T) {
 	// called in that case.
 	c := qt.New(t)
 	defers := 0
-	c.Defer(func() {
-		defers++
+	testDefer(c, func(c *qt.C) {
+		c.Defer(func() {
+			defers++
+		})
+		c.Defer(func() {
+			c.SkipNow()
+		})
 	})
-	c.Defer(func() {
-		runtime.Goexit()
-	})
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		c.Done()
-		select {}
-	}()
-	<-done
-	c.Assert(defers, qt.Equals, 1)
-	c.Done()
 	c.Assert(defers, qt.Equals, 1)
 }
 
 func TestCRunDefer(t *testing.T) {
-	c := qt.New(&testingT{})
-	outerDefer := 0
-	innerDefer := 0
-	c.Defer(func() { outerDefer++ })
-	c.Run("x", func(c *qt.C) {
-		c.Defer(func() { innerDefer++ })
+	c := qt.New(t)
+	defers := 0
+	testDefer(c, func(c *qt.C) {
+		c.Run("x", func(c *qt.C) {
+			c.Defer(func() { defers++ })
+		})
 	})
-	c.Assert(innerDefer, qt.Equals, 1)
-	c.Assert(outerDefer, qt.Equals, 0)
+	c.Assert(defers, qt.Equals, 1)
 }
 
 type customT struct {
@@ -755,4 +717,11 @@ func (c *testingChecker) Check(got interface{}, args []interface{}, note func(ke
 // Info implements quicktest.Checker by returning the stored args.
 func (c *testingChecker) ArgNames() []string {
 	return c.argNames
+}
+
+func testDefer(c *qt.C, f func(c *qt.C)) {
+	c.Run("defer", func(c *qt.C) {
+		defer c.Done()
+		f(c)
+	})
 }
