@@ -14,9 +14,10 @@ import (
 func TestPatchSetInt(t *testing.T) {
 	c := qt.New(t)
 	i := 99
-	c.Patch(&i, 88)
-	c.Assert(i, qt.Equals, 88)
-	c.Done()
+	testDefer(c, func(c *qt.C) {
+		c.Patch(&i, 88)
+		c.Assert(i, qt.Equals, 88)
+	})
 	c.Assert(i, qt.Equals, 99)
 }
 
@@ -25,9 +26,10 @@ func TestPatchSetError(t *testing.T) {
 	oldErr := errors.New("foo")
 	newErr := errors.New("bar")
 	err := oldErr
-	c.Patch(&err, newErr)
-	c.Assert(err, qt.Equals, newErr)
-	c.Done()
+	testDefer(c, func(c *qt.C) {
+		c.Patch(&err, newErr)
+		c.Assert(err, qt.Equals, newErr)
+	})
 	c.Assert(err, qt.Equals, oldErr)
 }
 
@@ -35,9 +37,10 @@ func TestPatchSetErrorToNil(t *testing.T) {
 	c := qt.New(t)
 	oldErr := errors.New("foo")
 	err := oldErr
-	c.Patch(&err, nil)
-	c.Assert(err, qt.Equals, nil)
-	c.Done()
+	testDefer(c, func(c *qt.C) {
+		c.Patch(&err, nil)
+		c.Assert(err, qt.Equals, nil)
+	})
 	c.Assert(err, qt.Equals, oldErr)
 }
 
@@ -45,9 +48,10 @@ func TestPatchSetMapToNil(t *testing.T) {
 	c := qt.New(t)
 	oldMap := map[string]int{"foo": 1234}
 	m := oldMap
-	c.Patch(&m, nil)
-	c.Assert(m, qt.IsNil)
-	c.Done()
+	testDefer(c, func(c *qt.C) {
+		c.Patch(&m, nil)
+		c.Assert(m, qt.IsNil)
+	})
 	c.Assert(m, qt.DeepEquals, oldMap)
 }
 
@@ -62,23 +66,26 @@ func TestSetenv(t *testing.T) {
 	c := qt.New(t)
 	const envName = "SOME_VAR"
 	os.Setenv(envName, "initial")
-	c.Setenv(envName, "new value")
-	c.Check(os.Getenv(envName), qt.Equals, "new value")
-	c.Done()
+	testDefer(c, func(c *qt.C) {
+		c.Setenv(envName, "new value")
+		c.Check(os.Getenv(envName), qt.Equals, "new value")
+	})
 	c.Check(os.Getenv(envName), qt.Equals, "initial")
 }
 
 func TestMkdir(t *testing.T) {
 	c := qt.New(t)
-	dir := c.Mkdir()
-	c.Assert(c, qt.Not(qt.Equals), "")
-	info, err := os.Stat(dir)
-	c.Assert(err, qt.Equals, nil)
-	c.Assert(info.IsDir(), qt.Equals, true)
-	f, err := os.Create(filepath.Join(dir, "hello"))
-	c.Assert(err, qt.Equals, nil)
-	f.Close()
-	c.Done()
-	_, err = os.Stat(dir)
+	var dir string
+	testDefer(c, func(c *qt.C) {
+		dir = c.Mkdir()
+		c.Assert(dir, qt.Not(qt.Equals), "")
+		info, err := os.Stat(dir)
+		c.Assert(err, qt.Equals, nil)
+		c.Assert(info.IsDir(), qt.Equals, true)
+		f, err := os.Create(filepath.Join(dir, "hello"))
+		c.Assert(err, qt.Equals, nil)
+		f.Close()
+	})
+	_, err := os.Stat(dir)
 	c.Assert(err, qt.Not(qt.IsNil))
 }
