@@ -4,7 +4,6 @@ package quicktest_test
 
 import (
 	"runtime"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -25,7 +24,7 @@ got:
 want:
   int(47)
 stack:
-  $file:19
+  $file:18
     c.Assert(42, qt.Equals, 47)
 `
 	assertReport(t, tt, want)
@@ -49,11 +48,11 @@ error:
 got:
   int(42)
 stack:
-  $file:39
+  $file:38
     c.Assert(42, qt.IsNil)
-  $file:35
+  $file:34
     f2(c)
-  $file:45
+  $file:44
     f1(c)
 `
 	assertReport(t, tt, want)
@@ -78,7 +77,7 @@ got:
 want:
   "another string"
 stack:
-  $file:$line
+  $file:64
     c.Assert(
         "this string", // Comment 1.
         qt.Equals,
@@ -143,7 +142,7 @@ diff (-got +want):
   +         &{},
     }
 stack:
-  $file:121
+  $file:120
     c.Assert(gotExamples, checker, wantExamples)
 `
 	assertReport(t, tt, want)
@@ -157,14 +156,6 @@ func assertReport(t *testing.T, tt *testingT, want string) {
 	_, file, _, ok := runtime.Caller(0)
 	assertBool(t, ok, true)
 	want = strings.Replace(want, "$file", file, -1)
-	// Adjust for line number based on Go < v1.9 reporting the line where the
-	// statement ends.
-	line := 65
-	vers := runtime.Version()
-	if vers == "go1.7" || vers == "go1.8" {
-		line = 70
-	}
-	want = strings.Replace(want, "$line", strconv.Itoa(line), 1)
 	if got != want {
 		t.Fatalf(`failure:
 %q
