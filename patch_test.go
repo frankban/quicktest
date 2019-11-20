@@ -73,6 +73,43 @@ func TestSetenv(t *testing.T) {
 	c.Check(os.Getenv(envName), qt.Equals, "initial")
 }
 
+func TestSetenvWithUnsetVariable(t *testing.T) {
+	c := qt.New(t)
+	const envName = "SOME_VAR"
+	os.Unsetenv(envName)
+	testDefer(c, func(c *qt.C) {
+		c.Setenv(envName, "new value")
+		c.Check(os.Getenv(envName), qt.Equals, "new value")
+	})
+	_, ok := os.LookupEnv(envName)
+	c.Assert(ok, qt.Equals, false)
+}
+
+func TestUnsetenv(t *testing.T) {
+	c := qt.New(t)
+	const envName = "SOME_VAR"
+	os.Setenv(envName, "initial")
+	testDefer(c, func(c *qt.C) {
+		c.Unsetenv(envName)
+		_, ok := os.LookupEnv(envName)
+		c.Assert(ok, qt.Equals, false)
+	})
+	c.Check(os.Getenv(envName), qt.Equals, "initial")
+}
+
+func TestUnsetenvWithUnsetVariable(t *testing.T) {
+	c := qt.New(t)
+	const envName = "SOME_VAR"
+	os.Unsetenv(envName)
+	testDefer(c, func(c *qt.C) {
+		c.Unsetenv(envName)
+		_, ok := os.LookupEnv(envName)
+		c.Assert(ok, qt.Equals, false)
+	})
+	_, ok := os.LookupEnv(envName)
+	c.Assert(ok, qt.Equals, false)
+}
+
 func TestMkdir(t *testing.T) {
 	c := qt.New(t)
 	var dir string

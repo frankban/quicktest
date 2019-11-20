@@ -39,10 +39,29 @@ func (c *C) Patch(dest, value interface{}) {
 // When c.Done is called, the environment variable will be returned
 // to its original value.
 func (c *C) Setenv(name, val string) {
-	oldVal := os.Getenv(name)
-	os.Setenv(name, val)
+	c.setenv(name, val, true)
+}
+
+// Unsetenv unsets an environment variable for the duration of a test.
+func (c *C) Unsetenv(name string) {
+	c.setenv(name, "", false)
+}
+
+// setenv sets or unsets an environment variable to a temporary value for the
+// duration of the test
+func (c *C) setenv(name, val string, valOK bool) {
+	oldVal, oldOK := os.LookupEnv(name)
+	if valOK {
+		os.Setenv(name, val)
+	} else {
+		os.Unsetenv(name)
+	}
 	c.Defer(func() {
-		os.Setenv(name, oldVal)
+		if oldOK {
+			os.Setenv(name, oldVal)
+		} else {
+			os.Unsetenv(name)
+		}
 	})
 }
 
