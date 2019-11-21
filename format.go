@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/kr/pretty"
 )
@@ -35,8 +36,27 @@ func Format(v interface{}) string {
 	case string:
 		return quoteString(v)
 	}
+	if bytes, ok := byteSlice(v); ok && bytes != nil && utf8.Valid(bytes) {
+		// It's a top level slice of bytes that's also valid UTF-8.
+		// Ideally, this would happen at deeper levels too,
+		// but this is sufficient for some significant cases
+		// (json.RawMessage for example).
+		return fmt.Sprintf("%T(%s)", v, quoteString(string(bytes)))
+	}
 	// The pretty.Sprint equivalent does not quote string values.
 	return fmt.Sprintf("%# v", pretty.Formatter(v))
+}
+
+func byteSlice(x interface{}) ([]byte, bool) {
+	v := reflect.ValueOf(x)
+	if !v.IsValid() {
+		return nil, false
+	}
+	t := v.Type()
+	if t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.Uint8 {
+		return v.Bytes(), true
+	}
+	return nil, false
 }
 
 func quoteString(s string) string {
