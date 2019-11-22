@@ -68,135 +68,8 @@ instead of Fatal:
 
 The library provides some base checkers like Equals, DeepEquals, Matches,
 ErrorMatches, IsNil and others. More can be added by implementing the Checker
-interface. Here is a list of checkers already included in the package.
-
-Equals
-
-Equals checks that two values are equal, as compared with Go's == operator.
-
-For instance:
-
-    c.Assert(answer, qt.Equals, 42)
-
-Note that the following will fail:
-
-    c.Assert((*sometype)(nil), qt.Equals, nil)
-
-Use the IsNil checker below for this kind of nil check.
-
-DeepEquals
-
-DeepEquals checks that two arbitrary values are deeply equal.
-The comparison is done using the github.com/google/go-cmp/cmp package.
-When comparing structs, by default no exported fields are allowed.
-If a more sophisticated comparison is required, use CmpEquals (see below).
-
-Example call:
-
-    c.Assert(got, qt.DeepEquals, []int{42, 47})
-
-CmpEquals
-
-CmpEquals checks equality of two arbitrary values according to the provided
-compare options. DeepEquals is more commonly used when no compare options are
-required.
-
-Example calls:
-
-    c.Assert(list, qt.CmpEquals(cmpopts.SortSlices), []int{42, 47})
-    c.Assert(got, qt.CmpEquals(), []int{42, 47}) // Same as qt.DeepEquals.
-
-Matches
-
-Matches checks that a string or result of calling the String method
-(if the value implements fmt.Stringer) matches the provided regular expression.
-
-For instance:
-
-    c.Assert("these are the voyages", qt.Matches, `these are .*`)
-    c.Assert(net.ParseIP("1.2.3.4"), qt.Matches, `1.*`)
-
-ErrorMatches
-
-ErrorMatches checks that the provided value is an error whose message matches
-the provided regular expression.
-
-For instance:
-
-    c.Assert(err, qt.ErrorMatches, `bad wolf .*`)
-
-PanicMatches
-
-PanicMatches checks that the provided function panics with a message matching
-the provided regular expression.
-
-For instance:
-
-    c.Assert(func() {panic("bad wolf ...")}, qt.PanicMatches, `bad wolf .*`)
-
-IsNil
-
-IsNil checks that the provided value is nil.
-
-For instance:
-
-    c.Assert(got, qt.IsNil)
-
-HasLen
-
-HasLen checks that the provided value has the given length.
-
-For instance:
-
-    c.Assert([]int{42, 47}, qt.HasLen, 2)
-    c.Assert(myMap, qt.HasLen, 42)
-
-Satisfies
-
-Satisfies checks that the provided value, when used as argument of the provided
-predicate function, causes the function to return true. The function must be of
-type func(T) bool, having got assignable to T.
-
-For instance:
-
-    // Check that an error from os.Open satisfies os.IsNotExist.
-    c.Assert(err, qt.Satisfies, os.IsNotExist)
-
-    // Check that a floating point number is a not-a-number.
-    c.Assert(f, qt.Satisfies, math.IsNaN)
-
-Not
-
-Not returns a Checker negating the given Checker.
-
-For instance:
-
-    c.Assert(got, qt.Not(qt.IsNil))
-    c.Assert(answer, qt.Not(qt.Equals), 42)
-
-Contains
-
-Contains checks that a map, slice, array or string contains a value. It's the
-same as using Any(Equals), except that it has a special case for strings - if
-the first argument is a string, the second argument must also be a string and
-strings.Contains will be used.
-
-For example:
-
-	c.Assert("hello world", qt.Contains, "world")
-	c.Assert([]int{3,5,7,99}, qt.Contains, 7)
-
-Any
-
-Any returns a Checker that uses the given checker to check elements of a slice
-or array or the values from a map. It succeeds if any element passes the check.
-
-For example:
-
-	c.Assert([]int{3,5,7,99}, qt.Any(qt.Equals), 7)
-	c.Assert([][]string{{"a", "b"}, {"c", "d"}}, qt.Any(qt.DeepEquals), []string{"c", "d"})
-
-See also All and Contains.
+interface. Below, we list the checkers implemented by the package in alphabetical
+order.
 
 All
 
@@ -211,17 +84,28 @@ For example:
 
 See also Any and Contains.
 
-JSONEquals
+Any
 
-JSONEquals checks whether a byte slice or string is JSON-equivalent to a Go
-value. See CodecEquals for more information.
+Any returns a Checker that uses the given checker to check elements of a slice
+or array or the values from a map. It succeeds if any element passes the check.
 
-It uses DeepEquals to do the comparison. If a more sophisticated comparison is
-required, use CodecEquals directly.
+For example:
 
-For instance:
+	c.Assert([]int{3,5,7,99}, qt.Any(qt.Equals), 7)
+	c.Assert([][]string{{"a", "b"}, {"c", "d"}}, qt.Any(qt.DeepEquals), []string{"c", "d"})
 
-    c.Assert(`{"First": 47.11}`, qt.JSONEquals, &MyStruct{First: 47.11})
+See also All and Contains.
+
+CmpEquals
+
+CmpEquals checks equality of two arbitrary values according to the provided
+compare options. DeepEquals is more commonly used when no compare options are
+required.
+
+Example calls:
+
+    c.Assert(list, qt.CmpEquals(cmpopts.SortSlices), []int{42, 47})
+    c.Assert(got, qt.CmpEquals(), []int{42, 47}) // Same as qt.DeepEquals.
 
 CodecEquals
 
@@ -244,5 +128,122 @@ It then checks that the two interface{} values are deep-equal to one another,
 using CmpEquals(opts) to perform the check.
 
 See JSONEquals for an example of this in use.
+
+Contains
+
+Contains checks that a map, slice, array or string contains a value. It's the
+same as using Any(Equals), except that it has a special case for strings - if
+the first argument is a string, the second argument must also be a string and
+strings.Contains will be used.
+
+For example:
+
+	c.Assert("hello world", qt.Contains, "world")
+	c.Assert([]int{3,5,7,99}, qt.Contains, 7)
+
+DeepEquals
+
+DeepEquals checks that two arbitrary values are deeply equal.
+The comparison is done using the github.com/google/go-cmp/cmp package.
+When comparing structs, by default no exported fields are allowed.
+If a more sophisticated comparison is required, use CmpEquals (see below).
+
+Example call:
+
+    c.Assert(got, qt.DeepEquals, []int{42, 47})
+
+Equals
+
+Equals checks that two values are equal, as compared with Go's == operator.
+
+For instance:
+
+    c.Assert(answer, qt.Equals, 42)
+
+Note that the following will fail:
+
+    c.Assert((*sometype)(nil), qt.Equals, nil)
+
+Use the IsNil checker below for this kind of nil check.
+
+ErrorMatches
+
+ErrorMatches checks that the provided value is an error whose message matches
+the provided regular expression.
+
+For instance:
+
+    c.Assert(err, qt.ErrorMatches, `bad wolf .*`)
+
+HasLen
+
+HasLen checks that the provided value has the given length.
+
+For instance:
+
+    c.Assert([]int{42, 47}, qt.HasLen, 2)
+    c.Assert(myMap, qt.HasLen, 42)
+
+IsNil
+
+IsNil checks that the provided value is nil.
+
+For instance:
+
+    c.Assert(got, qt.IsNil)
+
+JSONEquals
+
+JSONEquals checks whether a byte slice or string is JSON-equivalent to a Go
+value. See CodecEquals for more information.
+
+It uses DeepEquals to do the comparison. If a more sophisticated comparison is
+required, use CodecEquals directly.
+
+For instance:
+
+    c.Assert(`{"First": 47.11}`, qt.JSONEquals, &MyStruct{First: 47.11})
+
+Matches
+
+Matches checks that a string or result of calling the String method
+(if the value implements fmt.Stringer) matches the provided regular expression.
+
+For instance:
+
+    c.Assert("these are the voyages", qt.Matches, `these are .*`)
+    c.Assert(net.ParseIP("1.2.3.4"), qt.Matches, `1.*`)
+
+Not
+
+Not returns a Checker negating the given Checker.
+
+For instance:
+
+    c.Assert(got, qt.Not(qt.IsNil))
+    c.Assert(answer, qt.Not(qt.Equals), 42)
+
+PanicMatches
+
+PanicMatches checks that the provided function panics with a message matching
+the provided regular expression.
+
+For instance:
+
+    c.Assert(func() {panic("bad wolf ...")}, qt.PanicMatches, `bad wolf .*`)
+
+Satisfies
+
+Satisfies checks that the provided value, when used as argument of the provided
+predicate function, causes the function to return true. The function must be of
+type func(T) bool, having got assignable to T.
+
+For instance:
+
+    // Check that an error from os.Open satisfies os.IsNotExist.
+    c.Assert(err, qt.Satisfies, os.IsNotExist)
+
+    // Check that a floating point number is a not-a-number.
+    c.Assert(f, qt.Satisfies, math.IsNaN)
 */
 package quicktest
