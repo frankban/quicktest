@@ -81,9 +81,33 @@ var formatTests = []struct {
 	value: []int{1, 2, 3},
 	want:  "[]int{1, 2, 3}",
 }, {
+	about: "bytes",
+	value: []byte("hello"),
+	want:  `[]uint8("hello")`,
+}, {
+	about: "custom bytes type",
+	value: myBytes("hello"),
+	want:  `quicktest_test.myBytes("hello")`,
+}, {
+	about: "bytes with backquote",
+	value: []byte(`a "b" c`),
+	want:  "[]uint8(`a \"b\" c`)",
+}, {
+	about: "bytes with invalid utf-8",
+	value: []byte("\xff"),
+	want:  "[]uint8{0xff}",
+}, {
+	about: "nil byte slice",
+	value: []byte(nil),
+	want:  "[]uint8(nil)",
+}, {
 	about: "time",
 	value: goTime,
 	want:  `s"2012-03-28 00:00:00 +0000 UTC"`,
+}, {
+	about: "struct with byte slice",
+	value: struct{ X []byte }{[]byte("x")},
+	want:  "struct { X []uint8 }{\n    X:  {0x78},\n}",
 }}
 
 func TestFormat(t *testing.T) {
@@ -96,6 +120,8 @@ func TestFormat(t *testing.T) {
 		})
 	}
 }
+
+type myBytes []byte
 
 // nilStringer is a stringer not guarding against nil.
 type nilStringer struct {

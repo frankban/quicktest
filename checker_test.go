@@ -2330,9 +2330,22 @@ error:
 error:
   unexpected success
 got:
-  []uint8{0x6e, 0x75, 0x6c, 0x6c}
+  []uint8("null")
 want:
   nil
+`,
+}, {
+	about:   "JSONEquals with RawMessage",
+	checker: qt.JSONEquals,
+	got:     []byte("null"),
+	args:    []interface{}{json.RawMessage("null")},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  []uint8("null")
+want:
+  json.RawMessage("null")
 `,
 }, {
 	about:   "JSONEquals with bad type",
