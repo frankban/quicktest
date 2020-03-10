@@ -141,6 +141,14 @@ For example:
 	c.Assert("hello world", qt.Contains, "world")
 	c.Assert([]int{3,5,7,99}, qt.Contains, 7)
 
+ContentEquals
+
+ContentEquals is is like DeepEquals but any slices in the compared values will be sorted before being compared.
+
+For example:
+
+	c.Assert([]string{"c", "a", "b"}, qt.ContentEquals, []string{"a", "b", "c"})
+
 DeepEquals
 
 DeepEquals checks that two arbitrary values are deeply equal.
@@ -191,6 +199,16 @@ IsNil checks that the provided value is nil.
 For instance:
 
     c.Assert(got, qt.IsNil)
+
+As a special case, if the value is nil but implements the
+error interface, it is still considered to be non-nil.
+This means that IsNil will fail on an error value that happens
+to have an underlying nil value, because that's
+invariably a mistake. See https://golang.org/doc/faq#nil_error.
+
+So it's just fine to check an error like this:
+
+    c.Assert(err, qt.IsNil)
 
 JSONEquals
 

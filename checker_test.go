@@ -1327,12 +1327,12 @@ got:
   []int(nil)
 `,
 }, {
-	about:   "IsNil: error does not guard against nil",
+	about:   "IsNil: nil error-implementing type",
 	checker: qt.IsNil,
 	got:     (*errTest)(nil),
-	expectedNegateFailure: `
+	expectedCheckFailure: `
 error:
-  unexpected success
+  error containing nil value of type *quicktest_test.errTest. See https://golang.org/doc/faq#nil_error
 got:
   e<nil>
 `,
