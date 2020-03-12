@@ -1347,6 +1347,17 @@ got:
   int(42)
 `,
 }, {
+	about:   "IsNil: error is not nil",
+	checker: qt.IsNil,
+	got:     errBadWolf,
+	expectedCheckFailure: `
+error:
+  got non-nil error
+got:
+  bad wolf
+    file:line
+`,
+}, {
 	about:   "IsNil: too many arguments",
 	checker: qt.IsNil,
 	args:    []interface{}{"not nil"},

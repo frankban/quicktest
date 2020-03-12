@@ -272,12 +272,16 @@ func (c *isNilChecker) Check(got interface{}, args []interface{}, note func(key 
 		return nil
 	}
 	value := reflect.ValueOf(got)
+	_, isError := got.(error)
 	if canBeNil(value.Kind()) && value.IsNil() {
-		if _, ok := got.(error); ok {
+		if isError {
 			// It's an error with an underlying nil value.
 			return fmt.Errorf("error containing nil value of type %T. See https://golang.org/doc/faq#nil_error", got)
 		}
 		return nil
+	}
+	if isError {
+		return errors.New("got non-nil error")
 	}
 	return fmt.Errorf("%#v is not nil", got)
 }
