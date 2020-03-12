@@ -1342,9 +1342,20 @@ got:
 	got:     42,
 	expectedCheckFailure: `
 error:
-  42 is not nil
+  got non-nil value
 got:
   int(42)
+`,
+}, {
+	about:   "IsNil: error is not nil",
+	checker: qt.IsNil,
+	got:     errBadWolf,
+	expectedCheckFailure: `
+error:
+  got non-nil error
+got:
+  bad wolf
+    file:line
 `,
 }, {
 	about:   "IsNil: too many arguments",
@@ -1865,7 +1876,7 @@ want args:
 	got:     42,
 	expectedNegateFailure: `
 error:
-  42 is not nil
+  got non-nil value
 got:
   int(42)
 `,

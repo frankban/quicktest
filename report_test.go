@@ -44,7 +44,7 @@ func TestIndirectReportOutput(t *testing.T) {
 	f1(c)
 	want := `
 error:
-  42 is not nil
+  got non-nil value
 got:
   int(42)
 stack:
