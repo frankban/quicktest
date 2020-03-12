@@ -415,7 +415,7 @@ func (c *notChecker) Check(got interface{}, args []interface{}, note func(key st
 //     c.Assert([]int{3,5,7,99}, qt.Contains, 7)
 //
 var Contains Checker = &containsChecker{
-	argNames: []string{"got", "want"},
+	argNames: []string{"container", "want"},
 }
 
 type containsChecker struct {
