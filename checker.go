@@ -252,6 +252,12 @@ func (c *panicMatchesChecker) Check(got interface{}, args []interface{}, note fu
 //
 //     c.Assert(got, qt.IsNil)
 //
+// As a special case, if the value is nil but implements the
+// error interface, it is still considered to be non-nil.
+// This means that IsNil will fail on an error value that happens
+// to have an underlying nil value, because that's
+// invariably a mistake.
+// See https://golang.org/doc/faq#nil_error.
 var IsNil Checker = &isNilChecker{
 	argNames: []string{"got"},
 }
@@ -267,6 +273,10 @@ func (c *isNilChecker) Check(got interface{}, args []interface{}, note func(key 
 	}
 	value := reflect.ValueOf(got)
 	if canBeNil(value.Kind()) && value.IsNil() {
+		if _, ok := got.(error); ok {
+			// It's an error with an underlying nil value.
+			return fmt.Errorf("error containing nil value of type %T. See https://golang.org/doc/faq#nil_error", got)
+		}
 		return nil
 	}
 	return fmt.Errorf("%#v is not nil", got)
