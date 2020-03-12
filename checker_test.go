@@ -1928,7 +1928,7 @@ want args:
 	expectedNegateFailure: `
 error:
   unexpected success
-got:
+container:
   "hello, world"
 want:
   "world"
@@ -1941,7 +1941,7 @@ want:
 	expectedCheckFailure: `
 error:
   no substring match found
-got:
+container:
   "hello, world"
 want:
   "worlds"
@@ -1954,7 +1954,7 @@ want:
 	expectedNegateFailure: `
 error:
   unexpected success
-got:
+container:
   []string{"a", "b", "c"}
 want:
   "a"
@@ -1970,7 +1970,7 @@ want:
 	expectedNegateFailure: `
 error:
   unexpected success
-got:
+container:
   map[string]string{"a":"d"}
 want:
   "d"
