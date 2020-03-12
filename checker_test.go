@@ -1342,7 +1342,7 @@ got:
 	got:     42,
 	expectedCheckFailure: `
 error:
-  42 is not nil
+  got non-nil value
 got:
   int(42)
 `,
@@ -1876,7 +1876,7 @@ want args:
 	got:     42,
 	expectedNegateFailure: `
 error:
-  42 is not nil
+  got non-nil value
 got:
   int(42)
 `,

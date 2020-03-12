@@ -74,7 +74,7 @@ want:
 	args:    []interface{}{qt.Commentf("bad wolf: %d", 42)},
 	expectedFailure: `
 error:
-  42 is not nil
+  got non-nil value
 comment:
   bad wolf: 42
 got:
@@ -87,7 +87,7 @@ got:
 	args:    []interface{}{qt.Commentf("these are the voyages")},
 	expectedFailure: `
 error:
-  "something" is not nil
+  got non-nil value
 comment:
   these are the voyages
 got:
@@ -100,7 +100,7 @@ got:
 	args:    []interface{}{qt.Commentf("")},
 	expectedFailure: `
 error:
-  47 is not nil
+  got non-nil value
 got:
   int(47)
 `,

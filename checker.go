@@ -283,7 +283,7 @@ func (c *isNilChecker) Check(got interface{}, args []interface{}, note func(key 
 	if isError {
 		return errors.New("got non-nil error")
 	}
-	return fmt.Errorf("%#v is not nil", got)
+	return errors.New("got non-nil value")
 }
 
 // HasLen is a Checker checking that the provided value has the given length.
