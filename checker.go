@@ -374,6 +374,52 @@ func (c *satisfiesChecker) Check(got interface{}, args []interface{}, note func(
 	return fmt.Errorf("value does not satisfy predicate function")
 }
 
+// IsTrue is a Checker checking that the provided value is true.
+// The value must have a boolean underlying type.
+//
+// For instance:
+//
+//     c.Assert(true, qt.IsTrue)
+//     c.Assert(myBoolean(false), qt.IsTrue)
+//
+var IsTrue Checker = &boolChecker{
+	want: true,
+}
+
+// IsFalse is a Checker checking that the provided value is false.
+// The value must have a boolean underlying type.
+//
+// For instance:
+//
+//     c.Assert(false, qt.IsFalse)
+//     c.Assert(IsValid(), qt.IsFalse)
+//
+var IsFalse Checker = &boolChecker{
+	want: false,
+}
+
+type boolChecker struct {
+	want bool
+}
+
+// Check implements Checker.Check by checking that got == c.want.
+func (c *boolChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) (err error) {
+	v := reflect.ValueOf(got)
+	if v.IsValid() && v.Kind() == reflect.Bool {
+		if v.Bool() != c.want {
+			return fmt.Errorf("value is not %v", c.want)
+		}
+		return nil
+	}
+	note("value", got)
+	return BadCheckf("value does not have a bool underlying type")
+}
+
+// ArgNames implements Checker.ArgNames.
+func (c *boolChecker) ArgNames() []string {
+	return []string{"got"}
+}
+
 // Not returns a Checker negating the given Checker.
 //
 // For instance:
