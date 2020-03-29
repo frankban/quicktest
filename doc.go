@@ -192,6 +192,16 @@ For instance:
     c.Assert([]int{42, 47}, qt.HasLen, 2)
     c.Assert(myMap, qt.HasLen, 42)
 
+IsFalse
+
+IsFalse checks that the provided value is false.
+The value must have a boolean underlying type.
+
+For instance:
+
+    c.Assert(false, qt.IsFalse)
+    c.Assert(IsValid(), qt.IsFalse)
+
 IsNil
 
 IsNil checks that the provided value is nil.
@@ -209,6 +219,16 @@ invariably a mistake. See https://golang.org/doc/faq#nil_error.
 So it's just fine to check an error like this:
 
     c.Assert(err, qt.IsNil)
+
+IsTrue
+
+IsTrue checks that the provided value is true.
+The value must have a boolean underlying type.
+
+For instance:
+
+    c.Assert(true, qt.IsTrue)
+    c.Assert(myBoolean(false), qt.IsTrue)
 
 JSONEquals
 
