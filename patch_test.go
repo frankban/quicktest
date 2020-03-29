@@ -39,7 +39,7 @@ func TestPatchSetErrorToNil(t *testing.T) {
 	err := oldErr
 	testDefer(c, func(c *qt.C) {
 		c.Patch(&err, nil)
-		c.Assert(err, qt.Equals, nil)
+		c.Assert(err, qt.IsNil)
 	})
 	c.Assert(err, qt.Equals, oldErr)
 }
@@ -82,7 +82,7 @@ func TestSetenvWithUnsetVariable(t *testing.T) {
 		c.Check(os.Getenv(envName), qt.Equals, "new value")
 	})
 	_, ok := os.LookupEnv(envName)
-	c.Assert(ok, qt.Equals, false)
+	c.Assert(ok, qt.IsFalse)
 }
 
 func TestUnsetenv(t *testing.T) {
@@ -92,7 +92,7 @@ func TestUnsetenv(t *testing.T) {
 	testDefer(c, func(c *qt.C) {
 		c.Unsetenv(envName)
 		_, ok := os.LookupEnv(envName)
-		c.Assert(ok, qt.Equals, false)
+		c.Assert(ok, qt.IsFalse)
 	})
 	c.Check(os.Getenv(envName), qt.Equals, "initial")
 }
@@ -104,10 +104,10 @@ func TestUnsetenvWithUnsetVariable(t *testing.T) {
 	testDefer(c, func(c *qt.C) {
 		c.Unsetenv(envName)
 		_, ok := os.LookupEnv(envName)
-		c.Assert(ok, qt.Equals, false)
+		c.Assert(ok, qt.IsFalse)
 	})
 	_, ok := os.LookupEnv(envName)
-	c.Assert(ok, qt.Equals, false)
+	c.Assert(ok, qt.IsFalse)
 }
 
 func TestMkdir(t *testing.T) {
@@ -117,10 +117,10 @@ func TestMkdir(t *testing.T) {
 		dir = c.Mkdir()
 		c.Assert(dir, qt.Not(qt.Equals), "")
 		info, err := os.Stat(dir)
-		c.Assert(err, qt.Equals, nil)
-		c.Assert(info.IsDir(), qt.Equals, true)
+		c.Assert(err, qt.IsNil)
+		c.Assert(info.IsDir(), qt.IsTrue)
 		f, err := os.Create(filepath.Join(dir, "hello"))
-		c.Assert(err, qt.Equals, nil)
+		c.Assert(err, qt.IsNil)
 		f.Close()
 	})
 	_, err := os.Stat(dir)
