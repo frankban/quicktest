@@ -54,6 +54,8 @@ type OuterJSON struct {
 	Second []*InnerJSON `json:"Last,omitempty" yaml:"last,omitempty"`
 }
 
+type boolean bool
+
 var checkerTests = []struct {
 	about                 string
 	checker               qt.Checker
@@ -196,6 +198,19 @@ got:
   (*struct {})(nil)
 want:
   nil
+`,
+}, {
+	about:   "Equals: different booleans",
+	checker: qt.Equals,
+	got:     true,
+	args:    []interface{}{false},
+	expectedCheckFailure: `
+error:
+  values are not equal
+got:
+  bool(true)
+want:
+  bool(false)
 `,
 }, {
 	about:   "Equals: uncomparable types",
@@ -1869,6 +1884,150 @@ got args:
   }
 want args:
   predicate function
+`,
+}, {
+	about:   "IsTrue: success",
+	checker: qt.IsTrue,
+	got:     true,
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  bool(true)
+`,
+}, {
+	about:   "IsTrue: failure",
+	checker: qt.IsTrue,
+	got:     false,
+	expectedCheckFailure: `
+error:
+  value is not true
+got:
+  bool(false)
+`,
+}, {
+	about:   "IsTrue: success with subtype",
+	checker: qt.IsTrue,
+	got:     boolean(true),
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  quicktest_test.boolean(true)
+`,
+}, {
+	about:   "IsTrue: failure with subtype",
+	checker: qt.IsTrue,
+	got:     boolean(false),
+	expectedCheckFailure: `
+error:
+  value is not true
+got:
+  quicktest_test.boolean(false)
+`,
+}, {
+	about:   "IsTrue: nil value",
+	checker: qt.IsTrue,
+	got:     nil,
+	expectedCheckFailure: `
+error:
+  bad check: value does not have a bool underlying type
+value:
+  nil
+`,
+	expectedNegateFailure: `
+error:
+  bad check: value does not have a bool underlying type
+value:
+  nil
+`,
+}, {
+	about:   "IsTrue: non-bool value",
+	checker: qt.IsTrue,
+	got:     42,
+	expectedCheckFailure: `
+error:
+  bad check: value does not have a bool underlying type
+value:
+  int(42)
+`,
+	expectedNegateFailure: `
+error:
+  bad check: value does not have a bool underlying type
+value:
+  int(42)
+`,
+}, {
+	about:   "IsFalse: success",
+	checker: qt.IsFalse,
+	got:     false,
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  bool(false)
+`,
+}, {
+	about:   "IsFalse: failure",
+	checker: qt.IsFalse,
+	got:     true,
+	expectedCheckFailure: `
+error:
+  value is not false
+got:
+  bool(true)
+`,
+}, {
+	about:   "IsFalse: success with subtype",
+	checker: qt.IsFalse,
+	got:     boolean(false),
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  quicktest_test.boolean(false)
+`,
+}, {
+	about:   "IsFalse: failure with subtype",
+	checker: qt.IsFalse,
+	got:     boolean(true),
+	expectedCheckFailure: `
+error:
+  value is not false
+got:
+  quicktest_test.boolean(true)
+`,
+}, {
+	about:   "IsFalse: nil value",
+	checker: qt.IsFalse,
+	got:     nil,
+	expectedCheckFailure: `
+error:
+  bad check: value does not have a bool underlying type
+value:
+  nil
+`,
+	expectedNegateFailure: `
+error:
+  bad check: value does not have a bool underlying type
+value:
+  nil
+`,
+}, {
+	about:   "IsFalse: non-bool value",
+	checker: qt.IsFalse,
+	got:     "bad wolf",
+	expectedCheckFailure: `
+error:
+  bad check: value does not have a bool underlying type
+value:
+  "bad wolf"
+`,
+	expectedNegateFailure: `
+error:
+  bad check: value does not have a bool underlying type
+value:
+  "bad wolf"
 `,
 }, {
 	about:   "Not: success",
