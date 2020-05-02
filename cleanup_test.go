@@ -36,22 +36,42 @@ func TestCDeferWithoutDone(t *testing.T) {
 
 func TestCDeferVsCleanupOrder(t *testing.T) {
 	c := qt.New(t)
+	var defers []string
+	testDefer(c, func(c *qt.C) {
+		c.Defer(func() {
+			defers = append(defers, "defer-0")
+		})
+		c.Cleanup(func() {
+			defers = append(defers, "cleanup-0")
+		})
+		c.Defer(func() {
+			defers = append(defers, "defer-1")
+		})
+		c.Cleanup(func() {
+			defers = append(defers, "cleanup-1")
+		})
+	})
+	c.Assert(defers, qt.DeepEquals, []string{"defer-1", "defer-0", "cleanup-1", "cleanup-0"})
+}
+
+func TestCDeferInSubC(t *testing.T) {
+	c := qt.New(t)
 	var defers []int
 	testDefer(c, func(c *qt.C) {
 		c.Defer(func() {
 			defers = append(defers, 0)
 		})
-		c.Cleanup(func() {
+		c2 := qt.New(c)
+		c2.Defer(func() {
 			defers = append(defers, 1)
 		})
+		c2.Done()
+		c.Check(defers, qt.DeepEquals, []int{1})
 		c.Defer(func() {
 			defers = append(defers, 2)
 		})
-		c.Cleanup(func() {
-			defers = append(defers, 3)
-		})
 	})
-	c.Assert(defers, qt.DeepEquals, []int{3, 2, 1, 0})
+	c.Assert(defers, qt.DeepEquals, []int{1, 2, 0})
 }
 
 type testingTWithCleanup struct {

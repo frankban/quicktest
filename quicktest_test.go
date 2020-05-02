@@ -536,6 +536,20 @@ func TestCDeferCalledEvenAfterGoexit(t *testing.T) {
 	c.Assert(defers, qt.Equals, 1)
 }
 
+func TestCDeferCleansUpOnDone(t *testing.T) {
+	c := qt.New(t)
+	var defers []int
+	c.Defer(func() { defers = append(defers, 1) })
+	c.Defer(func() { defers = append(defers, 2) })
+	c.Done()
+	c.Assert(defers, qt.DeepEquals, []int{2, 1})
+	defers = nil
+	c.Defer(func() { defers = append(defers, 3) })
+	c.Defer(func() { defers = append(defers, 4) })
+	c.Done()
+	c.Assert(defers, qt.DeepEquals, []int{4, 3})
+}
+
 func TestCRunDefer(t *testing.T) {
 	c := qt.New(t)
 	defers := 0

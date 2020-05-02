@@ -77,16 +77,9 @@ type cleaner interface {
 func (c *C) Defer(f func()) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if cleaner, ok := c.TB.(cleaner); ok {
-		// Use TB.Cleanup when available, but add a check
-		// that Done has been called so that we don't run
-		// into unexpected Go version incompatibilities.
-		if c.doneNeeded {
-			// We've already installed the wrapper func that checks for Done
-			// so we can avoid doing it again.
-			cleaner.Cleanup(f)
-			return
-		}
+	if cleaner, ok := c.TB.(cleaner); ok && !c.doneNeeded {
+		// Since TB.Cleanup is available, use it for checking that Done has
+		// been called so that we don't run into unexpected resource leaks.
 		c.doneNeeded = true
 		cleaner.Cleanup(func() {
 			c.mu.Lock()
@@ -95,9 +88,7 @@ func (c *C) Defer(f func()) {
 			if doneNeeded {
 				panic("Done not called after Defer")
 			}
-			f()
 		})
-		return
 	}
 
 	oldDeferred := c.deferred
