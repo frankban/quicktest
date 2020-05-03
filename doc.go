@@ -53,6 +53,15 @@ automatically at the end of that subtest. For example:
         })
     }
 
+The c.Patch, c.Setenv, c.Unsetenv and c.Mkdir helpers use Defer internally
+for registering cleanup functions. Therefore c.Done must be eventually called
+by the test.
+Users only targeting Go >= 1.14 willing to leverage testing.TB.Cleanup when
+calling c.Patch, c.Setenv, c.Unsetenv and c.Mkdir, in order to avoid having to
+call c.Done, might use c.SetCleanup as follows:
+
+    c.SetCleanup((*qt.C).Cleanup)
+
 Assertions
 
 An assertion looks like this, where qt.Equals could be replaced by any
