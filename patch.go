@@ -9,14 +9,16 @@ import (
 )
 
 // Patch sets a variable to a temporary value for the duration of the
-// test (until c.Done is called).
+// test (by default, until c.Done is called).
 //
 // It sets the value pointed to by the given destination to the given
 // value, which must be assignable to the element type of the
 // destination.
 //
-// When c.Done is called, the destination is set to its original
-// value.
+// The destination is set to its original value when cleaning up.
+// By default, cleaning up is set up internally with c.Defer, and
+// therefore performed when c.Done is called by the test. This
+// behavior can be customized with c.SetCleanup.
 func (c *C) Patch(dest, value interface{}) {
 	destv := reflect.ValueOf(dest).Elem()
 	oldv := reflect.New(destv.Type()).Elem()
@@ -28,16 +30,20 @@ func (c *C) Patch(dest, value interface{}) {
 		valuev = reflect.Zero(destv.Type())
 	}
 	destv.Set(valuev)
-	c.Defer(func() {
+	cleanup := c.getCleanup()
+	cleanup(c, func() {
 		destv.Set(oldv)
 	})
 }
 
 // Setenv sets an environment variable to a temporary value for the
-// duration of the test (until c.Done is called).
+// duration of the test (by default, until c.Done is called).
 //
-// When c.Done is called, the environment variable will be returned
-// to its original value.
+// The environment variable will be returned to its original value when
+// cleaning up.
+// By default, cleaning up is set up internally with c.Defer, and
+// therefore performed when c.Done is called by the test. This
+// behavior can be customized with c.SetCleanup.
 func (c *C) Setenv(name, val string) {
 	c.setenv(name, val, true)
 }
@@ -56,7 +62,8 @@ func (c *C) setenv(name, val string, valOK bool) {
 	} else {
 		os.Unsetenv(name)
 	}
-	c.Defer(func() {
+	cleanup := c.getCleanup()
+	cleanup(c, func() {
 		if oldOK {
 			os.Setenv(name, oldVal)
 		} else {
@@ -67,12 +74,15 @@ func (c *C) setenv(name, val string, valOK bool) {
 
 // Mkdir makes a temporary directory and returns its name.
 //
-// The directory and its contents will be removed when
-// c.Done is called.
+// The directory and its contents will be removed when cleaning up.
+// By default, cleaning up is set up internally with c.Defer, and
+// therefore performed when c.Done is called by the test. This
+// behavior can be customized with c.SetCleanup.
 func (c *C) Mkdir() string {
 	name, err := ioutil.TempDir("", "quicktest-")
 	c.Assert(err, Equals, nil)
-	c.Defer(func() {
+	cleanup := c.getCleanup()
+	cleanup(c, func() {
 		err := os.RemoveAll(name)
 		c.Check(err, Equals, nil)
 	})

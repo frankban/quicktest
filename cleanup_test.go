@@ -74,6 +74,18 @@ func TestCDeferInSubC(t *testing.T) {
 	c.Assert(defers, qt.DeepEquals, []int{1, 2, 0})
 }
 
+func TestPatchWithCleanup(t *testing.T) {
+	c := qt.New(t)
+
+	var value bool
+	c.Cleanup(func() {
+		c.Assert(value, qt.IsFalse)
+	})
+	c.SetCleanup((*qt.C).Cleanup)
+	c.Patch(&value, true)
+	c.Assert(value, qt.IsTrue)
+}
+
 type testingTWithCleanup struct {
 	testing.TB
 	cleanup func()

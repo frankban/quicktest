@@ -62,6 +62,7 @@ type C struct {
 	doneNeeded bool
 	deferred   func()
 	format     formatFunc
+	cleanup    cleanupFunc
 }
 
 // cleaner is implemented by testing.TB on Go 1.14 and later.
@@ -118,6 +119,33 @@ func (c *C) Done() {
 	}
 }
 
+// SetCleanup sets the function used by c.Mkdir, c.Patch, c.Setenv and
+// c.Unsetenv to register cleanup functions.
+// The cleanup function takes a *C representing the current test or subtest
+// and the function to be executed when cleaning up.
+// By default (*C).Defer is used.
+//
+// Any subsequent subtests invoked with c.Run will also use this function by
+// default.
+//
+// User only targeting Go >= 1.14 might use c.SetCleanup((*qt.C).Cleanup)
+// to avoid calling Done at the end of the test.
+func (c *C) SetCleanup(cleanup func(*C, func())) {
+	c.mu.Lock()
+	c.cleanup = cleanup
+	c.mu.Unlock()
+}
+
+// getCleanup returns the cleanup function safely acquired under lock.
+func (c *C) getCleanup() cleanupFunc {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.cleanup != nil {
+		return c.cleanup
+	}
+	return (*C).Defer
+}
+
 // SetFormat sets the function used to print values in test failures.
 // By default Format is used.
 // Any subsequent subtests invoked with c.Run will also use this function by
@@ -128,9 +156,8 @@ func (c *C) SetFormat(format func(interface{}) string) {
 	c.mu.Unlock()
 }
 
-// getFormat returns the format function
-// safely acquired under lock.
-func (c *C) getFormat() func(interface{}) string {
+// getFormat returns the format function safely acquired under lock.
+func (c *C) getFormat() formatFunc {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.format
@@ -219,6 +246,7 @@ func (c *C) Run(name string, f func(c *C)) bool {
 	fv := reflect.MakeFunc(farg, func(args []reflect.Value) []reflect.Value {
 		c2 := New(args[0].Interface().(testing.TB))
 		defer c2.Done()
+		c2.SetCleanup(c.getCleanup())
 		c2.SetFormat(c.getFormat())
 		f(c2)
 		return nil
@@ -299,3 +327,5 @@ func (c *C) check(fail func(...interface{}), checker Checker, got interface{}, a
 	}
 	return true
 }
+
+type cleanupFunc func(*C, func())

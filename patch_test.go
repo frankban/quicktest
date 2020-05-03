@@ -126,3 +126,47 @@ func TestMkdir(t *testing.T) {
 	_, err := os.Stat(dir)
 	c.Assert(err, qt.Not(qt.IsNil))
 }
+
+var setCleanupTests = []struct {
+	about string
+	run   func(*qt.C)
+}{{
+	about: "Patch",
+	run: func(c *qt.C) {
+		var value bool
+		c.Patch(&value, false)
+	},
+}, {
+	about: "Setenv",
+	run: func(c *qt.C) {
+		c.Setenv("SOME_VAR", "42")
+	},
+}, {
+	about: "Unsetenv",
+	run: func(c *qt.C) {
+		c.Unsetenv("SOME_VAR")
+	},
+}, {
+	about: "Mkdir",
+	run: func(c *qt.C) {
+		c.Mkdir()
+	},
+}}
+
+func TestSetCleanup(t *testing.T) {
+	c := qt.New(t)
+
+	var called bool
+	c.SetCleanup(func(c *qt.C, f func()) {
+		c.Defer(f)
+		called = true
+	})
+
+	for _, test := range setCleanupTests {
+		c.Run(test.about, func(c *qt.C) {
+			called = false
+			c.Run("", test.run)
+			c.Assert(called, qt.IsTrue)
+		})
+	}
+}
