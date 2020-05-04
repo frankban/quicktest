@@ -14,7 +14,7 @@ import (
 func TestPatchSetInt(t *testing.T) {
 	c := qt.New(t)
 	i := 99
-	testDefer(c, func(c *qt.C) {
+	testCleanup(t, func(c *qt.C) {
 		c.Patch(&i, 88)
 		c.Assert(i, qt.Equals, 88)
 	})
@@ -26,7 +26,7 @@ func TestPatchSetError(t *testing.T) {
 	oldErr := errors.New("foo")
 	newErr := errors.New("bar")
 	err := oldErr
-	testDefer(c, func(c *qt.C) {
+	testCleanup(t, func(c *qt.C) {
 		c.Patch(&err, newErr)
 		c.Assert(err, qt.Equals, newErr)
 	})
@@ -37,7 +37,7 @@ func TestPatchSetErrorToNil(t *testing.T) {
 	c := qt.New(t)
 	oldErr := errors.New("foo")
 	err := oldErr
-	testDefer(c, func(c *qt.C) {
+	testCleanup(t, func(c *qt.C) {
 		c.Patch(&err, nil)
 		c.Assert(err, qt.IsNil)
 	})
@@ -48,7 +48,7 @@ func TestPatchSetMapToNil(t *testing.T) {
 	c := qt.New(t)
 	oldMap := map[string]int{"foo": 1234}
 	m := oldMap
-	testDefer(c, func(c *qt.C) {
+	testCleanup(t, func(c *qt.C) {
 		c.Patch(&m, nil)
 		c.Assert(m, qt.IsNil)
 	})
@@ -66,7 +66,7 @@ func TestSetenv(t *testing.T) {
 	c := qt.New(t)
 	const envName = "SOME_VAR"
 	os.Setenv(envName, "initial")
-	testDefer(c, func(c *qt.C) {
+	testCleanup(t, func(c *qt.C) {
 		c.Setenv(envName, "new value")
 		c.Check(os.Getenv(envName), qt.Equals, "new value")
 	})
@@ -77,7 +77,7 @@ func TestSetenvWithUnsetVariable(t *testing.T) {
 	c := qt.New(t)
 	const envName = "SOME_VAR"
 	os.Unsetenv(envName)
-	testDefer(c, func(c *qt.C) {
+	testCleanup(t, func(c *qt.C) {
 		c.Setenv(envName, "new value")
 		c.Check(os.Getenv(envName), qt.Equals, "new value")
 	})
@@ -89,7 +89,7 @@ func TestUnsetenv(t *testing.T) {
 	c := qt.New(t)
 	const envName = "SOME_VAR"
 	os.Setenv(envName, "initial")
-	testDefer(c, func(c *qt.C) {
+	testCleanup(t, func(c *qt.C) {
 		c.Unsetenv(envName)
 		_, ok := os.LookupEnv(envName)
 		c.Assert(ok, qt.IsFalse)
@@ -101,7 +101,7 @@ func TestUnsetenvWithUnsetVariable(t *testing.T) {
 	c := qt.New(t)
 	const envName = "SOME_VAR"
 	os.Unsetenv(envName)
-	testDefer(c, func(c *qt.C) {
+	testCleanup(t, func(c *qt.C) {
 		c.Unsetenv(envName)
 		_, ok := os.LookupEnv(envName)
 		c.Assert(ok, qt.IsFalse)
@@ -113,7 +113,7 @@ func TestUnsetenvWithUnsetVariable(t *testing.T) {
 func TestMkdir(t *testing.T) {
 	c := qt.New(t)
 	var dir string
-	testDefer(c, func(c *qt.C) {
+	testCleanup(t, func(c *qt.C) {
 		dir = c.Mkdir()
 		c.Assert(dir, qt.Not(qt.Equals), "")
 		info, err := os.Stat(dir)
@@ -125,4 +125,19 @@ func TestMkdir(t *testing.T) {
 	})
 	_, err := os.Stat(dir)
 	c.Assert(err, qt.Not(qt.IsNil))
+}
+
+func testCleanup(t *testing.T, f func(c *qt.C)) {
+	t.Run("subtest", func(t *testing.T) {
+		c := qt.New(t)
+		if _, ok := c.TB.(cleaner); !ok {
+			// Calling Done is required when testing on Go < 1.14.
+			defer c.Done()
+		}
+		f(c)
+	})
+}
+
+type cleaner interface {
+	Cleanup(func())
 }

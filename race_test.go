@@ -21,7 +21,7 @@ func TestConcurrentMethods(t *testing.T) {
 
 	var x, y int32
 	c := qt.New(dummyT{t})
-	testDefer(c, func(c *qt.C) {
+	c.Run("subtest", func(c *qt.C) {
 		var wg sync.WaitGroup
 		// start calls f in two goroutines, each
 		// running it N times.

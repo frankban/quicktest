@@ -22,37 +22,6 @@ instance:
         })
     }
 
-Deferred execution
-
-Quicktest provides the ability to defer the execution of functions that will be
-run when the test completes. This is often useful for creating OS-level
-resources such as temporary directories (see c.Mkdir). The functions will be
-run in last-in, first-out order.
-
-    func (c *C) Defer(f func())
-
-To trigger the deferred behavior, call c.Done:
-
-    func (c *C) Done()
-
-If you create a *C instance at the top level, you’ll have to add a defer to
-trigger the cleanups at the end of the test:
-
-    defer c.Done()
-
-However, if you use quicktest to create a subtest, Done will be called
-automatically at the end of that subtest. For example:
-
-    func TestFoo(t *testing.T) {
-        c := qt.New(t)
-        c.Run("subtest", func(c *qt.C) {
-            c.Setenv("HOME", c.Mkdir())
-            // Here $HOME is set the path to a newly created directory.
-            // At the end of the test the directory will be removed
-            // and HOME set back to its original value.
-        })
-    }
-
 Assertions
 
 An assertion looks like this, where qt.Equals could be replaced by any
@@ -283,5 +252,34 @@ For instance:
 
     // Check that a floating point number is a not-a-number.
     c.Assert(f, qt.Satisfies, math.IsNaN)
+
+Deferred execution
+
+The testing.TB.Cleanup helper provides the ability to defer the execution of
+functions that will be run when the test completes. This is often useful for
+creating OS-level resources such as temporary directories (see c.Mkdir).
+
+When targeting Go versions that don't have Cleanup (< 1.14), the same can be
+achieved using c.Defer. In this case, to trigger the deferred behavior, calling
+c.Done is required. For instance, if you create a *C instance at the top level,
+you’ll have to add a defer to trigger the cleanups at the end of the test:
+
+    defer c.Done()
+
+However, if you use quicktest to create a subtest, Done will be called
+automatically at the end of that subtest. For example:
+
+    func TestFoo(t *testing.T) {
+        c := qt.New(t)
+        c.Run("subtest", func(c *qt.C) {
+            c.Setenv("HOME", c.Mkdir())
+            // Here $HOME is set the path to a newly created directory.
+            // At the end of the test the directory will be removed
+            // and HOME set back to its original value.
+        })
+    }
+
+The c.Patch, c.Setenv, c.Unsetenv and c.Mkdir helpers use t.Cleanup for
+cleaning up resources when available, and fall back to Defer otherwise.
 */
 package quicktest

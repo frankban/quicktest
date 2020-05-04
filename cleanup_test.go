@@ -37,7 +37,7 @@ func TestCDeferWithoutDone(t *testing.T) {
 func TestCDeferVsCleanupOrder(t *testing.T) {
 	c := qt.New(t)
 	var defers []int
-	testDefer(c, func(c *qt.C) {
+	c.Run("subtest", func(c *qt.C) {
 		c.Defer(func() {
 			defers = append(defers, 0)
 		})
