@@ -510,7 +510,7 @@ func TestCParallelPanic(t *testing.T) {
 func TestCDefer(t *testing.T) {
 	c := qt.New(t)
 	var defers []int
-	testDefer(c, func(c *qt.C) {
+	c.Run("subtest", func(c *qt.C) {
 		c.Defer(func() { defers = append(defers, 1) })
 		c.Defer(func() { defers = append(defers, 2) })
 		// Calling Done twice should not do anything more.
@@ -525,7 +525,7 @@ func TestCDeferCalledEvenAfterGoexit(t *testing.T) {
 	// called in that case.
 	c := qt.New(t)
 	defers := 0
-	testDefer(c, func(c *qt.C) {
+	c.Run("subtest", func(c *qt.C) {
 		c.Defer(func() {
 			defers++
 		})
@@ -539,7 +539,7 @@ func TestCDeferCalledEvenAfterGoexit(t *testing.T) {
 func TestCRunDefer(t *testing.T) {
 	c := qt.New(t)
 	defers := 0
-	testDefer(c, func(c *qt.C) {
+	c.Run("subtest", func(c *qt.C) {
 		c.Run("x", func(c *qt.C) {
 			c.Defer(func() { defers++ })
 		})
@@ -717,11 +717,4 @@ func (c *testingChecker) Check(got interface{}, args []interface{}, note func(ke
 // Info implements quicktest.Checker by returning the stored args.
 func (c *testingChecker) ArgNames() []string {
 	return c.argNames
-}
-
-func testDefer(c *qt.C, f func(c *qt.C)) {
-	c.Run("defer", func(c *qt.C) {
-		defer c.Done()
-		f(c)
-	})
 }

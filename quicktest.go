@@ -74,6 +74,8 @@ type cleaner interface {
 // order. If c.Done is not called by the end of the test, the test
 // may panic. Note that if Cleanup is called, there is no
 // need to call Done.
+//
+// Deprecated: in Go >= 1.14 use testing.TB.Cleanup instead.
 func (c *C) Defer(f func()) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -115,6 +117,9 @@ func (c *C) Defer(f func()) {
 //
 // When a test function is called by Run, Done will be called
 // automatically on the C value passed into it.
+//
+// Deprecated: in Go >= 1.14 this is no longer needed if using
+// testing.TB.Cleanup.
 func (c *C) Done() {
 	c.mu.Lock()
 	deferred := c.deferred
