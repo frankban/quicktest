@@ -72,8 +72,12 @@ func (c *C) Mkdir() string {
 	name, err := ioutil.TempDir("", "quicktest-")
 	c.Assert(err, Equals, nil)
 	c.cleanup(func() {
-		err := os.RemoveAll(name)
-		c.Check(err, Equals, nil)
+		if err := os.RemoveAll(name); err != nil {
+			// Don't call c.Check because the stack traverse logic won't
+			// print the source location, so just log instead.
+			c.Logf("quicktest cannot remove temporary testing directory: %v", err)
+			c.Fail()
+		}
 	})
 	return name
 }
