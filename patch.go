@@ -65,18 +65,24 @@ func (c *C) setenv(name, val string, valOK bool) {
 
 // Mkdir makes a temporary directory and returns its name.
 //
-//
 // At the end of the test (see "Deferred execution" in the package docs), the
 // directory and its contents are removed.
+//
+// Deprecated: in Go >= 1.15 use testing.TB.TempDir instead.
 func (c *C) Mkdir() string {
+	td, ok := c.TB.(interface {
+		TempDir() string
+	})
+	if ok {
+		return td.TempDir()
+	}
 	name, err := ioutil.TempDir("", "quicktest-")
 	c.Assert(err, Equals, nil)
 	c.cleanup(func() {
 		if err := os.RemoveAll(name); err != nil {
 			// Don't call c.Check because the stack traverse logic won't
 			// print the source location, so just log instead.
-			c.Logf("quicktest cannot remove temporary testing directory: %v", err)
-			c.Fail()
+			c.Errorf("quicktest cannot remove temporary testing directory: %v", err)
 		}
 	})
 	return name
