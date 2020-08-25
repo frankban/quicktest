@@ -92,29 +92,22 @@ func TestCmpReportOutput(t *testing.T) {
 	tt := &testingT{}
 	c := qt.New(tt)
 	gotExamples := []*reportExample{{
-		AnInt:  42,
-		ASlice: []string{},
+		AnInt: 42,
 	}, {
-		AnInt:  47,
-		ASlice: []string{"these", "are", "the", "voyages"},
+		AnInt: 47,
 	}, {
 		AnInt: 1,
 	}, {
 		AnInt: 2,
-	}, {
-		ASlice: []string{"foo", "bar"},
 	}}
 	wantExamples := []*reportExample{{
 		AnInt: 42,
 	}, {
-		AnInt:  47,
-		ASlice: []string{"these", "are", "the", "voyages"},
+		AnInt: 47,
 	}, {
 		AnInt: 2,
 	}, {
 		AnInt: 1,
-	}, {
-		ASlice: []string{"foo"},
 	}, {}}
 	checker := qt.WithVerbosity(qt.DeepEquals, false)
 	c.Assert(gotExamples, checker, wantExamples)
@@ -123,26 +116,15 @@ error:
   values are not deep equal
 diff (-got +want):
     []*quicktest_test.reportExample{
-            &{
-                    AnInt:  42,
-  -                 ASlice: []string{},
-  +                 ASlice: nil,
-            },
-            &{AnInt: 47, ASlice: []string{"these", "are", "the", "voyages"}},
+            &{AnInt: 42},
+            &{AnInt: 47},
   +         &{AnInt: 2},
             &{AnInt: 1},
   -         &{AnInt: 2},
-            &{
-                    AnInt: 0,
-                    ASlice: []string{
-                            "foo",
-  -                         "bar",
-                    },
-            },
   +         &{},
     }
 stack:
-  $file:120
+  $file:113
     c.Assert(gotExamples, checker, wantExamples)
 `
 	assertReport(t, tt, want)
@@ -168,6 +150,5 @@ func assertReport(t *testing.T, tt *testingT, want string) {
 }
 
 type reportExample struct {
-	AnInt  int
-	ASlice []string
+	AnInt int
 }
