@@ -11,7 +11,7 @@ import (
 	qt "github.com/frankban/quicktest"
 )
 
-func TestPatchSetInt(t *testing.T) {
+func TestCPatchSetInt(t *testing.T) {
 	c := qt.New(t)
 	i := 99
 	testCleanup(t, func(c *qt.C) {
@@ -21,7 +21,7 @@ func TestPatchSetInt(t *testing.T) {
 	c.Assert(i, qt.Equals, 99)
 }
 
-func TestPatchSetError(t *testing.T) {
+func TestCPatchSetError(t *testing.T) {
 	c := qt.New(t)
 	oldErr := errors.New("foo")
 	newErr := errors.New("bar")
@@ -33,7 +33,7 @@ func TestPatchSetError(t *testing.T) {
 	c.Assert(err, qt.Equals, oldErr)
 }
 
-func TestPatchSetErrorToNil(t *testing.T) {
+func TestCPatchSetErrorToNil(t *testing.T) {
 	c := qt.New(t)
 	oldErr := errors.New("foo")
 	err := oldErr
@@ -44,7 +44,7 @@ func TestPatchSetErrorToNil(t *testing.T) {
 	c.Assert(err, qt.Equals, oldErr)
 }
 
-func TestPatchSetMapToNil(t *testing.T) {
+func TestCPatchSetMapToNil(t *testing.T) {
 	c := qt.New(t)
 	oldMap := map[string]int{"foo": 1234}
 	m := oldMap
@@ -55,14 +55,16 @@ func TestPatchSetMapToNil(t *testing.T) {
 	c.Assert(m, qt.DeepEquals, oldMap)
 }
 
-func TestSetPatchPanicsWhenNotAssignable(t *testing.T) {
+func TestCPatchPanicsWhenNotAssignable(t *testing.T) {
 	c := qt.New(t)
 	i := 99
 	type otherInt int
-	c.Assert(func() { c.Patch(&i, otherInt(88)) }, qt.PanicMatches, `reflect\.Set: value of type quicktest_test\.otherInt is not assignable to type int`)
+	c.Assert(func() {
+		c.Patch(&i, otherInt(88))
+	}, qt.PanicMatches, `reflect\.Set: value of type quicktest_test\.otherInt is not assignable to type int`)
 }
 
-func TestSetenv(t *testing.T) {
+func TestCSetenv(t *testing.T) {
 	c := qt.New(t)
 	const envName = "SOME_VAR"
 	os.Setenv(envName, "initial")
@@ -73,7 +75,7 @@ func TestSetenv(t *testing.T) {
 	c.Check(os.Getenv(envName), qt.Equals, "initial")
 }
 
-func TestSetenvWithUnsetVariable(t *testing.T) {
+func TestCSetenvWithUnsetVariable(t *testing.T) {
 	c := qt.New(t)
 	const envName = "SOME_VAR"
 	os.Unsetenv(envName)
@@ -85,7 +87,7 @@ func TestSetenvWithUnsetVariable(t *testing.T) {
 	c.Assert(ok, qt.IsFalse)
 }
 
-func TestUnsetenv(t *testing.T) {
+func TestCUnsetenv(t *testing.T) {
 	c := qt.New(t)
 	const envName = "SOME_VAR"
 	os.Setenv(envName, "initial")
@@ -97,7 +99,7 @@ func TestUnsetenv(t *testing.T) {
 	c.Check(os.Getenv(envName), qt.Equals, "initial")
 }
 
-func TestUnsetenvWithUnsetVariable(t *testing.T) {
+func TestCUnsetenvWithUnsetVariable(t *testing.T) {
 	c := qt.New(t)
 	const envName = "SOME_VAR"
 	os.Unsetenv(envName)
@@ -110,7 +112,7 @@ func TestUnsetenvWithUnsetVariable(t *testing.T) {
 	c.Assert(ok, qt.IsFalse)
 }
 
-func TestMkdir(t *testing.T) {
+func TestCMkdir(t *testing.T) {
 	c := qt.New(t)
 	var dir string
 	testCleanup(t, func(c *qt.C) {
