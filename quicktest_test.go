@@ -329,19 +329,29 @@ note2:
 
 func TestCAssertCheck(t *testing.T) {
 	for _, test := range cTests {
-		t.Run("Check: "+test.about, func(t *testing.T) {
-			tt := &testingT{}
-			c := qt.New(tt)
+		t.Run("Assert: "+test.about, func(t *testing.T) {
 			if test.format != nil {
-				c.SetFormat(test.format)
+				t.Skip("changing format not supported when using qt.Assert directly")
 			}
-			ok := c.Check(test.got, test.checker, test.args...)
+			tt := &testingT{}
+			ok := qt.Assert(tt, test.got, test.checker, test.args...)
+			checkResult(t, ok, tt.fatalString(), test.expectedFailure)
+			if tt.errorString() != "" {
+				t.Fatalf("no error messages expected, but got %q", tt.errorString())
+			}
+		})
+		t.Run("Check: "+test.about, func(t *testing.T) {
+			if test.format != nil {
+				t.Skip("changing format not supported when using qt.Check directly")
+			}
+			tt := &testingT{}
+			ok := qt.Check(tt, test.got, test.checker, test.args...)
 			checkResult(t, ok, tt.errorString(), test.expectedFailure)
 			if tt.fatalString() != "" {
 				t.Fatalf("no fatal messages expected, but got %q", tt.fatalString())
 			}
 		})
-		t.Run("Assert: "+test.about, func(t *testing.T) {
+		t.Run("c.Assert: "+test.about, func(t *testing.T) {
 			tt := &testingT{}
 			c := qt.New(tt)
 			if test.format != nil {
@@ -351,6 +361,18 @@ func TestCAssertCheck(t *testing.T) {
 			checkResult(t, ok, tt.fatalString(), test.expectedFailure)
 			if tt.errorString() != "" {
 				t.Fatalf("no error messages expected, but got %q", tt.errorString())
+			}
+		})
+		t.Run("c.Check: "+test.about, func(t *testing.T) {
+			tt := &testingT{}
+			c := qt.New(tt)
+			if test.format != nil {
+				c.SetFormat(test.format)
+			}
+			ok := c.Check(test.got, test.checker, test.args...)
+			checkResult(t, ok, tt.errorString(), test.expectedFailure)
+			if tt.fatalString() != "" {
+				t.Fatalf("no fatal messages expected, but got %q", tt.fatalString())
 			}
 		})
 	}

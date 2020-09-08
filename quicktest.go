@@ -10,6 +10,30 @@ import (
 	"testing"
 )
 
+// Check runs the given check using the provided t and continues execution in
+// case of failure. For instance:
+//
+//     qt.Check(t, answer, qt.Equals, 42)
+//     qt.Check(t, got, qt.IsNil, qt.Commentf("iteration %d", i))
+//
+// Additional args (not consumed by the checker), when provided, are included as
+// comments in the failure output when the check fails.
+func Check(t testing.TB, got interface{}, checker Checker, args ...interface{}) bool {
+	return New(t).Check(got, checker, args...)
+}
+
+// Assert runs the given check using the provided t and stops execution in case
+// of failure. For instance:
+//
+//     qt.Assert(t, got, qt.DeepEquals, []int{42, 47})
+//     qt.Assert(t, got, qt.ErrorMatches, "bad wolf .*", qt.Commentf("a comment"))
+//
+// Additional args (not consumed by the checker), when provided, are included as
+// comments in the failure output when the check fails.
+func Assert(t testing.TB, got interface{}, checker Checker, args ...interface{}) bool {
+	return New(t).Assert(got, checker, args...)
+}
+
 // New returns a new checker instance that uses t to fail the test when checks
 // fail. It only ever calls the Fatal, Error and (when available) Run methods
 // of t. For instance.
@@ -159,7 +183,13 @@ func (c *C) getFormat() func(interface{}) string {
 // Additional args (not consumed by the checker), when provided, are included
 // as comments in the failure output when the check fails.
 func (c *C) Check(got interface{}, checker Checker, args ...interface{}) bool {
-	return c.check(c.TB.Error, checker, got, args)
+	return check(checkParams{
+		fail:    c.TB.Error,
+		format:  c.getFormat(),
+		checker: checker,
+		got:     got,
+		args:    args,
+	})
 }
 
 // Assert runs the given check and stops execution in case of failure.
@@ -171,7 +201,13 @@ func (c *C) Check(got interface{}, checker Checker, args ...interface{}) bool {
 // Additional args (not consumed by the checker), when provided, are included
 // as comments in the failure output when the check fails.
 func (c *C) Assert(got interface{}, checker Checker, args ...interface{}) bool {
-	return c.check(c.TB.Fatal, checker, got, args)
+	return check(checkParams{
+		fail:    c.TB.Fatal,
+		format:  c.getFormat(),
+		checker: checker,
+		got:     got,
+		args:    args,
+	})
 }
 
 var (
@@ -255,19 +291,20 @@ func (c *C) Parallel() {
 	p.Parallel()
 }
 
-// check performs the actual check and calls the provided fail function in case
-// of failure.
-func (c *C) check(fail func(...interface{}), checker Checker, got interface{}, args []interface{}) bool {
-	// Allow checkers to annotate messages.
+// check performs the actual check with the provided params.
+// In case of failure p.fail is called. In the fail report values are formatted
+// using p.format.
+func check(p checkParams) bool {
 	rp := reportParams{
-		got:    got,
-		args:   args,
-		format: c.getFormat(),
+		got:    p.got,
+		args:   p.args,
+		format: p.format,
 	}
 	if rp.format == nil {
 		// No format set; use the default: Format.
 		rp.format = Format
 	}
+	// Allow checkers to annotate messages.
 	note := func(key string, value interface{}) {
 		rp.notes = append(rp.notes, note{
 			key:   key,
@@ -275,17 +312,17 @@ func (c *C) check(fail func(...interface{}), checker Checker, got interface{}, a
 		})
 	}
 	// Ensure that we have a checker.
-	if checker == nil {
-		fail(report(BadCheckf("nil checker provided"), rp))
+	if p.checker == nil {
+		p.fail(report(BadCheckf("nil checker provided"), rp))
 		return false
 	}
 	// Extract a comment if it has been provided.
-	rp.argNames = checker.ArgNames()
+	rp.argNames = p.checker.ArgNames()
 	wantNumArgs := len(rp.argNames) - 1
-	if len(args) > 0 {
-		if comment, ok := args[len(args)-1].(Comment); ok {
+	if len(p.args) > 0 {
+		if comment, ok := p.args[len(p.args)-1].(Comment); ok {
 			rp.comment = comment
-			rp.args = args[:len(args)-1]
+			rp.args = p.args[:len(p.args)-1]
 		}
 	}
 	// Validate that we have the correct number of arguments.
@@ -302,14 +339,23 @@ func (c *C) check(fail func(...interface{}), checker Checker, got interface{}, a
 		} else {
 			prefix = "not enough arguments provided to checker"
 		}
-		fail(report(BadCheckf("%s: got %d, want %d", prefix, gotNumArgs, wantNumArgs), rp))
+		p.fail(report(BadCheckf("%s: got %d, want %d", prefix, gotNumArgs, wantNumArgs), rp))
 		return false
 	}
 
 	// Execute the check and report the failure if necessary.
-	if err := checker.Check(got, args, note); err != nil {
-		fail(report(err, rp))
+	if err := p.checker.Check(p.got, p.args, note); err != nil {
+		p.fail(report(err, rp))
 		return false
 	}
 	return true
+}
+
+// checkParams holds parameters for executing a check.
+type checkParams struct {
+	fail    func(...interface{})
+	format  formatFunc
+	checker Checker
+	got     interface{}
+	args    []interface{}
 }
