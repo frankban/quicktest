@@ -259,7 +259,7 @@ For instance:
     // Check that a floating point number is a not-a-number.
     c.Assert(f, qt.Satisfies, math.IsNaN)
 
-Deferred execution
+Deferred Execution
 
 The testing.TB.Cleanup helper provides the ability to defer the execution of
 functions that will be run when the test completes. This is often useful for
