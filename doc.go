@@ -28,12 +28,18 @@ An assertion looks like this, where qt.Equals could be replaced by any
 available checker. If the assertion fails, the underlying Fatal method is
 called to describe the error and abort the test.
 
+    c := qt.New(t)
     c.Assert(someValue, qt.Equals, wantValue)
 
 If you don’t want to abort on failure, use Check instead, which calls Error
 instead of Fatal:
 
     c.Check(someValue, qt.Equals, wantValue)
+
+For really short tests, the extra line for instantiating *qt.C can be avoided:
+
+    qt.Assert(t, someValue, qt.Equals, wantValue)
+    qt.Check(t, someValue, qt.Equals, wantValue)
 
 The library provides some base checkers like Equals, DeepEquals, Matches,
 ErrorMatches, IsNil and others. More can be added by implementing the Checker
@@ -253,7 +259,7 @@ For instance:
     // Check that a floating point number is a not-a-number.
     c.Assert(f, qt.Satisfies, math.IsNaN)
 
-Deferred execution
+Deferred Execution
 
 The testing.TB.Cleanup helper provides the ability to defer the execution of
 functions that will be run when the test completes. This is often useful for
