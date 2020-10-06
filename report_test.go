@@ -130,6 +130,23 @@ stack:
 	assertReport(t, tt, want)
 }
 
+func TestTopLevelAssertReportOutput(t *testing.T) {
+	tt := &testingT{}
+	qt.Assert(tt, 42, qt.Equals, 47)
+	want := `
+error:
+  values are not equal
+got:
+  int(42)
+want:
+  int(47)
+stack:
+  $file:135
+    qt.Assert(tt, 42, qt.Equals, 47)
+`
+	assertReport(t, tt, want)
+}
+
 func assertReport(t *testing.T, tt *testingT, want string) {
 	got := strings.Replace(tt.fatalString(), "\t", "        ", -1)
 	// go-cmp can include non-breaking spaces in its output.
