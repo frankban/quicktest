@@ -13,7 +13,6 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
-	"unicode"
 )
 
 // reportParams holds parameters for reporting a test error.
@@ -117,8 +116,8 @@ func writeStack(w io.Writer) {
 			// Stop before getting back to stdlib test runner calls.
 			break
 		}
-		if strings.HasPrefix(frame.Function, thisPackage) {
-			if r := rune(frame.Function[len(thisPackage)]); unicode.IsUpper(r) {
+		if fname := strings.TrimPrefix(frame.Function, thisPackage); fname != frame.Function {
+			if ast.IsExported(fname) {
 				// Continue without printing frames for quicktest exported API.
 				continue
 			}

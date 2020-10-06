@@ -19,6 +19,7 @@ import (
 // Additional args (not consumed by the checker), when provided, are included as
 // comments in the failure output when the check fails.
 func Check(t testing.TB, got interface{}, checker Checker, args ...interface{}) bool {
+	t.Helper()
 	return New(t).Check(got, checker, args...)
 }
 
@@ -31,6 +32,7 @@ func Check(t testing.TB, got interface{}, checker Checker, args ...interface{}) 
 // Additional args (not consumed by the checker), when provided, are included as
 // comments in the failure output when the check fails.
 func Assert(t testing.TB, got interface{}, checker Checker, args ...interface{}) bool {
+	t.Helper()
 	return New(t).Assert(got, checker, args...)
 }
 
@@ -183,9 +185,9 @@ func (c *C) getFormat() func(interface{}) string {
 // Additional args (not consumed by the checker), when provided, are included
 // as comments in the failure output when the check fails.
 func (c *C) Check(got interface{}, checker Checker, args ...interface{}) bool {
-	return check(checkParams{
+	c.TB.Helper()
+	return check(c, checkParams{
 		fail:    c.TB.Error,
-		format:  c.getFormat(),
 		checker: checker,
 		got:     got,
 		args:    args,
@@ -201,9 +203,9 @@ func (c *C) Check(got interface{}, checker Checker, args ...interface{}) bool {
 // Additional args (not consumed by the checker), when provided, are included
 // as comments in the failure output when the check fails.
 func (c *C) Assert(got interface{}, checker Checker, args ...interface{}) bool {
-	return check(checkParams{
+	c.TB.Helper()
+	return check(c, checkParams{
 		fail:    c.TB.Fatal,
-		format:  c.getFormat(),
 		checker: checker,
 		got:     got,
 		args:    args,
@@ -294,11 +296,12 @@ func (c *C) Parallel() {
 // check performs the actual check with the provided params.
 // In case of failure p.fail is called. In the fail report values are formatted
 // using p.format.
-func check(p checkParams) bool {
+func check(c *C, p checkParams) bool {
+	c.TB.Helper()
 	rp := reportParams{
 		got:    p.got,
 		args:   p.args,
-		format: p.format,
+		format: c.getFormat(),
 	}
 	if rp.format == nil {
 		// No format set; use the default: Format.
@@ -354,7 +357,6 @@ func check(p checkParams) bool {
 // checkParams holds parameters for executing a check.
 type checkParams struct {
 	fail    func(...interface{})
-	format  formatFunc
 	checker Checker
 	got     interface{}
 	args    []interface{}
