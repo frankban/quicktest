@@ -112,8 +112,17 @@ func writeStack(w io.Writer) {
 	thisPackage := reflect.TypeOf(C{}).PkgPath() + "."
 	for {
 		frame, more := frames.Next()
-		if strings.HasPrefix(frame.Function, "testing.") || strings.HasPrefix(frame.Function, thisPackage) {
-			// Do not include stdlib test runner and quicktest checker calls.
+		if strings.HasPrefix(frame.Function, "testing.") {
+			// Stop before getting back to stdlib test runner calls.
+			break
+		}
+		if fname := strings.TrimPrefix(frame.Function, thisPackage); fname != frame.Function {
+			if ast.IsExported(fname) {
+				// Continue without printing frames for quicktest exported API.
+				continue
+			}
+			// Stop when entering quicktest internal calls.
+			// This is useful for instance when using qtsuite.
 			break
 		}
 		fmt.Fprint(w, prefixf(prefix, "%s:%d", frame.File, frame.Line))

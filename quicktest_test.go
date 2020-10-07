@@ -509,6 +509,23 @@ want:
 `)
 }
 
+func TestHelper(t *testing.T) {
+	tt := &testingT{}
+	qt.Assert(tt, true, qt.IsFalse)
+	if tt.helperCalls != 3 {
+		t.Fatalf("want 3 calls (Assert, c.Assert, check), got %d", tt.helperCalls)
+	}
+}
+
+func TestCHelper(t *testing.T) {
+	tt := &testingT{}
+	c := qt.New(tt)
+	c.Assert(true, qt.IsFalse)
+	if tt.helperCalls != 2 {
+		t.Fatalf("want 2 calls (c.Assert, check), got %d", tt.helperCalls)
+	}
+}
+
 func TestCParallel(t *testing.T) {
 	tt := &testingT{}
 	c := qt.New(tt)
@@ -625,22 +642,29 @@ type testingT struct {
 	subTestName   string
 	subTestT      *testing.T
 
-	parallel bool
+	helperCalls int
+	parallel    bool
 }
 
-// Error overrides *testing.T.Error so that messages are collected.
+// Error overrides testing.TB.Error so that messages are collected.
 func (t *testingT) Error(a ...interface{}) {
 	fmt.Fprint(&t.errorBuf, a...)
 }
 
-// Fatal overrides *testing.T.Fatal so that messages are collected and the
+// Fatal overrides testing.TB.Fatal so that messages are collected and the
 // goroutine is not killed.
 func (t *testingT) Fatal(a ...interface{}) {
 	fmt.Fprint(&t.fatalBuf, a...)
 }
 
+// Parallel overrides testing.TB.Parallel in order to record the call.
 func (t *testingT) Parallel() {
 	t.parallel = true
+}
+
+// Helper overrides testing.TB.Helper in order to count calls.
+func (t *testingT) Helper() {
+	t.helperCalls += 1
 }
 
 // Fatal overrides *testing.T.Fatal so that messages are collected and the
@@ -663,9 +687,7 @@ func (t *testingT) fatalString() string {
 
 // assertPrefix fails if the got value does not have the given prefix.
 func assertPrefix(t testing.TB, got, prefix string) {
-	if h, ok := t.(helper); ok {
-		h.Helper()
-	}
+	t.Helper()
 	if prefix == "" {
 		t.Fatal("prefix: empty value provided")
 	}
@@ -684,9 +706,7 @@ want %q
 // assertErrHasPrefix fails if the given error is nil or does not have the
 // given prefix.
 func assertErrHasPrefix(t testing.TB, err error, prefix string) {
-	if h, ok := t.(helper); ok {
-		h.Helper()
-	}
+	t.Helper()
 	if err == nil {
 		t.Fatalf("error:\ngot  nil\nwant %q", prefix)
 	}
@@ -695,9 +715,7 @@ func assertErrHasPrefix(t testing.TB, err error, prefix string) {
 
 // assertErrIsNil fails if the given error is not nil.
 func assertErrIsNil(t testing.TB, err error) {
-	if h, ok := t.(helper); ok {
-		h.Helper()
-	}
+	t.Helper()
 	if err != nil {
 		t.Fatalf("error:\ngot  %q\nwant nil", err)
 	}
@@ -705,18 +723,10 @@ func assertErrIsNil(t testing.TB, err error) {
 
 // assertBool fails if the given boolean values don't match.
 func assertBool(t testing.TB, got, want bool) {
-	if h, ok := t.(helper); ok {
-		h.Helper()
-	}
+	t.Helper()
 	if got != want {
 		t.Fatalf("bool:\ngot  %v\nwant %v", got, want)
 	}
-}
-
-// helper is used to check whether the current Go version supports testing
-// helpers.
-type helper interface {
-	Helper()
 }
 
 // testingChecker is a quicktest.Checker used in tests. It receives the
