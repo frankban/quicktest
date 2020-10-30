@@ -703,24 +703,6 @@ want %q
 	}
 }
 
-// assertErrHasPrefix fails if the given error is nil or does not have the
-// given prefix.
-func assertErrHasPrefix(t testing.TB, err error, prefix string) {
-	t.Helper()
-	if err == nil {
-		t.Fatalf("error:\ngot  nil\nwant %q", prefix)
-	}
-	assertPrefix(t, err.Error(), prefix)
-}
-
-// assertErrIsNil fails if the given error is not nil.
-func assertErrIsNil(t testing.TB, err error) {
-	t.Helper()
-	if err != nil {
-		t.Fatalf("error:\ngot  %q\nwant nil", err)
-	}
-}
-
 // assertBool fails if the given boolean values don't match.
 func assertBool(t testing.TB, got, want bool) {
 	t.Helper()
