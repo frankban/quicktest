@@ -2469,14 +2469,14 @@ diff (-got +want):
 	checker: qt.JSONEquals,
 	got:     `{"NotThere": `,
 	args:    []interface{}{nil},
-	expectedCheckFailure: tilde2bq(`
+	expectedCheckFailure: fmt.Sprintf(tilde2bq(`
 error:
-  cannot unmarshal obtained contents: unexpected end of JSON input; "{\"NotThere\": "
+  cannot unmarshal obtained contents: %s; "{\"NotThere\": "
 got:
   ~{"NotThere": ~
 want:
   nil
-`),
+`), mustJSONUnmarshalErr(`{"NotThere": `)),
 }, {
 	about:   "JSONEquals cannot marshal expected value",
 	checker: qt.JSONEquals,
@@ -2539,14 +2539,14 @@ error:
 	),
 	got:  "null",
 	args: []interface{}{nil},
-	expectedCheckFailure: `
+	expectedCheckFailure: fmt.Sprintf(`
 error:
-  bad check: cannot unmarshal expected contents: invalid character 'b' looking for beginning of value
-`,
-	expectedNegateFailure: `
+  bad check: cannot unmarshal expected contents: %s
+`, mustJSONUnmarshalErr("bad json")),
+	expectedNegateFailure: fmt.Sprintf(`
 error:
-  bad check: cannot unmarshal expected contents: invalid character 'b' looking for beginning of value
-`,
+  bad check: cannot unmarshal expected contents: %s
+`, mustJSONUnmarshalErr("bad json")),
 }, {
 	about: "CodecEquals with options",
 	checker: qt.CodecEquals(
@@ -2565,12 +2565,6 @@ want:
   []string{"a", "c", "z", "b"}
 `),
 }}
-
-type jsonErrorMarshaler struct{}
-
-func (jsonErrorMarshaler) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("qt json marshal error")
-}
 
 func TestCheckers(t *testing.T) {
 	for _, test := range checkerTests {
@@ -2593,6 +2587,21 @@ func TestCheckers(t *testing.T) {
 func diff(x, y interface{}, opts ...cmp.Option) string {
 	d := cmp.Diff(x, y, opts...)
 	return strings.TrimSuffix(qt.Prefixf("  ", "%s", d), "\n")
+}
+
+type jsonErrorMarshaler struct{}
+
+func (jsonErrorMarshaler) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("qt json marshal error")
+}
+
+func mustJSONUnmarshalErr(s string) error {
+	var v interface{}
+	err := json.Unmarshal([]byte(s), &v)
+	if err == nil {
+		panic("want JSON error, got nil")
+	}
+	return err
 }
 
 func tilde2bq(s string) string {
