@@ -1,5 +1,5 @@
 [![GoDoc](https://godoc.org/github.com/frankban/quicktest?status.svg)](https://godoc.org/github.com/frankban/quicktest)
-[![Build Status](https://travis-ci.org/frankban/quicktest.svg?branch=master)](https://travis-ci.org/frankban/quicktest)
+[![Build Status](https://travis-ci.com/frankban/quicktest.svg?branch=master)](https://travis-ci.com/frankban/quicktest)
 
 [//]: # (Generated with: godocdown -template=.godocdown.template -o README.md)
 
