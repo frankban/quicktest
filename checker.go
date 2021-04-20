@@ -64,13 +64,44 @@ func (c *equalsChecker) Check(got interface{}, args []interface{}, note func(key
 			err = fmt.Errorf("%s", r)
 		}
 	}()
-	if want := args[0]; got != want {
-		if _, ok := got.(error); ok && want == nil {
-			return errors.New("got non-nil error")
+	want := args[0]
+	if got == want {
+		return nil
+	}
+
+	// Customize error message for non-nil errors.
+	if _, ok := got.(error); ok && want == nil {
+		return errors.New("got non-nil error")
+	}
+
+	// Show error types when comparing errors with different types.
+	if got, ok := got.(error); ok {
+		if want, ok := want.(error); ok {
+			gotType := reflect.TypeOf(got)
+			wantType := reflect.TypeOf(want)
+			if gotType != wantType {
+				note("got type", Unquoted(gotType.String()))
+				note("want type", Unquoted(wantType.String()))
+			}
 		}
 		return errors.New("values are not equal")
 	}
-	return nil
+
+	// Show line diff when comparing different multi-line strings.
+	if got, ok := got.(string); ok {
+		if want, ok := want.(string); ok {
+			isMultiline := func(s []string) bool {
+				return len(s) > 2 || (len(s) == 2 && s[1] != "")
+			}
+			gotLines := strings.SplitAfter(got, "\n")
+			wantLines := strings.SplitAfter(want, "\n")
+			if isMultiline(gotLines) || isMultiline(wantLines) {
+				diff := cmp.Diff(gotLines, wantLines)
+				note("line diff (-got +want)", Unquoted(diff))
+			}
+		}
+	}
+	return errors.New("values are not equal")
 }
 
 // CmpEquals returns a Checker checking equality of two arbitrary values
