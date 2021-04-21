@@ -90,13 +90,12 @@ func (c *equalsChecker) Check(got interface{}, args []interface{}, note func(key
 	// Show line diff when comparing different multi-line strings.
 	if got, ok := got.(string); ok {
 		if want, ok := want.(string); ok {
-			isMultiline := func(s []string) bool {
-				return len(s) > 2 || (len(s) == 2 && s[1] != "")
+			isMultiLine := func(s string) bool {
+				i := strings.Index(s, "\n")
+				return i != -1 && i < len(s)-1
 			}
-			gotLines := strings.SplitAfter(got, "\n")
-			wantLines := strings.SplitAfter(want, "\n")
-			if isMultiline(gotLines) || isMultiline(wantLines) {
-				diff := cmp.Diff(gotLines, wantLines)
+			if isMultiLine(got) || isMultiLine(want) {
+				diff := cmp.Diff(strings.SplitAfter(got, "\n"), strings.SplitAfter(want, "\n"))
 				note("line diff (-got +want)", Unquoted(diff))
 			}
 		}

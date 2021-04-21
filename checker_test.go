@@ -146,6 +146,21 @@ want:
   "bar\n"
 `,
 }, {
+	about:   "Equals: different strings starting with newline",
+	checker: qt.Equals,
+	got:     "\nfoo",
+	args:    []interface{}{"\nbar"},
+	expectedCheckFailure: fmt.Sprintf(`
+error:
+  values are not equal
+line diff (-got +want):
+%s
+got:
+  "\nfoo"
+want:
+  "\nbar"
+`, diff([]string{"\n", "foo"}, []string{"\n", "bar"})),
+}, {
 	about:   "Equals: different types",
 	checker: qt.Equals,
 	got:     42,
