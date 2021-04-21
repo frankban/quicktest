@@ -5,6 +5,7 @@ package quicktest_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -104,6 +105,62 @@ want:
   ~string "bar"~
 `),
 }, {
+	about:   "Equals: same multiline strings",
+	checker: qt.Equals,
+	got:     "a\nmultiline\nstring",
+	args:    []interface{}{"a\nmultiline\nstring"},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  "a\nmultiline\nstring"
+want:
+  <same as "got">
+`,
+}, {
+	about:   "Equals: different multi-line strings",
+	checker: qt.Equals,
+	got:     "a\nlong\nmultiline\nstring",
+	args:    []interface{}{"just\na\nlong\nmulti-line\nstring\n"},
+	expectedCheckFailure: fmt.Sprintf(`
+error:
+  values are not equal
+line diff (-got +want):
+%s
+got:
+  "a\nlong\nmultiline\nstring"
+want:
+  "just\na\nlong\nmulti-line\nstring\n"
+`, diff([]string{"a\n", "long\n", "multiline\n", "string"}, []string{"just\n", "a\n", "long\n", "multi-line\n", "string\n", ""})),
+}, {
+	about:   "Equals: different single-line strings ending with newline",
+	checker: qt.Equals,
+	got:     "foo\n",
+	args:    []interface{}{"bar\n"},
+	expectedCheckFailure: `
+error:
+  values are not equal
+got:
+  "foo\n"
+want:
+  "bar\n"
+`,
+}, {
+	about:   "Equals: different strings starting with newline",
+	checker: qt.Equals,
+	got:     "\nfoo",
+	args:    []interface{}{"\nbar"},
+	expectedCheckFailure: fmt.Sprintf(`
+error:
+  values are not equal
+line diff (-got +want):
+%s
+got:
+  "\nfoo"
+want:
+  "\nbar"
+`, diff([]string{"\n", "foo"}, []string{"\n", "bar"})),
+}, {
 	about:   "Equals: different types",
 	checker: qt.Equals,
 	got:     42,
@@ -186,6 +243,25 @@ got:
 want:
   nil
 `),
+}, {
+	about:   "Equals: different errors with same message",
+	checker: qt.Equals,
+	got: &errTest{
+		msg: "bad wolf",
+	},
+	args: []interface{}{errors.New("bad wolf")},
+	expectedCheckFailure: `
+error:
+  values are not equal
+got type:
+  *quicktest_test.errTest
+want type:
+  *errors.errorString
+got:
+  e"bad wolf"
+want:
+  <same as "got">
+`,
 }, {
 	about:   "Equals: nil struct",
 	checker: qt.Equals,
