@@ -112,17 +112,15 @@ var formatTests = []struct {
 	about: "uint64",
 	value: uint64(17),
 	want:  "uint64(17)",
+}, {
+	about: "uint32",
+	value: uint32(17_898),
+	want:  "uint32(17898)",
+}, {
+	about: "uintptr",
+	value: uintptr(13),
+	want:  "uintptr(13)",
 },
-	{
-		about: "uint32",
-		value: uint32(17_898),
-		want:  "uint32(17898)",
-	},
-	{
-		about: "uintptr",
-		value: uintptr(13),
-		want:  "uintptr(13)",
-	},
 }
 
 func TestFormat(t *testing.T) {
