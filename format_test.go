@@ -114,7 +114,7 @@ var formatTests = []struct {
 	want:  "uint64(17)",
 }, {
 	about: "uint32",
-	value: uint32(17_898),
+	value: uint32(17898),
 	want:  "uint32(17898)",
 }, {
 	about: "uintptr",
