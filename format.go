@@ -35,7 +35,7 @@ func Format(v interface{}) string {
 		return "s" + quoteString(s)
 	case string:
 		return quoteString(v)
-	case uint64:
+	case uintptr, uint, uint8, uint16, uint32, uint64:
 		return fmt.Sprintf("%T(%d)", v, v)
 	}
 	if bytes, ok := byteSlice(v); ok && bytes != nil && utf8.Valid(bytes) {
