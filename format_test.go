@@ -108,7 +108,20 @@ var formatTests = []struct {
 	about: "struct with byte slice",
 	value: struct{ X []byte }{[]byte("x")},
 	want:  "struct { X []uint8 }{\n    X:  {0x78},\n}",
-}}
+}, {
+	about: "uint64",
+	value: uint64(17),
+	want:  "uint64(17)",
+}, {
+	about: "uint32",
+	value: uint32(17898),
+	want:  "uint32(17898)",
+}, {
+	about: "uintptr",
+	value: uintptr(13),
+	want:  "uintptr(13)",
+},
+}
 
 func TestFormat(t *testing.T) {
 	for _, test := range formatTests {
