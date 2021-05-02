@@ -12,22 +12,23 @@ Package quicktest provides a collection of Go helpers for writing tests.
 Quicktest helpers can be easily integrated inside regular Go tests, for
 instance:
 
-    import qt "github.com/frankban/quicktest"
+```go
+import qt "github.com/frankban/quicktest"
 
-    func TestFoo(t *testing.T) {
-        t.Run("numbers", func(t *testing.T) {
-            c := qt.New(t)
-            numbers, err := somepackage.Numbers()
-            c.Assert(numbers, qt.DeepEquals, []int{42, 47})
-            c.Assert(err, qt.ErrorMatches, "bad wolf")
-        })
-        t.Run("nil", func(t *testing.T) {
-            c := qt.New(t)
-            got := somepackage.MaybeNil()
-            c.Assert(got, qt.IsNil, qt.Commentf("value: %v", somepackage.Value))
-        })
-    }
-
+func TestFoo(t *testing.T) {
+    t.Run("numbers", func(t *testing.T) {
+        c := qt.New(t)
+        numbers, err := somepackage.Numbers()
+        c.Assert(numbers, qt.DeepEquals, []int{42, 47})
+        c.Assert(err, qt.ErrorMatches, "bad wolf")
+    })
+    t.Run("nil", func(t *testing.T) {
+        c := qt.New(t)
+        got := somepackage.MaybeNil()
+        c.Assert(got, qt.IsNil, qt.Commentf("value: %v", somepackage.Value))
+    })
+}
+```
 
 ### Assertions
 
@@ -35,18 +36,24 @@ An assertion looks like this, where qt.Equals could be replaced by any available
 checker. If the assertion fails, the underlying Fatal method is called to
 describe the error and abort the test.
 
-    c := qt.New(t)
-    c.Assert(someValue, qt.Equals, wantValue)
+```go
+c := qt.New(t)
+c.Assert(someValue, qt.Equals, wantValue)
+```
 
 If you don’t want to abort on failure, use Check instead, which calls Error
 instead of Fatal:
 
-    c.Check(someValue, qt.Equals, wantValue)
+```go
+c.Check(someValue, qt.Equals, wantValue)
+```
 
 For really short tests, the extra line for instantiating *qt.C can be avoided:
 
-    qt.Assert(t, someValue, qt.Equals, wantValue)
-    qt.Check(t, someValue, qt.Equals, wantValue)
+```go
+qt.Assert(t, someValue, qt.Equals, wantValue)
+qt.Check(t, someValue, qt.Equals, wantValue)
+```
 
 The library provides some base checkers like Equals, DeepEquals, Matches,
 ErrorMatches, IsNil and others. More can be added by implementing the Checker
@@ -62,8 +69,10 @@ failure it prints the error from the first index that failed.
 
 For example:
 
-    c.Assert([]int{3, 5, 8}, qt.All(qt.Not(qt.Equals)), 0)
-    c.Assert([][]string{{"a", "b"}, {"a", "b"}}, qt.All(qt.DeepEquals), []string{"c", "d"})
+```go
+c.Assert([]int{3, 5, 8}, qt.All(qt.Not(qt.Equals)), 0)
+c.Assert([][]string{{"a", "b"}, {"a", "b"}}, qt.All(qt.DeepEquals), []string{"c", "d"})
+```
 
 See also Any and Contains.
 
@@ -75,8 +84,10 @@ or array or the values from a map. It succeeds if any element passes the check.
 
 For example:
 
-    c.Assert([]int{3,5,7,99}, qt.Any(qt.Equals), 7)
-    c.Assert([][]string{{"a", "b"}, {"c", "d"}}, qt.Any(qt.DeepEquals), []string{"c", "d"})
+```go
+c.Assert([]int{3,5,7,99}, qt.Any(qt.Equals), 7)
+c.Assert([][]string{{"a", "b"}, {"c", "d"}}, qt.Any(qt.DeepEquals), []string{"c", "d"})
+```
 
 See also All and Contains.
 
@@ -89,19 +100,22 @@ required.
 
 Example calls:
 
-    c.Assert(list, qt.CmpEquals(cmpopts.SortSlices), []int{42, 47})
-    c.Assert(got, qt.CmpEquals(), []int{42, 47}) // Same as qt.DeepEquals.
-
+```go
+c.Assert(list, qt.CmpEquals(cmpopts.SortSlices), []int{42, 47})
+c.Assert(got, qt.CmpEquals(), []int{42, 47}) // Same as qt.DeepEquals.
+```
 
 ### CodecEquals
 
 CodecEquals returns a checker that checks for codec value equivalence.
 
-    func CodecEquals(
-        marshal func(interface{}) ([]byte, error),
-        unmarshal func([]byte, interface{}) error,
-        opts ...cmp.Option,
-    ) Checker
+```go
+func CodecEquals(
+    marshal func(interface{}) ([]byte, error),
+    unmarshal func([]byte, interface{}) error,
+    opts ...cmp.Option,
+) Checker
+```
 
 It expects two arguments: a byte slice or a string containing some
 codec-marshaled data, and a Go value.
@@ -125,8 +139,10 @@ strings.Contains will be used.
 
 For example:
 
-    c.Assert("hello world", qt.Contains, "world")
-    c.Assert([]int{3,5,7,99}, qt.Contains, 7)
+```go
+c.Assert("hello world", qt.Contains, "world")
+c.Assert([]int{3,5,7,99}, qt.Contains, 7)
+```
 
 
 ### ContentEquals
@@ -136,7 +152,9 @@ be sorted before being compared.
 
 For example:
 
-    c.Assert([]string{"c", "a", "b"}, qt.ContentEquals, []string{"a", "b", "c"})
+```go
+c.Assert([]string{"c", "a", "b"}, qt.ContentEquals, []string{"a", "b", "c"})
+```
 
 
 ### DeepEquals
@@ -148,8 +166,9 @@ required, use CmpEquals (see below).
 
 Example call:
 
-    c.Assert(got, qt.DeepEquals, []int{42, 47})
-
+```go
+c.Assert(got, qt.DeepEquals, []int{42, 47})
+```
 
 ### Equals
 
@@ -157,11 +176,15 @@ Equals checks that two values are equal, as compared with Go's == operator.
 
 For instance:
 
-    c.Assert(answer, qt.Equals, 42)
+```go
+c.Assert(answer, qt.Equals, 42)
+```
 
 Note that the following will fail:
 
-    c.Assert((*sometype)(nil), qt.Equals, nil)
+```go
+c.Assert((*sometype)(nil), qt.Equals, nil)
+```
 
 Use the IsNil checker below for this kind of nil check.
 
@@ -173,7 +196,9 @@ the provided regular expression.
 
 For instance:
 
-    c.Assert(err, qt.ErrorMatches, `bad wolf .*`)
+```go
+c.Assert(err, qt.ErrorMatches, `bad wolf .*`)
+```
 
 
 ### HasLen
@@ -182,8 +207,10 @@ HasLen checks that the provided value has the given length.
 
 For instance:
 
-    c.Assert([]int{42, 47}, qt.HasLen, 2)
-    c.Assert(myMap, qt.HasLen, 42)
+```go
+c.Assert([]int{42, 47}, qt.HasLen, 2)
+c.Assert(myMap, qt.HasLen, 42)
+```
 
 
 ### IsFalse
@@ -193,8 +220,10 @@ underlying type.
 
 For instance:
 
-    c.Assert(false, qt.IsFalse)
-    c.Assert(IsValid(), qt.IsFalse)
+```go
+c.Assert(false, qt.IsFalse)
+c.Assert(IsValid(), qt.IsFalse)
+```
 
 
 ### IsNil
@@ -203,7 +232,9 @@ IsNil checks that the provided value is nil.
 
 For instance:
 
-    c.Assert(got, qt.IsNil)
+```go
+c.Assert(got, qt.IsNil)
+```
 
 As a special case, if the value is nil but implements the error interface, it is
 still considered to be non-nil. This means that IsNil will fail on an error
@@ -212,7 +243,9 @@ mistake. See https://golang.org/doc/faq#nil_error.
 
 So it's just fine to check an error like this:
 
-    c.Assert(err, qt.IsNil)
+```go
+c.Assert(err, qt.IsNil)
+```
 
 
 ### IsTrue
@@ -222,8 +255,10 @@ underlying type.
 
 For instance:
 
-    c.Assert(true, qt.IsTrue)
-    c.Assert(myBoolean(false), qt.IsTrue)
+```go
+c.Assert(true, qt.IsTrue)
+c.Assert(myBoolean(false), qt.IsTrue)
+```
 
 
 ### JSONEquals
@@ -236,7 +271,9 @@ required, use CodecEquals directly.
 
 For instance:
 
-    c.Assert(`{"First": 47.11}`, qt.JSONEquals, &MyStruct{First: 47.11})
+```go
+c.Assert(`{"First": 47.11}`, qt.JSONEquals, &MyStruct{First: 47.11})
+```
 
 
 ### Matches
@@ -246,8 +283,10 @@ value implements fmt.Stringer) matches the provided regular expression.
 
 For instance:
 
-    c.Assert("these are the voyages", qt.Matches, `these are .*`)
-    c.Assert(net.ParseIP("1.2.3.4"), qt.Matches, `1.*`)
+```go
+c.Assert("these are the voyages", qt.Matches, `these are .*`)
+c.Assert(net.ParseIP("1.2.3.4"), qt.Matches, `1.*`)
+```
 
 
 ### Not
@@ -256,8 +295,10 @@ Not returns a Checker negating the given Checker.
 
 For instance:
 
-    c.Assert(got, qt.Not(qt.IsNil))
-    c.Assert(answer, qt.Not(qt.Equals), 42)
+```go
+c.Assert(got, qt.Not(qt.IsNil))
+c.Assert(answer, qt.Not(qt.Equals), 42)
+```
 
 
 ### PanicMatches
@@ -267,7 +308,9 @@ the provided regular expression.
 
 For instance:
 
-    c.Assert(func() {panic("bad wolf ...")}, qt.PanicMatches, `bad wolf .*`)
+```go
+c.Assert(func() {panic("bad wolf ...")}, qt.PanicMatches, `bad wolf .*`)
+```
 
 
 ### Satisfies
@@ -278,11 +321,13 @@ type func(T) bool, having got assignable to T.
 
 For instance:
 
-    // Check that an error from os.Open satisfies os.IsNotExist.
-    c.Assert(err, qt.Satisfies, os.IsNotExist)
+```go
+// Check that an error from os.Open satisfies os.IsNotExist.
+c.Assert(err, qt.Satisfies, os.IsNotExist)
 
-    // Check that a floating point number is a not-a-number.
-    c.Assert(f, qt.Satisfies, math.IsNaN)
+// Check that a floating point number is a not-a-number.
+c.Assert(f, qt.Satisfies, math.IsNaN)
+```
 
 
 ### Deferred Execution
@@ -296,20 +341,24 @@ achieved using c.Defer. In this case, to trigger the deferred behavior, calling
 c.Done is required. For instance, if you create a *C instance at the top level,
 you’ll have to add a defer to trigger the cleanups at the end of the test:
 
-    defer c.Done()
+```go
+defer c.Done()
+```
 
 However, if you use quicktest to create a subtest, Done will be called
 automatically at the end of that subtest. For example:
 
-    func TestFoo(t *testing.T) {
-        c := qt.New(t)
-        c.Run("subtest", func(c *qt.C) {
-            c.Setenv("HOME", c.Mkdir())
-            // Here $HOME is set the path to a newly created directory.
-            // At the end of the test the directory will be removed
-            // and HOME set back to its original value.
-        })
-    }
+```go
+func TestFoo(t *testing.T) {
+    c := qt.New(t)
+    c.Run("subtest", func(c *qt.C) {
+        c.Setenv("HOME", c.Mkdir())
+        // Here $HOME is set the path to a newly created directory.
+        // At the end of the test the directory will be removed
+        // and HOME set back to its original value.
+    })
+}
+```
 
 The c.Patch, c.Setenv, c.Unsetenv and c.Mkdir helpers use t.Cleanup for cleaning
 up resources when available, and fall back to Defer otherwise.
