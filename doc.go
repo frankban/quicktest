@@ -195,6 +195,10 @@ So it's just fine to check an error like this:
 
     c.Assert(err, qt.IsNil)
 
+IsNotNil
+
+IsNotNil returns a Checker negating the IsNil checker. IsNotNil is the equivalent of qt.Not(qt.IsNil)
+
 IsTrue
 
 IsTrue checks that the provided value is true.
