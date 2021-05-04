@@ -482,6 +482,14 @@ func (c *notChecker) Check(got interface{}, args []interface{}, note func(key st
 	return errors.New("unexpected success")
 }
 
+// IsNotNil returns a Checker negating the IsNil checker. IsNotNil
+// is the equivalent of qt.Not(qt.IsNil)
+func IsNotNil() Checker {
+	return &notChecker{
+		Checker: IsNil,
+	}
+}
+
 // Contains is a checker that checks that a map, slice, array
 // or string contains a value. It's the same as using
 // Any(Equals), except that it has a special case

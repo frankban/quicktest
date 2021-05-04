@@ -2639,8 +2639,29 @@ got:
   ~["b", "z", "c", "a"]~
 want:
   []string{"a", "c", "z", "b"}
-`),
-}}
+`)},
+	{
+		about:   "IsNotNil: success",
+		checker: qt.IsNotNil(),
+		got:     42,
+		expectedNegateFailure: `
+error:
+  got non-nil value
+got:
+  int(42)
+`,
+	}, {
+		about:   "IsNotNil: failure",
+		checker: qt.IsNotNil(),
+		got:     nil,
+		expectedCheckFailure: `
+error:
+  unexpected success
+got:
+  nil
+`,
+	},
+}
 
 func TestCheckers(t *testing.T) {
 	for _, test := range checkerTests {
