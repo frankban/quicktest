@@ -2641,8 +2641,8 @@ want:
   []string{"a", "c", "z", "b"}
 `)},
 	{
-		about:   "IsNotNil: success",
-		checker: qt.IsNotNil(),
+		about:   "IsNonNil: success",
+		checker: qt.IsNonNil(),
 		got:     42,
 		expectedNegateFailure: `
 error:
@@ -2651,8 +2651,8 @@ got:
   int(42)
 `,
 	}, {
-		about:   "IsNotNil: failure",
-		checker: qt.IsNotNil(),
+		about:   "IsNonNil: failure",
+		checker: qt.IsNonNil(),
 		got:     nil,
 		expectedCheckFailure: `
 error:

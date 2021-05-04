@@ -482,9 +482,9 @@ func (c *notChecker) Check(got interface{}, args []interface{}, note func(key st
 	return errors.New("unexpected success")
 }
 
-// IsNotNil returns a Checker negating the IsNil checker. IsNotNil
+// IsNonNil returns a Checker negating the IsNil checker. IsNonNil
 // is the equivalent of qt.Not(qt.IsNil)
-func IsNotNil() Checker {
+func IsNonNil() Checker {
 	return &notChecker{
 		Checker: IsNil,
 	}
