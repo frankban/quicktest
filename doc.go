@@ -197,7 +197,12 @@ So it's just fine to check an error like this:
 
 IsNotNil
 
-IsNotNil returns a Checker negating the IsNil checker. IsNotNil is the equivalent of qt.Not(qt.IsNil)
+IsNotNil is a Checker checking that the provided value is not nil.
+IsNotNil is the equivalent of qt.Not(qt.IsNil)
+
+For instance:
+
+    c.Assert(got, qt.IsNotNil)
 
 IsTrue
 
