@@ -2659,8 +2659,8 @@ got:
   ~["b", "z", "c", "a"]~
 want:
   []string{"a", "c", "z", "b"}
-`)},
-}
+`),
+}}
 
 func TestCheckers(t *testing.T) {
 	for _, test := range checkerTests {
