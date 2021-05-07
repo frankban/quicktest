@@ -1469,6 +1469,26 @@ got args:
   }
 `,
 }, {
+	about:   "IsNotNil: success",
+	checker: qt.IsNotNil,
+	got:     42,
+	expectedNegateFailure: `
+error:
+  got non-nil value
+got:
+  int(42)
+`,
+}, {
+	about:   "IsNotNil: failure",
+	checker: qt.IsNotNil,
+	got:     nil,
+	expectedCheckFailure: `
+error:
+  unexpected success
+got:
+  nil
+`,
+}, {
 	about:   "HasLen: arrays with the same length",
 	checker: qt.HasLen,
 	got:     [4]string{"these", "are", "the", "voyages"},
@@ -2639,8 +2659,8 @@ got:
   ~["b", "z", "c", "a"]~
 want:
   []string{"a", "c", "z", "b"}
-`),
-}}
+`)},
+}
 
 func TestCheckers(t *testing.T) {
 	for _, test := range checkerTests {
