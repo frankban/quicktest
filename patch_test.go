@@ -64,29 +64,6 @@ func TestCPatchPanicsWhenNotAssignable(t *testing.T) {
 	}, qt.PanicMatches, `reflect\.Set: value of type quicktest_test\.otherInt is not assignable to type int`)
 }
 
-func TestCSetenv(t *testing.T) {
-	c := qt.New(t)
-	const envName = "SOME_VAR"
-	os.Setenv(envName, "initial")
-	testCleanup(t, func(c *qt.C) {
-		c.Setenv(envName, "new value")
-		c.Check(os.Getenv(envName), qt.Equals, "new value")
-	})
-	c.Check(os.Getenv(envName), qt.Equals, "initial")
-}
-
-func TestCSetenvWithUnsetVariable(t *testing.T) {
-	c := qt.New(t)
-	const envName = "SOME_VAR"
-	os.Unsetenv(envName)
-	testCleanup(t, func(c *qt.C) {
-		c.Setenv(envName, "new value")
-		c.Check(os.Getenv(envName), qt.Equals, "new value")
-	})
-	_, ok := os.LookupEnv(envName)
-	c.Assert(ok, qt.IsFalse)
-}
-
 func TestCUnsetenv(t *testing.T) {
 	c := qt.New(t)
 	const envName = "SOME_VAR"
