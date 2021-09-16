@@ -166,6 +166,16 @@ Note that the following will fail:
 Use the IsNil checker below for this kind of nil check.
 
 
+### ErrorIs
+
+ErrorIs is a Checker checking that the error is or wraps the provided error.
+This is analogous to calling errors.Is.
+
+For instance:
+
+    c.Assert(err, qt.ErrorIs, os.ErrNotExist)
+
+
 ### ErrorMatches
 
 ErrorMatches checks that the provided value is an error whose message matches

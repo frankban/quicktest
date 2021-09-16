@@ -971,6 +971,96 @@ want args:
   regexp
 `,
 }, {
+	about:   "ErrorIs: exact match",
+	checker: qt.ErrorIs,
+	got:     error(errBadWolf),
+	args:    []interface{}{errBadWolf},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  bad wolf
+    file:line
+want:
+  <same as "got">
+`,
+}, {
+	about:   "ErrorIs: wrapped match",
+	checker: qt.ErrorIs,
+	got:     fmt.Errorf("wrapped: %w", error(errBadWolf)),
+	args:    []interface{}{errBadWolf},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  e"wrapped: bad wolf\n  file:line"
+want:
+  bad wolf
+    file:line
+`,
+}, {
+	about:   "ErrorIs: fails if nil error",
+	checker: qt.ErrorIs,
+	got:     nil,
+	args:    []interface{}{errBadWolf},
+	expectedCheckFailure: `
+error:
+  got nil error but want non-nil
+got:
+  nil
+want:
+  bad wolf
+    file:line
+`,
+}, {
+	about:   "ErrorIs: fails if mismatch",
+	checker: qt.ErrorIs,
+	got:     error(errBadWolf),
+	args:    []interface{}{errors.New("other error")},
+	expectedCheckFailure: `
+error:
+  error is not the expected error
+got:
+  bad wolf
+    file:line
+want:
+  e"other error"
+`,
+}, {
+	about:   "ErrorIs: bad check if invalid error",
+	checker: qt.ErrorIs,
+	got:     "not an error",
+	args:    []interface{}{errBadWolf},
+	expectedCheckFailure: `
+error:
+  bad check: first argument is not an error
+got:
+  "not an error"
+`,
+	expectedNegateFailure: `
+error:
+  bad check: first argument is not an error
+got:
+  "not an error"
+`,
+}, {
+	about:   "ErrorIs: bad check if invalid error value",
+	checker: qt.ErrorIs,
+	got:     errBadWolf,
+	args:    []interface{}{"not an error"},
+	expectedCheckFailure: `
+error:
+  bad check: value is not an error
+want:
+  "not an error"
+`,
+	expectedNegateFailure: `
+error:
+  bad check: value is not an error
+want:
+  "not an error"
+`,
+}, {
 	about:   "ErrorMatches: perfect match",
 	checker: qt.ErrorMatches,
 	got:     errBadWolf,

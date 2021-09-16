@@ -203,6 +203,44 @@ func (c *matchesChecker) Check(got interface{}, args []interface{}, note func(ke
 	return BadCheckf("value is not a string or a fmt.Stringer")
 }
 
+// ErrorIs is a Checker checking that the error is or wraps the provided
+// error. This is analogous to calling errors.Is.
+//
+// For instance:
+//
+//     c.Assert(err, qt.ErrorIs, os.ErrNotExist)
+//
+var ErrorIs Checker = &errorIsChecker{
+	argNames: []string{"got", "want"},
+}
+
+type errorIsChecker struct {
+	argNames
+}
+
+// Check implements Checker.Check by checking that got is an error whose error
+// chain matches args[0].
+func (c *errorIsChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
+	if got == nil {
+		return errors.New("got nil error but want non-nil")
+	}
+	err, ok := got.(error)
+	if !ok {
+		note("got", got)
+		return BadCheckf("first argument is not an error")
+	}
+	wantErr, ok := args[0].(error)
+	if !ok {
+		note("want", args[0])
+		return BadCheckf("value is not an error")
+	}
+
+	if !errors.Is(err, wantErr) {
+		return errors.New("error is not the expected error")
+	}
+	return nil
+}
+
 // ErrorMatches is a Checker checking that the provided value is an error whose
 // message matches the provided regular expression pattern.
 //
