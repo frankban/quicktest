@@ -43,7 +43,7 @@ func (err *errTest) Error() string {
 
 // Format implements fmt.Formatter.
 func (err *errTest) Format(f fmt.State, c rune) {
-	if !f.Flag('+') || c != 'v' {
+	if c != 'v' {
 		fmt.Fprint(f, "unexpected verb for formatting the error")
 	}
 	fmt.Fprint(f, err.Error())
