@@ -203,6 +203,47 @@ func (c *matchesChecker) Check(got interface{}, args []interface{}, note func(ke
 	return BadCheckf("value is not a string or a fmt.Stringer")
 }
 
+// ErrorAs is a Checker checking that the error is or wraps the provided error
+// and if so, assigns it to the pointer. This is analogous to calling errors.As.
+//
+// For instance:
+//
+//     var pathError *os.PathError
+//     c.Assert(err, qt.ErrorAs, &pathError)
+//
+var ErrorAs Checker = &errorAsChecker{
+	argNames: []string{"got", "as"},
+}
+
+type errorAsChecker struct {
+	argNames
+}
+
+// Check implements Checker.Check by checking that got is an error whose error
+// chain matches args[0] and assigning it to args[0].
+func (c *errorAsChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) (err error) {
+	if got == nil {
+		return errors.New("got nil error but want non-nil")
+	}
+	err, ok := got.(error)
+	if !ok {
+		note("got", got)
+		return BadCheckf("first argument is not an error")
+	}
+
+	defer func() {
+		// A panic is raised when the target is not a pointer to an interface
+		// or error.
+		if r := recover(); r != nil {
+			err = BadCheckf("%s", r)
+		}
+	}()
+	if !errors.As(err, args[0]) {
+		return errors.New("error is not the expected error")
+	}
+	return nil
+}
+
 // ErrorIs is a Checker checking that the error is or wraps the provided
 // error. This is analogous to calling errors.Is.
 //

@@ -57,6 +57,11 @@ type OuterJSON struct {
 
 type boolean bool
 
+func errTestPtr() **errTest {
+	var err *errTest
+	return &err
+}
+
 var checkerTests = []struct {
 	about                 string
 	checker               qt.Checker
@@ -969,6 +974,89 @@ got args:
   }
 want args:
   regexp
+`,
+}, {
+	about:   "ErrorAs: exact match",
+	checker: qt.ErrorAs,
+	got:     error(errBadWolf),
+	args:    []interface{}{errTestPtr()},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  bad wolf
+    file:line
+as:
+  &&quicktest_test.errTest{msg:"bad wolf", formatted:true}
+`,
+}, {
+	about:   "ErrorAs: wrapped match",
+	checker: qt.ErrorAs,
+	got:     fmt.Errorf("wrapped: %w", error(errBadWolf)),
+	args:    []interface{}{errTestPtr()},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  e"wrapped: bad wolf\n  file:line"
+as:
+  &&quicktest_test.errTest{msg:"bad wolf", formatted:true}
+`,
+}, {
+	about:   "ErrorAs: fails if nil error",
+	checker: qt.ErrorAs,
+	got:     nil,
+	args:    []interface{}{errTestPtr()},
+	expectedCheckFailure: `
+error:
+  got nil error but want non-nil
+got:
+  nil
+as:
+  &(*quicktest_test.errTest)(nil)
+`,
+}, {
+	about:   "ErrorAs: fails if mismatch",
+	checker: qt.ErrorAs,
+	got:     errors.New("other error"),
+	args:    []interface{}{errTestPtr()},
+	expectedCheckFailure: `
+error:
+  error is not the expected error
+got:
+  e"other error"
+as:
+  &(*quicktest_test.errTest)(nil)
+`,
+}, {
+	about:   "ErrorAs: bad check if invalid error",
+	checker: qt.ErrorAs,
+	got:     "not an error",
+	args:    []interface{}{errTestPtr()},
+	expectedCheckFailure: `
+error:
+  bad check: first argument is not an error
+got:
+  "not an error"
+`,
+	expectedNegateFailure: `
+error:
+  bad check: first argument is not an error
+got:
+  "not an error"
+`,
+}, {
+	about:   "ErrorAs: bad check if invalid as",
+	checker: qt.ErrorAs,
+	got:     error(errBadWolf),
+	args:    []interface{}{&struct{}{}},
+	expectedCheckFailure: `
+error:
+  bad check: errors: *target must be interface or implement error
+`,
+	expectedNegateFailure: `
+error:
+  bad check: errors: *target must be interface or implement error
 `,
 }, {
 	about:   "ErrorIs: exact match",

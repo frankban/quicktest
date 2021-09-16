@@ -166,6 +166,17 @@ Note that the following will fail:
 Use the IsNil checker below for this kind of nil check.
 
 
+### ErrorAs
+
+ErrorAs is a Checker checking that the error is or wraps the provided error and
+if so, assigns it to the pointer. This is analogous to calling errors.As.
+
+For instance:
+
+    var pathError *os.PathError
+    c.Assert(err, qt.ErrorAs, &pathError)
+
+
 ### ErrorIs
 
 ErrorIs is a Checker checking that the error is or wraps the provided error.
