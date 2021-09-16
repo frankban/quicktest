@@ -364,6 +364,50 @@ func (c *hasLenChecker) Check(got interface{}, args []interface{}, note func(key
 	return nil
 }
 
+// Implements checks that the provided value implements the given interface. A
+// pointer to the interface must be provided.
+//
+// For instance:
+//
+//     c.Assert(myReader, qt.Implements, io.ReadCloser)
+//
+var Implements Checker = &implementsChecker{
+	argNames: []string{"got", "want"},
+}
+
+type implementsChecker struct {
+	argNames
+}
+
+// Check implements Checker.Check by checking that got implements the
+// interface pointed to by args[0].
+func (c *implementsChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) (err error) {
+	if got == nil {
+		note("error", Unquoted("got nil value but want non-nil"))
+		note("got", got)
+		return ErrSilent
+	}
+
+	if args[0] == nil {
+		return BadCheckf("wanted value is nil but must be non-nil")
+	}
+	wantType := reflect.TypeOf(args[0])
+	if wantType.Kind() != reflect.Ptr || wantType.Elem().Kind() != reflect.Interface {
+		note("want", wantType.String())
+		return BadCheckf("wanted value must be a pointer to an interface")
+	}
+
+	gotType := reflect.TypeOf(got)
+	if !gotType.Implements(wantType.Elem()) {
+		note("error", Unquoted("got value does not implement wanted interface"))
+		note("got", got)
+		note("want type", wantType.Elem().String())
+		return ErrSilent
+	}
+
+	return nil
+}
+
 // Satisfies is a Checker checking that the provided value, when used as
 // argument of the provided predicate function, causes the function to return
 // true. The function must be of type func(T) bool, having got assignable to T.

@@ -17,6 +17,11 @@ import (
 	qt "github.com/frankban/quicktest"
 )
 
+// Fooer is an interface for testing.
+type Fooer interface {
+	Foo()
+}
+
 var (
 	goTime = time.Date(2012, 3, 28, 0, 0, 0, 0, time.UTC)
 	chInt  = func() chan int {
@@ -1713,6 +1718,92 @@ got args:
   }
 want args:
   want length
+`,
+}, {
+	about:   "Implements: implements interface",
+	checker: qt.Implements,
+	got:     errBadWolf,
+	args:    []interface{}{(*error)(nil)},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  bad wolf
+    file:line
+want:
+  (*error)(nil)
+`,
+}, {
+	about:   "Implements: does not implement interface",
+	checker: qt.Implements,
+	got:     errBadWolf,
+	args:    []interface{}{(*Fooer)(nil)},
+	expectedCheckFailure: `
+error:
+  got value does not implement wanted interface
+got:
+  bad wolf
+    file:line
+want type:
+  "quicktest_test.Fooer"
+`,
+}, {
+	about:   "Implements: fails if got nil",
+	checker: qt.Implements,
+	got:     nil,
+	args:    []interface{}{(*Fooer)(nil)},
+	expectedCheckFailure: `
+error:
+  got nil value but want non-nil
+got:
+  nil
+`,
+}, {
+	about:   "Implements: bad check if wanted is nil",
+	checker: qt.Implements,
+	got:     errBadWolf,
+	args:    []interface{}{nil},
+	expectedCheckFailure: `
+error:
+  bad check: wanted value is nil but must be non-nil
+`,
+	expectedNegateFailure: `
+error:
+  bad check: wanted value is nil but must be non-nil
+`,
+}, {
+	about:   "Implements: bad check if wanted is not pointer",
+	checker: qt.Implements,
+	got:     errBadWolf,
+	args:    []interface{}{struct{}{}},
+	expectedCheckFailure: `
+error:
+  bad check: wanted value must be a pointer to an interface
+want:
+  "struct {}"
+`,
+	expectedNegateFailure: `
+error:
+  bad check: wanted value must be a pointer to an interface
+want:
+  "struct {}"
+`,
+}, {
+	about:   "Implements: bad check if wanted is not pointer to interface",
+	checker: qt.Implements,
+	got:     errBadWolf,
+	args:    []interface{}{&struct{}{}},
+	expectedCheckFailure: `
+error:
+  bad check: wanted value must be a pointer to an interface
+want:
+  "*struct {}"
+`,
+	expectedNegateFailure: `
+error:
+  bad check: wanted value must be a pointer to an interface
+want:
+  "*struct {}"
 `,
 }, {
 	about:   "Satisfies: success with an error",
