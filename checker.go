@@ -235,7 +235,7 @@ func (c *errorAsChecker) Check(got interface{}, args []interface{}, note func(ke
 	err, ok := got.(error)
 	if !ok {
 		note("got", got)
-		return BadCheckf("first argument is not an error")
+		return BadCheckf("want is not an error")
 	}
 
 	defer func() {
@@ -246,7 +246,7 @@ func (c *errorAsChecker) Check(got interface{}, args []interface{}, note func(ke
 		}
 	}()
 	if !errors.As(err, args[0]) {
-		return errors.New("error is not the expected error")
+		return errors.New("want error type is not found in got error chain")
 	}
 	return nil
 }
@@ -275,16 +275,16 @@ func (c *errorIsChecker) Check(got interface{}, args []interface{}, note func(ke
 	err, ok := got.(error)
 	if !ok {
 		note("got", got)
-		return BadCheckf("first argument is not an error")
+		return BadCheckf("want is not an error")
 	}
 	wantErr, ok := args[0].(error)
 	if !ok {
 		note("want", args[0])
-		return BadCheckf("value is not an error")
+		return BadCheckf("want is not an error")
 	}
 
 	if !errors.Is(err, wantErr) {
-		return errors.New("error is not the expected error")
+		return errors.New("want error is not found in got error chain")
 	}
 	return nil
 }

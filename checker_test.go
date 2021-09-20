@@ -1017,7 +1017,7 @@ as:
 	args:    []interface{}{errTestPtr()},
 	expectedCheckFailure: `
 error:
-  error is not the expected error
+  want error type is not found in got error chain
 got:
   e"other error"
 as:
@@ -1030,13 +1030,13 @@ as:
 	args:    []interface{}{errTestPtr()},
 	expectedCheckFailure: `
 error:
-  bad check: first argument is not an error
+  bad check: want is not an error
 got:
   "not an error"
 `,
 	expectedNegateFailure: `
 error:
-  bad check: first argument is not an error
+  bad check: want is not an error
 got:
   "not an error"
 `,
@@ -1102,7 +1102,7 @@ want:
 	args:    []interface{}{errors.New("other error")},
 	expectedCheckFailure: `
 error:
-  error is not the expected error
+  want error is not found in got error chain
 got:
   bad wolf
     file:line
@@ -1116,13 +1116,13 @@ want:
 	args:    []interface{}{errBadWolf},
 	expectedCheckFailure: `
 error:
-  bad check: first argument is not an error
+  bad check: want is not an error
 got:
   "not an error"
 `,
 	expectedNegateFailure: `
 error:
-  bad check: first argument is not an error
+  bad check: want is not an error
 got:
   "not an error"
 `,
@@ -1133,13 +1133,13 @@ got:
 	args:    []interface{}{"not an error"},
 	expectedCheckFailure: `
 error:
-  bad check: value is not an error
+  bad check: want is not an error
 want:
   "not an error"
 `,
 	expectedNegateFailure: `
 error:
-  bad check: value is not an error
+  bad check: want is not an error
 want:
   "not an error"
 `,
