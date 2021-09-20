@@ -1765,11 +1765,11 @@ got:
 	args:    []interface{}{nil},
 	expectedCheckFailure: `
 error:
-  bad check: wanted value is nil but must be non-nil
+  bad check: want a pointer to an interface variable but nil was provided
 `,
 	expectedNegateFailure: `
 error:
-  bad check: wanted value is nil but must be non-nil
+  bad check: want a pointer to an interface variable but nil was provided
 `,
 }, {
 	about:   "Implements: bad check if wanted is not pointer",
@@ -1778,13 +1778,13 @@ error:
 	args:    []interface{}{struct{}{}},
 	expectedCheckFailure: `
 error:
-  bad check: wanted value must be a pointer to an interface
+  bad check: want a pointer to an interface variable but a non-pointer value was provided
 want:
   "struct {}"
 `,
 	expectedNegateFailure: `
 error:
-  bad check: wanted value must be a pointer to an interface
+  bad check: want a pointer to an interface variable but a non-pointer value was provided
 want:
   "struct {}"
 `,
@@ -1792,18 +1792,18 @@ want:
 	about:   "Implements: bad check if wanted is not pointer to interface",
 	checker: qt.Implements,
 	got:     errBadWolf,
-	args:    []interface{}{&struct{}{}},
+	args:    []interface{}{(*struct{})(nil)},
 	expectedCheckFailure: `
 error:
-  bad check: wanted value must be a pointer to an interface
-want:
-  "*struct {}"
+  bad check: want a pointer to an interface variable but a pointer to a concrete type was provided
+want pointer type:
+  "struct {}"
 `,
 	expectedNegateFailure: `
 error:
-  bad check: wanted value must be a pointer to an interface
-want:
-  "*struct {}"
+  bad check: want a pointer to an interface variable but a pointer to a concrete type was provided
+want pointer type:
+  "struct {}"
 `,
 }, {
 	about:   "Satisfies: success with an error",

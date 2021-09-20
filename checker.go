@@ -390,12 +390,15 @@ func (c *implementsChecker) Check(got interface{}, args []interface{}, note func
 	}
 
 	if args[0] == nil {
-		return BadCheckf("wanted value is nil but must be non-nil")
+		return BadCheckf("want a pointer to an interface variable but nil was provided")
 	}
 	wantType := reflect.TypeOf(args[0])
-	if wantType.Kind() != reflect.Ptr || wantType.Elem().Kind() != reflect.Interface {
+	if wantType.Kind() != reflect.Ptr {
 		note("want", wantType.String())
-		return BadCheckf("wanted value must be a pointer to an interface")
+		return BadCheckf("want a pointer to an interface variable but a non-pointer value was provided")
+	} else if wantType.Elem().Kind() != reflect.Interface {
+		note("want pointer type", wantType.Elem().String())
+		return BadCheckf("want a pointer to an interface variable but a pointer to a concrete type was provided")
 	}
 
 	gotType := reflect.TypeOf(got)
