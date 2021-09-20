@@ -57,11 +57,6 @@ type OuterJSON struct {
 
 type boolean bool
 
-func errTestPtr() **errTest {
-	var err *errTest
-	return &err
-}
-
 var checkerTests = []struct {
 	about                 string
 	checker               qt.Checker
