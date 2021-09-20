@@ -167,6 +167,16 @@ For instance:
     c.Assert([]int{42, 47}, qt.HasLen, 2)
     c.Assert(myMap, qt.HasLen, 42)
 
+Implements
+
+Implements checks that the provided value implements an interface. The
+interface is specified with a pointer to an interface variable.
+
+For instance:
+
+    var rc io.ReadCloser
+    c.Assert(myReader, qt.Implements, &rc)
+
 IsFalse
 
 IsFalse checks that the provided value is false.

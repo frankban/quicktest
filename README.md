@@ -186,16 +186,6 @@ For instance:
     c.Assert(myMap, qt.HasLen, 42)
 
 
-### Implements
-
-Implements checks that the provided value implements the given interface. A
-pointer to the interface must be provided.
-
-For instance:
-
-    c.Assert(myReader, qt.Implements, io.ReadCloser)
-
-
 ### IsFalse
 
 IsFalse checks that the provided value is false. The value must have a boolean

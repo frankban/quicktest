@@ -364,12 +364,13 @@ func (c *hasLenChecker) Check(got interface{}, args []interface{}, note func(key
 	return nil
 }
 
-// Implements checks that the provided value implements the given interface. A
-// pointer to the interface must be provided.
+// Implements checks that the provided value implements an interface. The
+// interface is specified with a pointer to an interface variable.
 //
 // For instance:
 //
-//     c.Assert(myReader, qt.Implements, io.ReadCloser)
+//     var rc io.ReadCloser
+//     c.Assert(myReader, qt.Implements, &rc)
 //
 var Implements Checker = &implementsChecker{
 	argNames: []string{"got", "want"},
