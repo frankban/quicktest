@@ -380,6 +380,8 @@ type implementsChecker struct {
 	argNames
 }
 
+var emptyInterface = reflect.TypeOf((*interface{})(nil)).Elem()
+
 // Check implements Checker.Check by checking that got implements the
 // interface pointed to by args[0].
 func (c *implementsChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) (err error) {
@@ -399,6 +401,9 @@ func (c *implementsChecker) Check(got interface{}, args []interface{}, note func
 	} else if wantType.Elem().Kind() != reflect.Interface {
 		note("want pointer type", Unquoted(wantType.Elem().String()))
 		return BadCheckf("want a pointer to an interface variable but a pointer to a concrete type was provided")
+	} else if wantType.Elem() == emptyInterface {
+		note("want pointer type", Unquoted(wantType.Elem().String()))
+		return BadCheckf("all types implement the empty interface, want a pointer to a variable that isn't the empty interface")
 	}
 
 	gotType := reflect.TypeOf(got)

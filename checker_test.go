@@ -1806,6 +1806,23 @@ want pointer type:
   struct {}
 `,
 }, {
+	about:   "Implements: bad check if wanted is a pointer to the empty interface",
+	checker: qt.Implements,
+	got:     42,
+	args:    []interface{}{(*interface{})(nil)},
+	expectedCheckFailure: `
+error:
+  bad check: all types implement the empty interface, want a pointer to a variable that isn't the empty interface
+want pointer type:
+  interface {}
+`,
+	expectedNegateFailure: `
+error:
+  bad check: all types implement the empty interface, want a pointer to a variable that isn't the empty interface
+want pointer type:
+  interface {}
+`,
+}, {
 	about:   "Satisfies: success with an error",
 	checker: qt.Satisfies,
 	got:     qt.BadCheckf("bad wolf"),
