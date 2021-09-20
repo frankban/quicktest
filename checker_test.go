@@ -1744,8 +1744,8 @@ error:
 got:
   bad wolf
     file:line
-want type:
-  "quicktest_test.Fooer"
+want interface:
+  quicktest_test.Fooer
 `,
 }, {
 	about:   "Implements: fails if got nil",
@@ -1780,13 +1780,13 @@ error:
 error:
   bad check: want a pointer to an interface variable but a non-pointer value was provided
 want:
-  "struct {}"
+  struct {}
 `,
 	expectedNegateFailure: `
 error:
   bad check: want a pointer to an interface variable but a non-pointer value was provided
 want:
-  "struct {}"
+  struct {}
 `,
 }, {
 	about:   "Implements: bad check if wanted is not pointer to interface",
@@ -1797,13 +1797,13 @@ want:
 error:
   bad check: want a pointer to an interface variable but a pointer to a concrete type was provided
 want pointer type:
-  "struct {}"
+  struct {}
 `,
 	expectedNegateFailure: `
 error:
   bad check: want a pointer to an interface variable but a pointer to a concrete type was provided
 want pointer type:
-  "struct {}"
+  struct {}
 `,
 }, {
 	about:   "Satisfies: success with an error",

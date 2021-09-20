@@ -394,10 +394,10 @@ func (c *implementsChecker) Check(got interface{}, args []interface{}, note func
 	}
 	wantType := reflect.TypeOf(args[0])
 	if wantType.Kind() != reflect.Ptr {
-		note("want", wantType.String())
+		note("want", Unquoted(wantType.String()))
 		return BadCheckf("want a pointer to an interface variable but a non-pointer value was provided")
 	} else if wantType.Elem().Kind() != reflect.Interface {
-		note("want pointer type", wantType.Elem().String())
+		note("want pointer type", Unquoted(wantType.Elem().String()))
 		return BadCheckf("want a pointer to an interface variable but a pointer to a concrete type was provided")
 	}
 
@@ -405,7 +405,7 @@ func (c *implementsChecker) Check(got interface{}, args []interface{}, note func
 	if !gotType.Implements(wantType.Elem()) {
 		note("error", Unquoted("got value does not implement wanted interface"))
 		note("got", got)
-		note("want type", wantType.Elem().String())
+		note("want interface", Unquoted(wantType.Elem().String()))
 		return ErrSilent
 	}
 
