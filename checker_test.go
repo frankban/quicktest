@@ -973,7 +973,7 @@ want args:
 }, {
 	about:   "ErrorAs: exact match",
 	checker: qt.ErrorAs,
-	got:     error(errBadWolf),
+	got:     errBadWolf,
 	args:    []interface{}{errTestPtr()},
 	expectedNegateFailure: `
 error:
@@ -987,7 +987,7 @@ as:
 }, {
 	about:   "ErrorAs: wrapped match",
 	checker: qt.ErrorAs,
-	got:     fmt.Errorf("wrapped: %w", error(errBadWolf)),
+	got:     fmt.Errorf("wrapped: %w", errBadWolf),
 	args:    []interface{}{errTestPtr()},
 	expectedNegateFailure: `
 error:
@@ -1043,7 +1043,7 @@ got:
 }, {
 	about:   "ErrorAs: bad check if invalid as",
 	checker: qt.ErrorAs,
-	got:     error(errBadWolf),
+	got:     errBadWolf,
 	args:    []interface{}{&struct{}{}},
 	expectedCheckFailure: `
 error:
@@ -1056,7 +1056,7 @@ error:
 }, {
 	about:   "ErrorIs: exact match",
 	checker: qt.ErrorIs,
-	got:     error(errBadWolf),
+	got:     errBadWolf,
 	args:    []interface{}{errBadWolf},
 	expectedNegateFailure: `
 error:
@@ -1070,7 +1070,7 @@ want:
 }, {
 	about:   "ErrorIs: wrapped match",
 	checker: qt.ErrorIs,
-	got:     fmt.Errorf("wrapped: %w", error(errBadWolf)),
+	got:     fmt.Errorf("wrapped: %w", errBadWolf),
 	args:    []interface{}{errBadWolf},
 	expectedNegateFailure: `
 error:
@@ -1098,7 +1098,7 @@ want:
 }, {
 	about:   "ErrorIs: fails if mismatch",
 	checker: qt.ErrorIs,
-	got:     error(errBadWolf),
+	got:     errBadWolf,
 	args:    []interface{}{errors.New("other error")},
 	expectedCheckFailure: `
 error:
