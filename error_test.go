@@ -51,8 +51,3 @@ func (err *errTest) Format(f fmt.State, c rune) {
 		fmt.Fprint(f, "\n  file:line")
 	}
 }
-
-func errTestPtr() **errTest {
-	var err *errTest
-	return &err
-}

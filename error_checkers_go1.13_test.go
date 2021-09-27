@@ -28,7 +28,7 @@ func init() {
 				about:   "ErrorAs: exact match",
 				checker: qt.ErrorAs,
 				got:     errBadWolf,
-				args:    []interface{}{errTestPtr()},
+				args:    []interface{}{new(*errTest)},
 				expectedNegateFailure: `
 error:
   unexpected success
@@ -42,7 +42,7 @@ as:
 				about:   "ErrorAs: wrapped match",
 				checker: qt.ErrorAs,
 				got:     fmt.Errorf("wrapped: %w", errBadWolf),
-				args:    []interface{}{errTestPtr()},
+				args:    []interface{}{new(*errTest)},
 				expectedNegateFailure: `
 error:
   unexpected success
@@ -55,7 +55,7 @@ as:
 				about:   "ErrorAs: fails if nil error",
 				checker: qt.ErrorAs,
 				got:     nil,
-				args:    []interface{}{errTestPtr()},
+				args:    []interface{}{new(*errTest)},
 				expectedCheckFailure: `
 error:
   got nil error but want non-nil
@@ -68,7 +68,7 @@ as:
 				about:   "ErrorAs: fails if mismatch",
 				checker: qt.ErrorAs,
 				got:     errors.New("other error"),
-				args:    []interface{}{errTestPtr()},
+				args:    []interface{}{new(*errTest)},
 				expectedCheckFailure: `
 error:
   want error type is not found in got error chain
@@ -81,7 +81,7 @@ as:
 				about:   "ErrorAs: bad check if invalid error",
 				checker: qt.ErrorAs,
 				got:     "not an error",
-				args:    []interface{}{errTestPtr()},
+				args:    []interface{}{new(*errTest)},
 				expectedCheckFailure: `
 error:
   bad check: want is not an error
