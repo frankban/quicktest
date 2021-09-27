@@ -1730,7 +1730,7 @@ error:
 got:
   bad wolf
     file:line
-want:
+want interface pointer:
   (*error)(nil)
 `,
 }, {

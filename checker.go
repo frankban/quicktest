@@ -373,7 +373,7 @@ func (c *hasLenChecker) Check(got interface{}, args []interface{}, note func(key
 //     c.Assert(myReader, qt.Implements, &rc)
 //
 var Implements Checker = &implementsChecker{
-	argNames: []string{"got", "want"},
+	argNames: []string{"got", "want interface pointer"},
 }
 
 type implementsChecker struct {
