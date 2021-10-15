@@ -17,6 +17,11 @@ import (
 	qt "github.com/frankban/quicktest"
 )
 
+// Fooer is an interface for testing.
+type Fooer interface {
+	Foo()
+}
+
 var (
 	goTime = time.Date(2012, 3, 28, 0, 0, 0, 0, time.UTC)
 	chInt  = func() chan int {
@@ -1713,6 +1718,109 @@ got args:
   }
 want args:
   want length
+`,
+}, {
+	about:   "Implements: implements interface",
+	checker: qt.Implements,
+	got:     errBadWolf,
+	args:    []interface{}{(*error)(nil)},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  bad wolf
+    file:line
+want interface pointer:
+  (*error)(nil)
+`,
+}, {
+	about:   "Implements: does not implement interface",
+	checker: qt.Implements,
+	got:     errBadWolf,
+	args:    []interface{}{(*Fooer)(nil)},
+	expectedCheckFailure: `
+error:
+  got value does not implement wanted interface
+got:
+  bad wolf
+    file:line
+want interface:
+  quicktest_test.Fooer
+`,
+}, {
+	about:   "Implements: fails if got nil",
+	checker: qt.Implements,
+	got:     nil,
+	args:    []interface{}{(*Fooer)(nil)},
+	expectedCheckFailure: `
+error:
+  got nil value but want non-nil
+got:
+  nil
+`,
+}, {
+	about:   "Implements: bad check if wanted is nil",
+	checker: qt.Implements,
+	got:     errBadWolf,
+	args:    []interface{}{nil},
+	expectedCheckFailure: `
+error:
+  bad check: want a pointer to an interface variable but nil was provided
+`,
+	expectedNegateFailure: `
+error:
+  bad check: want a pointer to an interface variable but nil was provided
+`,
+}, {
+	about:   "Implements: bad check if wanted is not pointer",
+	checker: qt.Implements,
+	got:     errBadWolf,
+	args:    []interface{}{struct{}{}},
+	expectedCheckFailure: `
+error:
+  bad check: want a pointer to an interface variable but a non-pointer value was provided
+want:
+  struct {}
+`,
+	expectedNegateFailure: `
+error:
+  bad check: want a pointer to an interface variable but a non-pointer value was provided
+want:
+  struct {}
+`,
+}, {
+	about:   "Implements: bad check if wanted is not pointer to interface",
+	checker: qt.Implements,
+	got:     errBadWolf,
+	args:    []interface{}{(*struct{})(nil)},
+	expectedCheckFailure: `
+error:
+  bad check: want a pointer to an interface variable but a pointer to a concrete type was provided
+want pointer type:
+  struct {}
+`,
+	expectedNegateFailure: `
+error:
+  bad check: want a pointer to an interface variable but a pointer to a concrete type was provided
+want pointer type:
+  struct {}
+`,
+}, {
+	about:   "Implements: bad check if wanted is a pointer to the empty interface",
+	checker: qt.Implements,
+	got:     42,
+	args:    []interface{}{(*interface{})(nil)},
+	expectedCheckFailure: `
+error:
+  bad check: all types implement the empty interface, want a pointer to a variable that isn't the empty interface
+want pointer type:
+  interface {}
+`,
+	expectedNegateFailure: `
+error:
+  bad check: all types implement the empty interface, want a pointer to a variable that isn't the empty interface
+want pointer type:
+  interface {}
 `,
 }, {
 	about:   "Satisfies: success with an error",

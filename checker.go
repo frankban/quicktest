@@ -364,6 +364,59 @@ func (c *hasLenChecker) Check(got interface{}, args []interface{}, note func(key
 	return nil
 }
 
+// Implements checks that the provided value implements an interface. The
+// interface is specified with a pointer to an interface variable.
+//
+// For instance:
+//
+//     var rc io.ReadCloser
+//     c.Assert(myReader, qt.Implements, &rc)
+//
+var Implements Checker = &implementsChecker{
+	argNames: []string{"got", "want interface pointer"},
+}
+
+type implementsChecker struct {
+	argNames
+}
+
+var emptyInterface = reflect.TypeOf((*interface{})(nil)).Elem()
+
+// Check implements Checker.Check by checking that got implements the
+// interface pointed to by args[0].
+func (c *implementsChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) (err error) {
+	if got == nil {
+		note("error", Unquoted("got nil value but want non-nil"))
+		note("got", got)
+		return ErrSilent
+	}
+
+	if args[0] == nil {
+		return BadCheckf("want a pointer to an interface variable but nil was provided")
+	}
+	wantType := reflect.TypeOf(args[0])
+	if wantType.Kind() != reflect.Ptr {
+		note("want", Unquoted(wantType.String()))
+		return BadCheckf("want a pointer to an interface variable but a non-pointer value was provided")
+	} else if wantType.Elem().Kind() != reflect.Interface {
+		note("want pointer type", Unquoted(wantType.Elem().String()))
+		return BadCheckf("want a pointer to an interface variable but a pointer to a concrete type was provided")
+	} else if wantType.Elem() == emptyInterface {
+		note("want pointer type", Unquoted(wantType.Elem().String()))
+		return BadCheckf("all types implement the empty interface, want a pointer to a variable that isn't the empty interface")
+	}
+
+	gotType := reflect.TypeOf(got)
+	if !gotType.Implements(wantType.Elem()) {
+		note("error", Unquoted("got value does not implement wanted interface"))
+		note("got", got)
+		note("want interface", Unquoted(wantType.Elem().String()))
+		return ErrSilent
+	}
+
+	return nil
+}
+
 // Satisfies is a Checker checking that the provided value, when used as
 // argument of the provided predicate function, causes the function to return
 // true. The function must be of type func(T) bool, having got assignable to T.
