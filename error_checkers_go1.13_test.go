@@ -71,7 +71,7 @@ as:
 				args:    []interface{}{new(*errTest)},
 				expectedCheckFailure: `
 error:
-  want error type is not found in got error chain
+  wanted type is not found in error chain
 got:
   e"other error"
 as:
@@ -156,7 +156,7 @@ want:
 				args:    []interface{}{errors.New("other error")},
 				expectedCheckFailure: `
 error:
-  want error is not found in got error chain
+  wanted error is not found in error chain
 got:
   bad wolf
     file:line
@@ -187,13 +187,13 @@ got:
 				args:    []interface{}{"not an error"},
 				expectedCheckFailure: `
 error:
-  bad check: want is not an error
+  bad check: second argument is not an error
 want:
   "not an error"
 `,
 				expectedNegateFailure: `
 error:
-  bad check: want is not an error
+  bad check: second argument is not an error
 want:
   "not an error"
 `,
