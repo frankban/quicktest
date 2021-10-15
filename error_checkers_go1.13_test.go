@@ -84,13 +84,13 @@ as:
 				args:    []interface{}{new(*errTest)},
 				expectedCheckFailure: `
 error:
-  bad check: want is not an error
+  bad check: first argument is not an error
 got:
   "not an error"
 `,
 				expectedNegateFailure: `
 error:
-  bad check: want is not an error
+  bad check: first argument is not an error
 got:
   "not an error"
 `,
@@ -170,13 +170,13 @@ want:
 				args:    []interface{}{errBadWolf},
 				expectedCheckFailure: `
 error:
-  bad check: want is not an error
+  bad check: first argument is not an error
 got:
   "not an error"
 `,
 				expectedNegateFailure: `
 error:
-  bad check: want is not an error
+  bad check: first argument is not an error
 got:
   "not an error"
 `,

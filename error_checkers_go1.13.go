@@ -34,15 +34,11 @@ type errorAsChecker struct {
 // Check implements Checker.Check by checking that got is an error whose error
 // chain matches args[0] and assigning it to args[0].
 func (c *errorAsChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) (err error) {
-	if got == nil {
-		return errors.New("got nil error but want non-nil")
-	}
-	err, ok := got.(error)
-	if !ok {
-		note("got", got)
-		return BadCheckf("want is not an error")
+	if err := gotIsError(got, note); err != nil {
+		return err
 	}
 
+	gotErr := got.(error)
 	defer func() {
 		// A panic is raised when the target is not a pointer to an interface
 		// or error.
@@ -50,7 +46,7 @@ func (c *errorAsChecker) Check(got interface{}, args []interface{}, note func(ke
 			err = BadCheckf("%s", r)
 		}
 	}()
-	if !errors.As(err, args[0]) {
+	if !errors.As(gotErr, args[0]) {
 		return errors.New("wanted type is not found in error chain")
 	}
 	return nil
@@ -74,21 +70,18 @@ type errorIsChecker struct {
 // Check implements Checker.Check by checking that got is an error whose error
 // chain matches args[0].
 func (c *errorIsChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
-	if got == nil {
-		return errors.New("got nil error but want non-nil")
+	if err := gotIsError(got, note); err != nil {
+		return err
 	}
-	err, ok := got.(error)
-	if !ok {
-		note("got", got)
-		return BadCheckf("want is not an error")
-	}
+
+	gotErr := got.(error)
 	wantErr, ok := args[0].(error)
 	if !ok {
 		note("want", args[0])
 		return BadCheckf("second argument is not an error")
 	}
 
-	if !errors.Is(err, wantErr) {
+	if !errors.Is(gotErr, wantErr) {
 		return errors.New("wanted error is not found in error chain")
 	}
 	return nil
