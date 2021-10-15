@@ -16,6 +16,18 @@ func init() {
 	checkerTests = append(checkerTests, errorCheckerTests...)
 }
 
+type errTarget struct {
+	msg string
+}
+
+func (e *errTarget) Error() string {
+	return e.msg
+}
+
+var (
+	ErrTarget = &errTarget{msg: "target"}
+)
+
 var errorCheckerTests = []struct {
 	about                 string
 	checker               qt.Checker
@@ -27,61 +39,60 @@ var errorCheckerTests = []struct {
 }{{
 	about:   "ErrorAs: exact match",
 	checker: qt.ErrorAs,
-	got:     errBadWolf,
-	args:    []interface{}{new(*errTest)},
+	got:     ErrTarget,
+	args:    []interface{}{new(*errTarget)},
 	expectedNegateFailure: `
 error:
   unexpected success
 got:
-  bad wolf
-    file:line
+  e"target"
 as:
-  &&quicktest_test.errTest{msg:"bad wolf", formatted:true}
+  &&quicktest_test.errTarget{msg:"target"}
 `,
 }, {
 	about:   "ErrorAs: wrapped match",
 	checker: qt.ErrorAs,
-	got:     fmt.Errorf("wrapped: %w", errBadWolf),
-	args:    []interface{}{new(*errTest)},
+	got:     fmt.Errorf("wrapped: %w", ErrTarget),
+	args:    []interface{}{new(*errTarget)},
 	expectedNegateFailure: `
 error:
   unexpected success
 got:
-  e"wrapped: bad wolf\n  file:line"
+  e"wrapped: target"
 as:
-  &&quicktest_test.errTest{msg:"bad wolf", formatted:true}
+  &&quicktest_test.errTarget{msg:"target"}
 `,
 }, {
 	about:   "ErrorAs: fails if nil error",
 	checker: qt.ErrorAs,
 	got:     nil,
-	args:    []interface{}{new(*errTest)},
+	args:    []interface{}{new(*errTarget)},
 	expectedCheckFailure: `
 error:
   got nil error but want non-nil
 got:
   nil
 as:
-  &(*quicktest_test.errTest)(nil)
+  &(*quicktest_test.errTarget)(nil)
 `,
 }, {
 	about:   "ErrorAs: fails if mismatch",
 	checker: qt.ErrorAs,
 	got:     errors.New("other error"),
-	args:    []interface{}{new(*errTest)},
+	args:    []interface{}{new(*errTarget)},
 	expectedCheckFailure: `
 error:
   wanted type is not found in error chain
 got:
   e"other error"
 as:
-  &(*quicktest_test.errTest)(nil)
+  &(*quicktest_test.errTarget)(nil)
 `,
 }, {
 	about:   "ErrorAs: bad check if invalid error",
 	checker: qt.ErrorAs,
 	got:     "not an error",
-	args:    []interface{}{new(*errTest)},
+	args:    []interface{}{new(*errTarget)},
 	expectedCheckFailure: `
 error:
   bad check: first argument is not an error
@@ -97,7 +108,7 @@ got:
 }, {
 	about:   "ErrorAs: bad check if invalid as",
 	checker: qt.ErrorAs,
-	got:     errBadWolf,
+	got:     ErrTarget,
 	args:    []interface{}{&struct{}{}},
 	expectedCheckFailure: `
 error:
@@ -110,64 +121,60 @@ error:
 }, {
 	about:   "ErrorIs: exact match",
 	checker: qt.ErrorIs,
-	got:     errBadWolf,
-	args:    []interface{}{errBadWolf},
+	got:     ErrTarget,
+	args:    []interface{}{ErrTarget},
 	expectedNegateFailure: `
 error:
   unexpected success
 got:
-  bad wolf
-    file:line
+  e"target"
 want:
   <same as "got">
 `,
 }, {
 	about:   "ErrorIs: wrapped match",
 	checker: qt.ErrorIs,
-	got:     fmt.Errorf("wrapped: %w", errBadWolf),
-	args:    []interface{}{errBadWolf},
+	got:     fmt.Errorf("wrapped: %w", ErrTarget),
+	args:    []interface{}{ErrTarget},
 	expectedNegateFailure: `
 error:
   unexpected success
 got:
-  e"wrapped: bad wolf\n  file:line"
+  e"wrapped: target"
 want:
-  bad wolf
-    file:line
+  e"target"
 `,
 }, {
 	about:   "ErrorIs: fails if nil error",
 	checker: qt.ErrorIs,
 	got:     nil,
-	args:    []interface{}{errBadWolf},
+	args:    []interface{}{ErrTarget},
 	expectedCheckFailure: `
 error:
   got nil error but want non-nil
 got:
   nil
 want:
-  bad wolf
-    file:line
+  e"target"
 `,
 }, {
 	about:   "ErrorIs: fails if mismatch",
 	checker: qt.ErrorIs,
-	got:     errBadWolf,
-	args:    []interface{}{errors.New("other error")},
+	got:     errors.New("other error"),
+	args:    []interface{}{ErrTarget},
 	expectedCheckFailure: `
 error:
   wanted error is not found in error chain
 got:
-  bad wolf
-    file:line
-want:
   e"other error"
+want:
+  e"target"
 `,
 }, {
 	about:   "ErrorIs: bad check if invalid error",
 	checker: qt.ErrorIs,
 	got:     "not an error",
-	args:    []interface{}{errBadWolf},
+	args:    []interface{}{ErrTarget},
 	expectedCheckFailure: `
 error:
   bad check: first argument is not an error
@@ -183,7 +190,7 @@ got:
 }, {
 	about:   "ErrorIs: bad check if invalid error value",
 	checker: qt.ErrorIs,
-	got:     errBadWolf,
+	got:     ErrTarget,
 	args:    []interface{}{"not an error"},
 	expectedCheckFailure: `
 error:
