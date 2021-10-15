@@ -203,6 +203,18 @@ func (c *matchesChecker) Check(got interface{}, args []interface{}, note func(ke
 	return BadCheckf("value is not a string or a fmt.Stringer")
 }
 
+func gotIsError(got interface{}, note func(key string, value interface{})) error {
+	if got == nil {
+		return errors.New("got nil error but want non-nil")
+	}
+	_, ok := got.(error)
+	if !ok {
+		note("got", got)
+		return BadCheckf("first argument is not an error")
+	}
+	return nil
+}
+
 // ErrorMatches is a Checker checking that the provided value is an error whose
 // message matches the provided regular expression pattern.
 //
@@ -221,15 +233,12 @@ type errorMatchesChecker struct {
 // Check implements Checker.Check by checking that got is an error whose
 // Error() matches args[0].
 func (c *errorMatchesChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
-	if got == nil {
-		return errors.New("got nil error but want non-nil")
+	if err := gotIsError(got, note); err != nil {
+		return err
 	}
-	err, ok := got.(error)
-	if !ok {
-		note("got", got)
-		return BadCheckf("first argument is not an error")
-	}
-	return match(err.Error(), args[0], "error does not match regexp", note)
+
+	gotErr := got.(error)
+	return match(gotErr.Error(), args[0], "error does not match regexp", note)
 }
 
 // PanicMatches is a Checker checking that the provided function panics with a
