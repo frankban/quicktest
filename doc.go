@@ -157,8 +157,7 @@ assigns it to the provided pointer. This is analogous to calling errors.As.
 For instance:
 
     // Checking for a specific error type
-    var pathError *os.PathError
-    c.Assert(err, qt.ErrorAs, &pathError)
+    c.Assert(err, qt.ErrorAs, new(*os.PathError))
 
     // Checking fields on a specific error type
     var pathError *os.PathError

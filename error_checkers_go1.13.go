@@ -15,8 +15,7 @@ import (
 // For instance:
 //
 //     // Checking for a specific error type
-//     var pathError *os.PathError
-//     c.Assert(err, qt.ErrorAs, &pathError)
+//     c.Assert(err, qt.ErrorAs, new(*os.PathError))
 //
 //     // Checking fields on a specific error type
 //     var pathError *os.PathError
@@ -52,7 +51,7 @@ func (c *errorAsChecker) Check(got interface{}, args []interface{}, note func(ke
 		}
 	}()
 	if !errors.As(err, args[0]) {
-		return errors.New("want error type is not found in got error chain")
+		return errors.New("wanted type is not found in error chain")
 	}
 	return nil
 }
@@ -86,11 +85,11 @@ func (c *errorIsChecker) Check(got interface{}, args []interface{}, note func(ke
 	wantErr, ok := args[0].(error)
 	if !ok {
 		note("want", args[0])
-		return BadCheckf("want is not an error")
+		return BadCheckf("second argument is not an error")
 	}
 
 	if !errors.Is(err, wantErr) {
-		return errors.New("want error is not found in got error chain")
+		return errors.New("wanted error is not found in error chain")
 	}
 	return nil
 }
