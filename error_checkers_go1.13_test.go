@@ -25,7 +25,7 @@ func (e *errTarget) Error() string {
 }
 
 var (
-	ErrTarget = &errTarget{msg: "target"}
+	targetErr = &errTarget{msg: "target"}
 )
 
 var errorCheckerTests = []struct {
@@ -39,7 +39,7 @@ var errorCheckerTests = []struct {
 }{{
 	about:   "ErrorAs: exact match",
 	checker: qt.ErrorAs,
-	got:     ErrTarget,
+	got:     targetErr,
 	args:    []interface{}{new(*errTarget)},
 	expectedNegateFailure: `
 error:
@@ -52,7 +52,7 @@ as:
 }, {
 	about:   "ErrorAs: wrapped match",
 	checker: qt.ErrorAs,
-	got:     fmt.Errorf("wrapped: %w", ErrTarget),
+	got:     fmt.Errorf("wrapped: %w", targetErr),
 	args:    []interface{}{new(*errTarget)},
 	expectedNegateFailure: `
 error:
@@ -108,7 +108,7 @@ got:
 }, {
 	about:   "ErrorAs: bad check if invalid as",
 	checker: qt.ErrorAs,
-	got:     ErrTarget,
+	got:     targetErr,
 	args:    []interface{}{&struct{}{}},
 	expectedCheckFailure: `
 error:
@@ -121,8 +121,8 @@ error:
 }, {
 	about:   "ErrorIs: exact match",
 	checker: qt.ErrorIs,
-	got:     ErrTarget,
-	args:    []interface{}{ErrTarget},
+	got:     targetErr,
+	args:    []interface{}{targetErr},
 	expectedNegateFailure: `
 error:
   unexpected success
@@ -134,8 +134,8 @@ want:
 }, {
 	about:   "ErrorIs: wrapped match",
 	checker: qt.ErrorIs,
-	got:     fmt.Errorf("wrapped: %w", ErrTarget),
-	args:    []interface{}{ErrTarget},
+	got:     fmt.Errorf("wrapped: %w", targetErr),
+	args:    []interface{}{targetErr},
 	expectedNegateFailure: `
 error:
   unexpected success
@@ -148,7 +148,7 @@ want:
 	about:   "ErrorIs: fails if nil error",
 	checker: qt.ErrorIs,
 	got:     nil,
-	args:    []interface{}{ErrTarget},
+	args:    []interface{}{targetErr},
 	expectedCheckFailure: `
 error:
   got nil error but want non-nil
@@ -161,7 +161,7 @@ want:
 	about:   "ErrorIs: fails if mismatch",
 	checker: qt.ErrorIs,
 	got:     errors.New("other error"),
-	args:    []interface{}{ErrTarget},
+	args:    []interface{}{targetErr},
 	expectedCheckFailure: `
 error:
   wanted error is not found in error chain
@@ -174,7 +174,7 @@ want:
 	about:   "ErrorIs: bad check if invalid error",
 	checker: qt.ErrorIs,
 	got:     "not an error",
-	args:    []interface{}{ErrTarget},
+	args:    []interface{}{targetErr},
 	expectedCheckFailure: `
 error:
   bad check: first argument is not an error
@@ -190,7 +190,7 @@ got:
 }, {
 	about:   "ErrorIs: bad check if invalid error value",
 	checker: qt.ErrorIs,
-	got:     ErrTarget,
+	got:     targetErr,
 	args:    []interface{}{"not an error"},
 	expectedCheckFailure: `
 error:
