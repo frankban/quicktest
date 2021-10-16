@@ -203,7 +203,7 @@ func (c *matchesChecker) Check(got interface{}, args []interface{}, note func(ke
 	return BadCheckf("value is not a string or a fmt.Stringer")
 }
 
-func gotIsError(got interface{}, note func(key string, value interface{})) error {
+func checkFirstArgIsError(got interface{}, note func(key string, value interface{})) error {
 	if got == nil {
 		return errors.New("got nil error but want non-nil")
 	}
@@ -233,7 +233,7 @@ type errorMatchesChecker struct {
 // Check implements Checker.Check by checking that got is an error whose
 // Error() matches args[0].
 func (c *errorMatchesChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
-	if err := gotIsError(got, note); err != nil {
+	if err := checkFirstArgIsError(got, note); err != nil {
 		return err
 	}
 

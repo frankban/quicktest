@@ -34,7 +34,7 @@ type errorAsChecker struct {
 // Check implements Checker.Check by checking that got is an error whose error
 // chain matches args[0] and assigning it to args[0].
 func (c *errorAsChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) (err error) {
-	if err := gotIsError(got, note); err != nil {
+	if err := checkFirstArgIsError(got, note); err != nil {
 		return err
 	}
 
@@ -70,7 +70,7 @@ type errorIsChecker struct {
 // Check implements Checker.Check by checking that got is an error whose error
 // chain matches args[0].
 func (c *errorIsChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
-	if err := gotIsError(got, note); err != nil {
+	if err := checkFirstArgIsError(got, note); err != nil {
 		return err
 	}
 
