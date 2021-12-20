@@ -1,4 +1,4 @@
-// Licensed under the MIT license, see LICENCE file for details.
+// Licensed under the MIT license, see LICENSE file for details.
 
 package quicktest
 
@@ -451,7 +451,7 @@ func (c *satisfiesChecker) Check(got interface{}, args []interface{}, note func(
 	// Original code at
 	// <https://github.com/juju/testing/blob/master/checkers/bool.go>.
 	// Copyright 2011 Canonical Ltd.
-	// Licensed under the LGPLv3, see LICENCE file for details.
+	// Licensed under the LGPLv3, see LICENSE file for details.
 	predicate := args[0]
 	f := reflect.ValueOf(predicate)
 	ftype := f.Type()
