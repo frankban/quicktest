@@ -18,7 +18,12 @@ instance:
         t.Run("numbers", func(t *testing.T) {
             c := qt.New(t)
             numbers, err := somepackage.Numbers()
+            c.Assert(err, qt.IsNil)
             c.Assert(numbers, qt.DeepEquals, []int{42, 47})
+        })
+        t.Run("bad wolf error", func(t *testing.T) {
+            c := qt.New(t)
+            numbers, err := somepackage.Numbers()
             c.Assert(err, qt.ErrorMatches, "bad wolf")
         })
         t.Run("nil", func(t *testing.T) {
