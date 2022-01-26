@@ -70,13 +70,16 @@ type errorIsChecker struct {
 // Check implements Checker.Check by checking that got is an error whose error
 // chain matches args[0].
 func (c *errorIsChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
+	if got == nil && args[0] == nil {
+		return nil
+	}
 	if err := checkFirstArgIsError(got, note); err != nil {
 		return err
 	}
 
 	gotErr := got.(error)
 	wantErr, ok := args[0].(error)
-	if !ok {
+	if !ok && args[0] != nil {
 		note("want", args[0])
 		return BadCheckf("second argument is not an error")
 	}

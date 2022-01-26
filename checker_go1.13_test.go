@@ -119,6 +119,32 @@ error:
   bad check: errors: *target must be interface or implement error
 `,
 }, {
+	about:   "ErrorIs: nil to nil match",
+	checker: qt.ErrorIs,
+	got:     nil,
+	args:    []interface{}{nil},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got:
+  nil
+want:
+  <same as "got">
+`,
+}, {
+	about:   "ErrorIs: non-nil to nil match",
+	checker: qt.ErrorIs,
+	got:     targetErr,
+	args:    []interface{}{nil},
+	expectedCheckFailure: `
+error:
+  wanted error is not found in error chain
+got:
+  e"target"
+want:
+  nil
+`,
+}, {
 	about:   "ErrorIs: exact match",
 	checker: qt.ErrorIs,
 	got:     targetErr,
