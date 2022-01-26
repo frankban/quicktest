@@ -132,7 +132,7 @@ want:
   <same as "got">
 `,
 }, {
-	about:   "ErrorIs: non-nil to nil match",
+	about:   "ErrorIs: non-nil to nil mismatch",
 	checker: qt.ErrorIs,
 	got:     targetErr,
 	args:    []interface{}{nil},
