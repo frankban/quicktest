@@ -95,7 +95,7 @@ error:
 got:
   e"other error"
 as:
-  &(*quicktest_test.errTarget)(nil)
+  **quicktest_test.errTarget
 `,
 }, {
 	about:   "ErrorAs: fails if mismatch with a non-pointer error implementation",
@@ -108,8 +108,8 @@ error:
 got:
   e"other error"
 as:
-  &(*quicktest_test.errTargetNonPtr)(nil)
-	`,
+  *quicktest_test.errTargetNonPtr
+`,
 }, {
 	about:   "ErrorAs: bad check if invalid error",
 	checker: qt.ErrorAs,

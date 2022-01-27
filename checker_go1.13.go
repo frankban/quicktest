@@ -7,6 +7,7 @@ package quicktest
 
 import (
 	"errors"
+	"fmt"
 )
 
 // ErrorAs checks that the error is or wraps a specific error type. If so, it
@@ -46,10 +47,15 @@ func (c *errorAsChecker) Check(got interface{}, args []interface{}, note func(ke
 			err = BadCheckf("%s", r)
 		}
 	}()
-	if !errors.As(gotErr, args[0]) {
-		return errors.New("wanted type is not found in error chain")
+	as := args[0]
+	if errors.As(gotErr, as) {
+		return nil
 	}
-	return nil
+
+	note("error", Unquoted("wanted type is not found in error chain"))
+	note("got", gotErr)
+	note("as", Unquoted(fmt.Sprintf("%T", as)))
+	return ErrSilent
 }
 
 // ErrorIs checks that the error is or wraps a specific error value. This is
