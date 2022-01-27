@@ -552,6 +552,9 @@ func (c *notChecker) Check(got interface{}, args []interface{}, note func(key st
 	if err != nil {
 		return nil
 	}
+	if c.Checker == IsNil {
+		return errors.New("got nil value but want non-nil")
+	}
 	return errors.New("unexpected success")
 }
 
