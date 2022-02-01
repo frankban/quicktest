@@ -1378,7 +1378,7 @@ want args:
 	got:     nil,
 	expectedNegateFailure: `
 error:
-  unexpected success
+  got nil value but want non-nil
 got:
   nil
 `,
@@ -1388,7 +1388,7 @@ got:
 	got:     (*struct{})(nil),
 	expectedNegateFailure: `
 error:
-  unexpected success
+  got nil value but want non-nil
 got:
   (*struct {})(nil)
 `,
@@ -1398,7 +1398,7 @@ got:
 	got:     (func())(nil),
 	expectedNegateFailure: `
 error:
-  unexpected success
+  got nil value but want non-nil
 got:
   func() {...}
 `,
@@ -1408,7 +1408,7 @@ got:
 	got:     (map[string]string)(nil),
 	expectedNegateFailure: `
 error:
-  unexpected success
+  got nil value but want non-nil
 got:
   map[string]string{}
 `,
@@ -1418,7 +1418,7 @@ got:
 	got:     ([]int)(nil),
 	expectedNegateFailure: `
 error:
-  unexpected success
+  got nil value but want non-nil
 got:
   []int(nil)
 `,
@@ -1489,7 +1489,7 @@ got:
 	got:     nil,
 	expectedCheckFailure: `
 error:
-  unexpected success
+  got nil value but want non-nil
 got:
   nil
 `,
@@ -2245,11 +2245,24 @@ got:
 `,
 }, {
 	about:   "Not: failure",
+	checker: qt.Not(qt.Equals),
+	got:     42,
+	args:    []interface{}{42},
+	expectedCheckFailure: `
+error:
+  unexpected success
+got:
+  int(42)
+want:
+  <same as "got">
+`,
+}, {
+	about:   "Not: IsNil failure",
 	checker: qt.Not(qt.IsNil),
 	got:     nil,
 	expectedCheckFailure: `
 error:
-  unexpected success
+  got nil value but want non-nil
 got:
   nil
 `,

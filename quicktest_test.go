@@ -620,6 +620,7 @@ func TestCRunCustomType(t *testing.T) {
 }
 
 func checkResult(t *testing.T, ok bool, got, want string) {
+	t.Helper()
 	if want != "" {
 		assertPrefix(t, got, want+"stack:\n")
 		assertBool(t, ok, false)
