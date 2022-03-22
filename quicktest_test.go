@@ -105,6 +105,24 @@ got:
   int(47)
 `,
 }, {
+	about:   "failure with multiple comments",
+	checker: qt.IsNil,
+	got:     42,
+	args: []interface{}{
+		qt.Commentf("bad wolf: %d", 42),
+		qt.Commentf("second comment"),
+	},
+	expectedFailure: `
+error:
+  got non-nil value
+comment:
+  bad wolf: 42
+comment:
+  second comment
+got:
+  int(42)
+`,
+}, {
 	about: "nil checker",
 	expectedFailure: `
 error:

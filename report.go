@@ -24,7 +24,7 @@ type reportParams struct {
 	// args holds all other arguments (if any) provided to the checker.
 	args []interface{}
 	// comment optionally holds the comment passed when performing the check.
-	comment Comment
+	comments []Comment
 	// notes holds notes added while doing the check.
 	notes []note
 	// format holds the format function that must be used when outputting
@@ -73,9 +73,11 @@ func writeError(w io.Writer, err error, p reportParams) {
 		printPair("error", Unquoted(err.Error()))
 	}
 
-	// Write the comment if provided.
-	if comment := p.comment.String(); comment != "" {
-		printPair("comment", Unquoted(comment))
+	// Write comments if provided.
+	for _, c := range p.comments {
+		if comment := c.String(); comment != "" {
+			printPair("comment", Unquoted(comment))
+		}
 	}
 
 	// Write notes if present.

@@ -307,6 +307,7 @@ func check(c *C, p checkParams) bool {
 		// No format set; use the default: Format.
 		rp.format = Format
 	}
+
 	// Allow checkers to annotate messages.
 	note := func(key string, value interface{}) {
 		rp.notes = append(rp.notes, note{
@@ -314,21 +315,27 @@ func check(c *C, p checkParams) bool {
 			value: value,
 		})
 	}
+
 	// Ensure that we have a checker.
 	if p.checker == nil {
 		p.fail(report(BadCheckf("nil checker provided"), rp))
 		return false
 	}
-	// Extract a comment if it has been provided.
+
+	// Extract comments if provided.
+	for len(p.args) > 0 {
+		comment, ok := p.args[len(p.args)-1].(Comment)
+		if !ok {
+			break
+		}
+		rp.comments = append([]Comment{comment}, rp.comments...)
+		p.args = p.args[:len(p.args)-1]
+	}
+	rp.args = p.args
+
+	// Validate that we have the correct number of arguments.
 	rp.argNames = p.checker.ArgNames()
 	wantNumArgs := len(rp.argNames) - 1
-	if len(p.args) > 0 {
-		if comment, ok := p.args[len(p.args)-1].(Comment); ok {
-			rp.comment = comment
-			rp.args = p.args[:len(p.args)-1]
-		}
-	}
-	// Validate that we have the correct number of arguments.
 	if gotNumArgs := len(rp.args); gotNumArgs != wantNumArgs {
 		if gotNumArgs > 0 {
 			note("got args", rp.args)
