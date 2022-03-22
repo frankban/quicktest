@@ -100,6 +100,7 @@ func (c *equalsChecker) Check(got interface{}, args []interface{}, note func(key
 			}
 		}
 	}
+
 	return errors.New("values are not equal")
 }
 

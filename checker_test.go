@@ -265,7 +265,37 @@ want type:
 got:
   e"bad wolf"
 want:
-  <same as "got">
+  <same as "got" but different pointer value>
+`,
+}, {
+	about:   "Equals: different pointer errors with the same message",
+	checker: qt.Equals,
+	got: &errTest{
+		msg: "bad wolf",
+	},
+	args: []interface{}{&errTest{
+		msg: "bad wolf",
+	}},
+	expectedCheckFailure: `
+error:
+  values are not equal
+got:
+  e"bad wolf"
+want:
+  <same as "got" but different pointer value>
+`,
+}, {
+	about:   "Equals: different pointers with the same formatted output",
+	checker: qt.Equals,
+	got:     new(int),
+	args:    []interface{}{new(int)},
+	expectedCheckFailure: `
+error:
+  values are not equal
+got:
+  &int(0)
+want:
+  <same as "got" but different pointer value>
 `,
 }, {
 	about:   "Equals: nil struct",
