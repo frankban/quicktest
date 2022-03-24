@@ -51,6 +51,7 @@ func report(err error, p reportParams) string {
 // writeError writes a pretty formatted output of the given error using the
 // provided report parameters.
 func writeError(w io.Writer, err error, p reportParams) {
+	ptrs := make(map[string]interface{})
 	values := make(map[string]string)
 	printPair := func(key string, value interface{}) {
 		fmt.Fprintln(w, key+":")
@@ -60,9 +61,17 @@ func writeError(w io.Writer, err error, p reportParams) {
 		} else {
 			v = p.format(value)
 		}
+		isPtr := reflect.ValueOf(value).Kind() == reflect.Ptr
 		if k := values[v]; k != "" {
+			if previousValue, ok := ptrs[k]; ok && isPtr && previousValue != value {
+				fmt.Fprint(w, prefixf(prefix, "<same as %q but different pointer value>", k))
+				return
+			}
 			fmt.Fprint(w, prefixf(prefix, "<same as %q>", k))
 			return
+		}
+		if isPtr {
+			ptrs[key] = value
 		}
 		values[v] = key
 		fmt.Fprint(w, prefixf(prefix, "%s", v))
