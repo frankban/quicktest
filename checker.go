@@ -766,6 +766,12 @@ func (a argNames) ArgNames() []string {
 
 // match checks that the given error message matches the given pattern.
 func match(got string, pattern interface{}, msg string, note func(key string, value interface{})) error {
+	if actualRegex, ok := pattern.(*regexp.Regexp); ok {
+		if actualRegex.MatchString(got) {
+			return nil
+		}
+		return errors.New(msg)
+	}
 	regex, ok := pattern.(string)
 	if !ok {
 		note("regexp", pattern)
