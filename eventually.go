@@ -10,7 +10,7 @@ import (
 	"github.com/rogpeppe/retry"
 )
 
-// Eventually returns an EventuallyChecker which expects a function with no
+// Eventually returns an EventuallyChecker, which expects a function with no
 // arguments and one return value. It then calls the function repeatedly,
 // passing its returned value to the provided Checker c, until it succeeds,
 // or until time out according to the retry Strategy.
@@ -33,8 +33,8 @@ import (
 // 		c.Assert(func() int64 {
 // 			return atomic.LoadInt64(&foo)
 // 		}, qt.Eventually(qt.Equals).WithStrategy(customStrategy), int64(1234))
-func Eventually(c Checker) EventuallyChecker {
-	return &eventuallyChecker{
+func Eventually(c Checker) *EventuallyChecker {
+	return &EventuallyChecker{
 		checker: c,
 		retryStrategy: &retry.Strategy{
 			Delay:       100 * time.Millisecond,
@@ -57,7 +57,7 @@ func Eventually(c Checker) EventuallyChecker {
 // 		c.Assert(func() int64 {
 // 			return atomic.LoadInt64(&foo)
 // 		}, qt.EventuallyStable(qt.Equals), int64(1234))
-func EventuallyStable(c Checker) EventuallyChecker {
+func EventuallyStable(c Checker) *EventuallyChecker {
 	eventuallyChecker := Eventually(c)
 	eventuallyChecker.WithStableStrategy(&retry.Strategy{
 		Delay:       100 * time.Millisecond,
@@ -71,23 +71,24 @@ func EventuallyStable(c Checker) EventuallyChecker {
 // retry the check over a period of time.
 // It also allows providing a stable retry strategy to run a stability check,
 // i.e. once the check is successful, it keeps checking that it stays that way.
-type EventuallyChecker interface {
-	Checker
-
-	// WithStrategy allows specifying a custom retry strategy, specifying
-	// initial delay, delay between attempts, maximum duration before timing
-	// out, etc.
-	WithStrategy(*retry.Strategy) EventuallyChecker
-
-	// WithStableStrategy allows specifying a custom retry strategy for the
-	// stability check. If not provided, no stability check will be run.
-	WithStableStrategy(*retry.Strategy) EventuallyChecker
-}
-
-type eventuallyChecker struct {
+type EventuallyChecker struct {
 	checker             Checker
 	retryStrategy       *retry.Strategy
 	stableRetryStrategy *retry.Strategy
+}
+
+// WithStrategy allows specifying a custom retry strategy, specifying initial
+// delay, delay between attempts, maximum duration before timing out, etc.
+func (e *EventuallyChecker) WithStrategy(strategy *retry.Strategy) *EventuallyChecker {
+	e.retryStrategy = strategy
+	return e
+}
+
+// WithStableStrategy allows specifying a custom retry strategy for the
+// stability check. If not provided, no stability check will be run.
+func (e *EventuallyChecker) WithStableStrategy(strategy *retry.Strategy) *EventuallyChecker {
+	e.stableRetryStrategy = strategy
+	return e
 }
 
 // Check implements Checker.Check by calling the given got function repeatedly
@@ -99,7 +100,7 @@ type eventuallyChecker struct {
 // underlying Checker again after a succesfull check, according to the stable
 // retry Strategy, until either the Strategy times out or the verification
 // fails. If the stable Strategy times out, the Check will succeed.
-func (e *eventuallyChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
+func (e *EventuallyChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
 	// Validate that the given got parameter is a function with no parameters
 	// and one return value.
 	f := reflect.ValueOf(got)
@@ -153,18 +154,6 @@ func (e *eventuallyChecker) Check(got interface{}, args []interface{}, note func
 
 // ArgNames implements Checker.ArgNames by delegating the call to the underlying
 // Checker.
-func (e *eventuallyChecker) ArgNames() []string {
+func (e *EventuallyChecker) ArgNames() []string {
 	return e.checker.ArgNames()
-}
-
-// WithStrategy implements EventuallyChecker.WithStrategy.
-func (e *eventuallyChecker) WithStrategy(strategy *retry.Strategy) EventuallyChecker {
-	e.retryStrategy = strategy
-	return e
-}
-
-// WithStableStrategy implements EventuallyChecker.WithStableStrategy.
-func (e *eventuallyChecker) WithStableStrategy(strategy *retry.Strategy) EventuallyChecker {
-	e.stableRetryStrategy = strategy
-	return e
 }
