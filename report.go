@@ -90,9 +90,12 @@ func writeError(w io.Writer, err error, p reportParams) {
 	}
 
 	// Write notes if present.
+	noteKeys := map[string]bool{}
 	for _, n := range p.notes {
 		printPair(n.key, n.value)
+		noteKeys[n.key] = true
 	}
+
 	if IsBadCheck(err) || err == ErrSilent {
 		// For errors in the checker invocation or for silent errors, do not
 		// show output from args.
@@ -101,6 +104,9 @@ func writeError(w io.Writer, err error, p reportParams) {
 
 	// Write provided args.
 	for i, arg := range append([]interface{}{p.got}, p.args...) {
+		if noteKeys[p.argNames[i]] {
+			continue
+		}
 		printPair(p.argNames[i], arg)
 	}
 }
