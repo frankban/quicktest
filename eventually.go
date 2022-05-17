@@ -58,13 +58,10 @@ func Eventually(c Checker) *EventuallyChecker {
 // 			return atomic.LoadInt64(&foo)
 // 		}, qt.EventuallyStable(qt.Equals), int64(1234))
 func EventuallyStable(c Checker) *EventuallyChecker {
-	eventuallyChecker := Eventually(c)
-	eventuallyChecker.WithStableStrategy(&retry.Strategy{
+	return Eventually(c).WithStableStrategy(&retry.Strategy{
 		Delay:       100 * time.Millisecond,
 		MaxDuration: 150 * time.Millisecond,
 	})
-
-	return eventuallyChecker
 }
 
 // EventuallyChecker is a Checker that allows providing retry strategies to
@@ -80,15 +77,21 @@ type EventuallyChecker struct {
 // WithStrategy allows specifying a custom retry strategy, specifying initial
 // delay, delay between attempts, maximum duration before timing out, etc.
 func (e *EventuallyChecker) WithStrategy(strategy *retry.Strategy) *EventuallyChecker {
-	e.retryStrategy = strategy
-	return e
+	return &EventuallyChecker{
+		checker:             e.checker,
+		retryStrategy:       strategy,
+		stableRetryStrategy: e.stableRetryStrategy,
+	}
 }
 
 // WithStableStrategy allows specifying a custom retry strategy for the
 // stability check. If not provided, no stability check will be run.
 func (e *EventuallyChecker) WithStableStrategy(strategy *retry.Strategy) *EventuallyChecker {
-	e.stableRetryStrategy = strategy
-	return e
+	return &EventuallyChecker{
+		checker:             e.checker,
+		retryStrategy:       e.retryStrategy,
+		stableRetryStrategy: strategy,
+	}
 }
 
 // Check implements Checker.Check by calling the given got function repeatedly
@@ -100,55 +103,61 @@ func (e *EventuallyChecker) WithStableStrategy(strategy *retry.Strategy) *Eventu
 // underlying Checker again after a succesfull check, according to the stable
 // retry Strategy, until either the Strategy times out or the verification
 // fails. If the stable Strategy times out, the Check will succeed.
-func (e *EventuallyChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
+func (e *EventuallyChecker) Check(got interface{}, args []interface{}, notef func(key string, value interface{})) error {
+	// Define local note function for underlying checker notes, so that we can
+	// save only the notes from the last call at the end of the execution.
+	notes := []note{}
+	localnotef := func(key string, value interface{}) {
+		notes = append(notes, note{key, value})
+	}
+	defer func() {
+		for _, n := range append(notes, note{"got", got}) {
+			notef(n.key, n.value)
+		}
+	}()
+
 	// Validate that the given got parameter is a function with no parameters
 	// and one return value.
 	f := reflect.ValueOf(got)
 	if f.Kind() != reflect.Func {
-		note("got", got)
 		return BadCheckf("first argument is not a function")
 	}
 	ftype := f.Type()
 	if ftype.NumIn() != 0 {
-		note("function", got)
 		return BadCheckf("cannot use a function receiving arguments")
 	}
 	if ftype.NumOut() != 1 {
-		note("function", got)
 		return BadCheckf("cannot use a function returning more than one value")
 	}
 
 	// Run the checker according to the retry strategy, succeeding on the first
 	// successful check.
-	for i := e.retryStrategy.Start(); ; {
+	var err error
+	for i, hasNext := e.retryStrategy.Start(), true; hasNext; hasNext = i.Next(nil) {
+		notes = []note{}
 		got = f.Call(nil)[0].Interface()
-		err := e.checker.Check(got, args, note)
+		err = e.checker.Check(got, args, localnotef)
 		if err == nil {
 			break
 		}
-		if !i.Next(nil) {
-			note("got", got)
-			return fmt.Errorf("tried for %v, %s", e.retryStrategy.MaxDuration, err.Error())
-		}
+	}
+	if err != nil {
+		return fmt.Errorf("tried for %v, %s", e.retryStrategy.MaxDuration, err.Error())
 	}
 
 	// If a stable strategy is provided, run the checker again according to it,
 	// failing on the first error.
 	if e.stableRetryStrategy != nil {
-		for i := e.stableRetryStrategy.Start(); ; {
+		for i, hasNext := e.stableRetryStrategy.Start(), true; hasNext; hasNext = i.Next(nil) {
+			notes = []note{}
 			got = f.Call(nil)[0].Interface()
-			err := e.checker.Check(got, args, note)
+			err := e.checker.Check(got, args, localnotef)
 			if err != nil {
-				note("got", got)
 				return fmt.Errorf("less than %v after an initial success, %s", e.stableRetryStrategy.MaxDuration, err.Error())
-			}
-			if !i.Next(nil) {
-				break
 			}
 		}
 	}
 
-	note("got", got)
 	return nil
 }
 

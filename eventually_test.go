@@ -146,13 +146,13 @@ got:
 	expectedCheckFailure: `
 error:
   bad check: cannot use a function returning more than one value
-function:
+got:
   func() (int, error) {...}
 `,
 	expectedNegateFailure: `
 error:
   bad check: cannot use a function returning more than one value
-function:
+got:
   func() (int, error) {...}
 `}, {
 	about:   "Function with arguments",
@@ -164,13 +164,13 @@ function:
 	expectedCheckFailure: `
 error:
   bad check: cannot use a function receiving arguments
-function:
+got:
   func(int) int {...}
 `,
 	expectedNegateFailure: `
 error:
   bad check: cannot use a function receiving arguments
-function:
+got:
   func(int) int {...}
 `}}
 
