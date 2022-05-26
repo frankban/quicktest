@@ -6,7 +6,7 @@ jobs:
     name: Build and Test
     strategy:
       matrix:
-        go: ['1.11', '1.12', '1.13', '1.14', '1.15', '1.16', '1.17']
+        go: ['1.12', '1.13', '1.14', '1.15', '1.16', '1.17']
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
