@@ -1,8 +1,5 @@
 // Licensed under the MIT license, see LICENSE file for details.
 
-//go:build go1.13
-// +build go1.13
-
 package quicktest_test
 
 import (
