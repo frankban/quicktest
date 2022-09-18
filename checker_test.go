@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -936,6 +937,45 @@ got value:
   "these are the voyages"
 regexp:
   "these are the .*"
+`,
+}, {
+	about:   "Matches: match with pre-compiled regexp",
+	checker: qt.Matches,
+	got:     bytes.NewBufferString("resistance is futile"),
+	args:    []interface{}{regexp.MustCompile("resistance is (futile|useful)")},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got value:
+  s"resistance is futile"
+regexp:
+  s"resistance is (futile|useful)"
+`,
+}, {
+	about:   "Matches: mismatch with pre-compiled regexp",
+	checker: qt.Matches,
+	got:     bytes.NewBufferString("resistance is cool"),
+	args:    []interface{}{regexp.MustCompile("resistance is (futile|useful)")},
+	expectedCheckFailure: `
+error:
+  value.String() does not match regexp
+got value:
+  s"resistance is cool"
+regexp:
+  s"resistance is (futile|useful)"
+`,
+}, {
+	about:   "Matches: match with pre-compiled multi-line regexp",
+	checker: qt.Matches,
+	got:     bytes.NewBufferString("line 1\nline 2"),
+	args:    []interface{}{regexp.MustCompile(`line \d\nline \d`)},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got value:
+  s"line 1\nline 2"
+regexp:
+  s"line \\d\\nline \\d"
 `,
 }, {
 	about:   "Matches: match with stringer",
