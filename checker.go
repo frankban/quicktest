@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -41,11 +40,11 @@ type Checker interface {
 //
 // For instance:
 //
-//     c.Assert(answer, qt.Equals, 42)
+//	c.Assert(answer, qt.Equals, 42)
 //
 // Note that the following will fail:
 //
-//     c.Assert((*sometype)(nil), qt.Equals, nil)
+//	c.Assert((*sometype)(nil), qt.Equals, nil)
 //
 // Use the IsNil checker below for this kind of nil check.
 var Equals Checker = &equalsChecker{
@@ -110,25 +109,18 @@ func (c *equalsChecker) Check(got interface{}, args []interface{}, note func(key
 //
 // Example calls:
 //
-//     c.Assert(list, qt.CmpEquals(cmpopts.SortSlices), []int{42, 47})
-//     c.Assert(got, qt.CmpEquals(), []int{42, 47}) // Same as qt.DeepEquals.
-//
+//	c.Assert(list, qt.CmpEquals(cmpopts.SortSlices), []int{42, 47})
+//	c.Assert(got, qt.CmpEquals(), []int{42, 47}) // Same as qt.DeepEquals.
 func CmpEquals(opts ...cmp.Option) Checker {
-	return cmpEquals(testing.Verbose, opts...)
-}
-
-func cmpEquals(verbose func() bool, opts ...cmp.Option) Checker {
 	return &cmpEqualsChecker{
 		argNames: []string{"got", "want"},
 		opts:     opts,
-		verbose:  verbose,
 	}
 }
 
 type cmpEqualsChecker struct {
 	argNames
-	opts    cmp.Options
-	verbose func() bool
+	opts cmp.Options
 }
 
 // Check implements Checker.Check by checking that got == args[0] according to
@@ -145,12 +137,10 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}, note func(
 	want := args[0]
 	if diff := cmp.Diff(got, want, c.opts...); diff != "" {
 		// Only output values when the verbose flag is set.
-		if c.verbose() {
-			note("diff (-got +want)", Unquoted(diff))
-			return errors.New("values are not deep equal")
-		}
 		note("error", Unquoted("values are not deep equal"))
 		note("diff (-got +want)", Unquoted(diff))
+		note("got", SuppressedIfLong{got})
+		note("want", SuppressedIfLong{want})
 		return ErrSilent
 	}
 	return nil
@@ -163,8 +153,7 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}, note func(
 //
 // Example call:
 //
-//     c.Assert(got, qt.DeepEquals, []int{42, 47})
-//
+//	c.Assert(got, qt.DeepEquals, []int{42, 47})
 var DeepEquals = CmpEquals()
 
 // ContentEquals is like DeepEquals but any slices in the compared values will
@@ -179,9 +168,8 @@ var ContentEquals = CmpEquals(cmpopts.SortSlices(func(x, y interface{}) bool {
 //
 // For instance:
 //
-//     c.Assert("these are the voyages", qt.Matches, "these are .*")
-//     c.Assert(net.ParseIP("1.2.3.4"), qt.Matches, "1.*")
-//
+//	c.Assert("these are the voyages", qt.Matches, "these are .*")
+//	c.Assert(net.ParseIP("1.2.3.4"), qt.Matches, "1.*")
 var Matches Checker = &matchesChecker{
 	argNames: []string{"got value", "regexp"},
 }
@@ -221,8 +209,7 @@ func checkFirstArgIsError(got interface{}, note func(key string, value interface
 //
 // For instance:
 //
-//     c.Assert(err, qt.ErrorMatches, "bad wolf .*")
-//
+//	c.Assert(err, qt.ErrorMatches, "bad wolf .*")
 var ErrorMatches Checker = &errorMatchesChecker{
 	argNames: []string{"got error", "regexp"},
 }
@@ -247,8 +234,7 @@ func (c *errorMatchesChecker) Check(got interface{}, args []interface{}, note fu
 //
 // For instance:
 //
-//     c.Assert(func() {panic("bad wolf ...")}, qt.PanicMatches, "bad wolf .*")
-//
+//	c.Assert(func() {panic("bad wolf ...")}, qt.PanicMatches, "bad wolf .*")
 var PanicMatches Checker = &panicMatchesChecker{
 	argNames: []string{"function", "regexp"},
 }
@@ -290,7 +276,7 @@ func (c *panicMatchesChecker) Check(got interface{}, args []interface{}, note fu
 //
 // For instance:
 //
-//     c.Assert(got, qt.IsNil)
+//	c.Assert(got, qt.IsNil)
 //
 // As a special case, if the value is nil but implements the
 // error interface, it is still considered to be non-nil.
@@ -331,8 +317,7 @@ func (c *isNilChecker) Check(got interface{}, args []interface{}, note func(key 
 //
 // For instance:
 //
-//     c.Assert(got, qt.IsNotNil)
-//
+//	c.Assert(got, qt.IsNotNil)
 var IsNotNil Checker = &notChecker{
 	Checker: IsNil,
 }
@@ -341,9 +326,8 @@ var IsNotNil Checker = &notChecker{
 //
 // For instance:
 //
-//     c.Assert([]int{42, 47}, qt.HasLen, 2)
-//     c.Assert(myMap, qt.HasLen, 42)
-//
+//	c.Assert([]int{42, 47}, qt.HasLen, 2)
+//	c.Assert(myMap, qt.HasLen, 42)
 var HasLen Checker = &hasLenChecker{
 	argNames: []string{"got", "want length"},
 }
@@ -379,9 +363,8 @@ func (c *hasLenChecker) Check(got interface{}, args []interface{}, note func(key
 //
 // For instance:
 //
-//     var rc io.ReadCloser
-//     c.Assert(myReader, qt.Implements, &rc)
-//
+//	var rc io.ReadCloser
+//	c.Assert(myReader, qt.Implements, &rc)
 var Implements Checker = &implementsChecker{
 	argNames: []string{"got", "want interface pointer"},
 }
@@ -433,12 +416,11 @@ func (c *implementsChecker) Check(got interface{}, args []interface{}, note func
 //
 // For instance:
 //
-//     // Check that an error from os.Open satisfies os.IsNotExist.
-//     c.Assert(err, qt.Satisfies, os.IsNotExist)
+//	// Check that an error from os.Open satisfies os.IsNotExist.
+//	c.Assert(err, qt.Satisfies, os.IsNotExist)
 //
-//     // Check that a floating point number is a not-a-number.
-//     c.Assert(f, qt.Satisfies, math.IsNaN)
-//
+//	// Check that a floating point number is a not-a-number.
+//	c.Assert(f, qt.Satisfies, math.IsNaN)
 var Satisfies Checker = &satisfiesChecker{
 	argNames: []string{"arg", "predicate function"},
 }
@@ -483,9 +465,8 @@ func (c *satisfiesChecker) Check(got interface{}, args []interface{}, note func(
 //
 // For instance:
 //
-//     c.Assert(true, qt.IsTrue)
-//     c.Assert(myBoolean(false), qt.IsTrue)
-//
+//	c.Assert(true, qt.IsTrue)
+//	c.Assert(myBoolean(false), qt.IsTrue)
 var IsTrue Checker = &boolChecker{
 	want: true,
 }
@@ -495,9 +476,8 @@ var IsTrue Checker = &boolChecker{
 //
 // For instance:
 //
-//     c.Assert(false, qt.IsFalse)
-//     c.Assert(IsValid(), qt.IsFalse)
-//
+//	c.Assert(false, qt.IsFalse)
+//	c.Assert(IsValid(), qt.IsFalse)
 var IsFalse Checker = &boolChecker{
 	want: false,
 }
@@ -528,9 +508,8 @@ func (c *boolChecker) ArgNames() []string {
 //
 // For instance:
 //
-//     c.Assert(got, qt.Not(qt.IsNil))
-//     c.Assert(answer, qt.Not(qt.Equals), 42)
-//
+//	c.Assert(got, qt.Not(qt.IsNil))
+//	c.Assert(answer, qt.Not(qt.Equals), 42)
 func Not(checker Checker) Checker {
 	return &notChecker{
 		Checker: checker,
@@ -568,9 +547,8 @@ func (c *notChecker) Check(got interface{}, args []interface{}, note func(key st
 //
 // For example:
 //
-//     c.Assert("hello world", qt.Contains, "world")
-//     c.Assert([]int{3,5,7,99}, qt.Contains, 7)
-//
+//	c.Assert("hello world", qt.Contains, "world")
+//	c.Assert([]int{3,5,7,99}, qt.Contains, 7)
 var Contains Checker = &containsChecker{
 	argNames: []string{"container", "want"},
 }
@@ -600,8 +578,8 @@ func (c *containsChecker) Check(got interface{}, args []interface{}, note func(k
 //
 // For example:
 //
-//     c.Assert([]int{3,5,7,99}, qt.Any(qt.Equals), 7)
-//     c.Assert([][]string{{"a", "b"}, {"c", "d"}}, qt.Any(qt.DeepEquals), []string{"c", "d"})
+//	c.Assert([]int{3,5,7,99}, qt.Any(qt.Equals), 7)
+//	c.Assert([][]string{{"a", "b"}, {"c", "d"}}, qt.Any(qt.DeepEquals), []string{"c", "d"})
 //
 // See also All and Contains.
 func Any(c Checker) Checker {
@@ -651,8 +629,8 @@ func (c *anyChecker) Check(got interface{}, args []interface{}, note func(key st
 //
 // For example:
 //
-//     c.Assert([]int{3, 5, 8}, qt.All(qt.Not(qt.Equals)), 0)
-//     c.Assert([][]string{{"a", "b"}, {"a", "b"}}, qt.All(qt.DeepEquals), []string{"c", "d"})
+//	c.Assert([]int{3, 5, 8}, qt.All(qt.Not(qt.Equals)), 0)
+//	c.Assert([][]string{{"a", "b"}, {"a", "b"}}, qt.All(qt.DeepEquals), []string{"c", "d"})
 //
 // See also Any and Contains.
 func All(c Checker) Checker {
@@ -693,8 +671,6 @@ func (c *allChecker) Check(got interface{}, args []interface{}, notef func(key s
 			return BadCheckf("at %s: %v", iter.key(), err)
 		}
 		notef("error", Unquoted("mismatch at "+iter.key()))
-		// TODO should we print the whole container value in
-		// verbose mode?
 		if err != ErrSilent {
 			// If the error's not silent, the checker is expecting
 			// the caller to print the error and the value that failed.
@@ -718,8 +694,7 @@ func (c *allChecker) Check(got interface{}, args []interface{}, notef func(key s
 //
 // For instance:
 //
-//     c.Assert(`{"First": 47.11}`, qt.JSONEquals, &MyStruct{First: 47.11})
-//
+//	c.Assert(`{"First": 47.11}`, qt.JSONEquals, &MyStruct{First: 47.11})
 var JSONEquals = CodecEquals(json.Marshal, json.Unmarshal)
 
 type codecEqualChecker struct {

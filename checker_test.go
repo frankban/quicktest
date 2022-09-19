@@ -416,18 +416,6 @@ error:
   values are not deep equal
 diff (-got +want):
 %s
-`, diff(cmpEqualsGot, cmpEqualsWant)),
-}, {
-	about:   "CmpEquals: different values: verbose",
-	checker: qt.CmpEquals(),
-	got:     cmpEqualsGot,
-	args:    []interface{}{cmpEqualsWant},
-	verbose: true,
-	expectedCheckFailure: fmt.Sprintf(`
-error:
-  values are not deep equal
-diff (-got +want):
-%s
 got:
   struct { Strings []interface {}; Ints []int }{
       Strings: {
@@ -445,6 +433,65 @@ want:
       Ints: {42},
   }
 `, diff(cmpEqualsGot, cmpEqualsWant)),
+}, {
+	about:   "CmpEquals: different values, long output",
+	checker: qt.CmpEquals(),
+	got:     []interface{}{cmpEqualsWant, "extra line 1", "extra line 2"},
+	args:    []interface{}{[]interface{}{cmpEqualsWant, "extra line 1"}},
+	expectedCheckFailure: fmt.Sprintf(`
+error:
+  values are not deep equal
+diff (-got +want):
+%s
+got:
+  <suppressed because too long, use -v for the full output>
+want:
+  []interface {}{
+      struct { Strings []interface {}; Ints []int }{
+          Strings: {
+              "who",
+              "dalek",
+          },
+          Ints: {42},
+      },
+      "extra line 1",
+  }
+`, diff([]interface{}{cmpEqualsWant, "extra line 1", "extra line 2"}, []interface{}{cmpEqualsWant, "extra line 1"})),
+}, {
+	about:   "CmpEquals: different values: long output and verbose",
+	checker: qt.CmpEquals(),
+	got:     []interface{}{cmpEqualsWant, "extra line 1", "extra line 2"},
+	args:    []interface{}{[]interface{}{cmpEqualsWant, "extra line 1"}},
+	verbose: true,
+	expectedCheckFailure: fmt.Sprintf(`
+error:
+  values are not deep equal
+diff (-got +want):
+%s
+got:
+  []interface {}{
+      struct { Strings []interface {}; Ints []int }{
+          Strings: {
+              "who",
+              "dalek",
+          },
+          Ints: {42},
+      },
+      "extra line 1",
+      "extra line 2",
+  }
+want:
+  []interface {}{
+      struct { Strings []interface {}; Ints []int }{
+          Strings: {
+              "who",
+              "dalek",
+          },
+          Ints: {42},
+      },
+      "extra line 1",
+  }
+`, diff([]interface{}{cmpEqualsWant, "extra line 1", "extra line 2"}, []interface{}{cmpEqualsWant, "extra line 1"})),
 }, {
 	about:   "CmpEquals: same values with options",
 	checker: qt.CmpEquals(sameInts),
@@ -467,20 +514,6 @@ want:
 	args: []interface{}{
 		[]int{3, 2, 1},
 	},
-	expectedCheckFailure: fmt.Sprintf(`
-error:
-  values are not deep equal
-diff (-got +want):
-%s
-`, diff([]int{1, 2, 4}, []int{3, 2, 1}, sameInts)),
-}, {
-	about:   "CmpEquals: different values with options: verbose",
-	checker: qt.CmpEquals(sameInts),
-	got:     []int{1, 2, 4},
-	args: []interface{}{
-		[]int{3, 2, 1},
-	},
-	verbose: true,
 	expectedCheckFailure: fmt.Sprintf(`
 error:
   values are not deep equal
@@ -616,18 +649,6 @@ error:
   values are not deep equal
 diff (-got +want):
 %s
-`, diff(cmpEqualsGot, cmpEqualsWant)),
-}, {
-	about:   "DeepEquals: different values: verbose",
-	checker: qt.DeepEquals,
-	got:     cmpEqualsGot,
-	args:    []interface{}{cmpEqualsWant},
-	verbose: true,
-	expectedCheckFailure: fmt.Sprintf(`
-error:
-  values are not deep equal
-diff (-got +want):
-%s
 got:
   struct { Strings []interface {}; Ints []int }{
       Strings: {
@@ -645,6 +666,68 @@ want:
       Ints: {42},
   }
 `, diff(cmpEqualsGot, cmpEqualsWant)),
+}, {
+	about:   "DeepEquals: different values: long output",
+	checker: qt.DeepEquals,
+	got:     []interface{}{cmpEqualsWant, cmpEqualsWant},
+	args:    []interface{}{[]interface{}{cmpEqualsWant, cmpEqualsWant, 42}},
+	expectedCheckFailure: fmt.Sprintf(`
+error:
+  values are not deep equal
+diff (-got +want):
+%s
+got:
+  <suppressed because too long, use -v for the full output>
+want:
+  <same as "got">
+`, diff([]interface{}{cmpEqualsWant, cmpEqualsWant}, []interface{}{cmpEqualsWant, cmpEqualsWant, 42})),
+}, {
+	about:   "DeepEquals: different values: long output and verbose",
+	checker: qt.DeepEquals,
+	got:     []interface{}{cmpEqualsWant, cmpEqualsWant},
+	args:    []interface{}{[]interface{}{cmpEqualsWant, cmpEqualsWant, 42}},
+	verbose: true,
+	expectedCheckFailure: fmt.Sprintf(`
+error:
+  values are not deep equal
+diff (-got +want):
+%s
+got:
+  []interface {}{
+      struct { Strings []interface {}; Ints []int }{
+          Strings: {
+              "who",
+              "dalek",
+          },
+          Ints: {42},
+      },
+      struct { Strings []interface {}; Ints []int }{
+          Strings: {
+              "who",
+              "dalek",
+          },
+          Ints: {42},
+      },
+  }
+want:
+  []interface {}{
+      struct { Strings []interface {}; Ints []int }{
+          Strings: {
+              "who",
+              "dalek",
+          },
+          Ints: {42},
+      },
+      struct { Strings []interface {}; Ints []int }{
+          Strings: {
+              "who",
+              "dalek",
+          },
+          Ints: {42},
+      },
+      int(42),
+  }
+`, diff([]interface{}{cmpEqualsWant, cmpEqualsWant}, []interface{}{cmpEqualsWant, cmpEqualsWant, 42})),
 }, {
 	about:   "ContentEquals: same values",
 	checker: qt.ContentEquals,
@@ -779,6 +862,13 @@ error:
   values are not deep equal
 diff (-got +want):
 %s
+got:
+  []string{"bad", "wolf"}
+want:
+  []interface {}{
+      "bad",
+      "wolf",
+  }
 `, diff([]string{"bad", "wolf"}, []interface{}{"bad", "wolf"})),
 }, {
 	about:   "ContentEquals: not enough arguments",
@@ -2481,14 +2571,18 @@ first mismatched element:
 	checker: qt.All(qt.DeepEquals),
 	got:     [][]string{{"a", "b"}, {"a", "c"}},
 	args:    []interface{}{[]string{"a", "b"}},
-	expectedCheckFailure: `
+	expectedCheckFailure: fmt.Sprintf(`
 error:
   mismatch at index 1
 error:
   values are not deep equal
 diff (-got +want):
-` + diff([]string{"a", "c"}, []string{"a", "b"}) + `
-`,
+%s
+got:
+  []string{"a", "c"}
+want:
+  []string{"a", "b"}
+`, diff([]string{"a", "c"}, []string{"a", "b"})),
 }, {
 	about:   "All bad checker args count",
 	checker: qt.All(qt.IsNil),
@@ -2710,6 +2804,14 @@ error:
   values are not deep equal
 diff (-got +want):
 %s
+got:
+  map[string]interface {}{
+      "NotThere": float64(1),
+  }
+want:
+  map[string]interface {}{
+      "First": float64(2),
+  }
 `, diff(map[string]interface{}{"NotThere": 1.0}, map[string]interface{}{"First": 2.0})),
 }, {
 	about:   "JSONEquals cannot unmarshal obtained value",
@@ -2814,18 +2916,25 @@ want:
 }}
 
 func TestCheckers(t *testing.T) {
+	original := qt.TestingVerbose
+	defer func() {
+		qt.TestingVerbose = original
+	}()
 	for _, test := range checkerTests {
-		checker := qt.WithVerbosity(test.checker, test.verbose)
+		*qt.TestingVerbose = func() bool {
+			return test.verbose
+		}
+
 		t.Run(test.about, func(t *testing.T) {
 			tt := &testingT{}
 			c := qt.New(tt)
-			ok := c.Check(test.got, checker, test.args...)
+			ok := c.Check(test.got, test.checker, test.args...)
 			checkResult(t, ok, tt.errorString(), test.expectedCheckFailure)
 		})
 		t.Run("Not "+test.about, func(t *testing.T) {
 			tt := &testingT{}
 			c := qt.New(tt)
-			ok := c.Check(test.got, qt.Not(checker), test.args...)
+			ok := c.Check(test.got, qt.Not(test.checker), test.args...)
 			checkResult(t, ok, tt.errorString(), test.expectedNegateFailure)
 		})
 	}
