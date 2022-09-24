@@ -206,6 +206,7 @@ the provided regular expression.
 For instance:
 
     c.Assert(err, qt.ErrorMatches, `bad wolf .*`)
+    c.Assert(err, qt.ErrorMatches, regexp.MustCompile("bad wolf .*"))
 
 
 ### HasLen
@@ -301,6 +302,7 @@ For instance:
 
     c.Assert("these are the voyages", qt.Matches, `these are .*`)
     c.Assert(net.ParseIP("1.2.3.4"), qt.Matches, `1.*`)
+    c.Assert("line 1\nline 2", qt.Matches, regexp.MustCompile(`line \d\nline \d`))
 
 
 ### Not
@@ -321,6 +323,7 @@ the provided regular expression.
 For instance:
 
     c.Assert(func() {panic("bad wolf ...")}, qt.PanicMatches, `bad wolf .*`)
+    c.Assert(func() {panic("bad wolf ...")}, qt.PanicMatches, regexp.MustCompile(`bad wolf .*`))
 
 
 ### Satisfies

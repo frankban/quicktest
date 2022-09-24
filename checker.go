@@ -170,6 +170,7 @@ var ContentEquals = CmpEquals(cmpopts.SortSlices(func(x, y interface{}) bool {
 //
 //	c.Assert("these are the voyages", qt.Matches, "these are .*")
 //	c.Assert(net.ParseIP("1.2.3.4"), qt.Matches, "1.*")
+//	c.Assert("my multi-line\nnumber", qt.Matches, regexp.MustCompile(`my multi-line\n(string|number)`))
 var Matches Checker = &matchesChecker{
 	argNames: []string{"got value", "regexp"},
 }
@@ -210,6 +211,7 @@ func checkFirstArgIsError(got interface{}, note func(key string, value interface
 // For instance:
 //
 //	c.Assert(err, qt.ErrorMatches, "bad wolf .*")
+//	c.Assert(err, qt.ErrorMatches, regexp.MustCompile("bad wolf .*"))
 var ErrorMatches Checker = &errorMatchesChecker{
 	argNames: []string{"got error", "regexp"},
 }
@@ -235,6 +237,7 @@ func (c *errorMatchesChecker) Check(got interface{}, args []interface{}, note fu
 // For instance:
 //
 //	c.Assert(func() {panic("bad wolf ...")}, qt.PanicMatches, "bad wolf .*")
+//	c.Assert(func() {panic("bad wolf ...")}, qt.PanicMatches, regexp.MustCompile(`bad wolf .*`))
 var PanicMatches Checker = &panicMatchesChecker{
 	argNames: []string{"function", "regexp"},
 }
