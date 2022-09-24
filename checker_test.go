@@ -1312,6 +1312,49 @@ want args:
   regexp
 `,
 }, {
+	about:   "ErrorMatches: match with pre-compiled regexp",
+	checker: qt.ErrorMatches,
+	got:     errBadWolf,
+	args:    []interface{}{regexp.MustCompile("bad (wolf|dog)")},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got error:
+  bad wolf
+    file:line
+regexp:
+  s"bad (wolf|dog)"
+`,
+}, {
+	about:   "ErrorMatches: match with pre-compiled multi-line regexp",
+	checker: qt.ErrorMatches,
+	got:     errBadWolfMultiLine,
+	args:    []interface{}{regexp.MustCompile(`bad (wolf|dog)\nfaulty (logic|statement)`)},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got error:
+  bad wolf
+  faulty logic
+    file:line
+regexp:
+  s"bad (wolf|dog)\\nfaulty (logic|statement)"
+`,
+}, {
+	about:   "ErrorMatches: mismatch with pre-compiled regexp",
+	checker: qt.ErrorMatches,
+	got:     errBadWolf,
+	args:    []interface{}{regexp.MustCompile("good (wolf|dog)")},
+	expectedCheckFailure: `
+error:
+  error does not match regexp
+got error:
+  bad wolf
+    file:line
+regexp:
+  s"good (wolf|dog)"
+`,
+}, {
 	about:   "PanicMatches: perfect match",
 	checker: qt.PanicMatches,
 	got:     func() { panic("error: bad wolf") },
@@ -1427,6 +1470,51 @@ panic value:
   "error: bad wolf"
 regexp:
   nil
+`,
+}, {
+	about:   "PanicMatches: match with pre-compiled regexp",
+	checker: qt.PanicMatches,
+	got:     func() { panic("error: bad wolf") },
+	args:    []interface{}{regexp.MustCompile("error: bad (wolf|dog)")},
+	expectedNegateFailure: `
+error:
+  unexpected success
+panic value:
+  "error: bad wolf"
+function:
+  func() {...}
+regexp:
+  s"error: bad (wolf|dog)"
+`,
+}, {
+	about:   "PanicMatches: match with pre-compiled multi-line regexp",
+	checker: qt.PanicMatches,
+	got:     func() { panic("error: bad wolf\nfaulty logic") },
+	args:    []interface{}{regexp.MustCompile(`error: bad (wolf|dog)\nfaulty (logic|statement)`)},
+	expectedNegateFailure: `
+error:
+  unexpected success
+panic value:
+  "error: bad wolf\nfaulty logic"
+function:
+  func() {...}
+regexp:
+  s"error: bad (wolf|dog)\\nfaulty (logic|statement)"
+`,
+}, {
+	about:   "PanicMatches: mismatch with pre-compiled regexp",
+	checker: qt.PanicMatches,
+	got:     func() { panic("error: bad wolf") },
+	args:    []interface{}{regexp.MustCompile("good (wolf|dog)")},
+	expectedCheckFailure: `
+error:
+  panic value does not match regexp
+panic value:
+  "error: bad wolf"
+function:
+  func() {...}
+regexp:
+  s"good (wolf|dog)"
 `,
 }, {
 	about:   "PanicMatches: not a function",
