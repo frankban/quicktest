@@ -73,8 +73,10 @@ func writeError(w io.Writer, err error, p reportParams) {
 			v = string(u)
 		} else if s, ok := value.(SuppressedIfLong); ok {
 			v = p.format(s.Value)
-			if !testingVerbose() && strings.Count(v, "\n") >= longValueLines {
-				v = "<suppressed because too long, use -v for the full output>"
+			if !testingVerbose() {
+				if n := strings.Count(v, "\n"); n > longValueLines {
+					v = fmt.Sprintf("<suppressed due to length (%d lines), use -v for full output>", n)
+				}
 			}
 		} else {
 			v = p.format(value)

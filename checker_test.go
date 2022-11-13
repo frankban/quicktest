@@ -436,7 +436,7 @@ want:
 }, {
 	about:   "CmpEquals: different values, long output",
 	checker: qt.CmpEquals(),
-	got:     []interface{}{cmpEqualsWant, "extra line 1", "extra line 2"},
+	got:     []interface{}{cmpEqualsWant, "extra line 1", "extra line 2", "extra line 3"},
 	args:    []interface{}{[]interface{}{cmpEqualsWant, "extra line 1"}},
 	expectedCheckFailure: fmt.Sprintf(`
 error:
@@ -444,7 +444,7 @@ error:
 diff (-got +want):
 %s
 got:
-  <suppressed because too long, use -v for the full output>
+  <suppressed due to length (11 lines), use -v for full output>
 want:
   []interface {}{
       struct { Strings []interface {}; Ints []int }{
@@ -456,7 +456,7 @@ want:
       },
       "extra line 1",
   }
-`, diff([]interface{}{cmpEqualsWant, "extra line 1", "extra line 2"}, []interface{}{cmpEqualsWant, "extra line 1"})),
+`, diff([]interface{}{cmpEqualsWant, "extra line 1", "extra line 2", "extra line 3"}, []interface{}{cmpEqualsWant, "extra line 1"})),
 }, {
 	about:   "CmpEquals: different values: long output and verbose",
 	checker: qt.CmpEquals(),
@@ -677,9 +677,9 @@ error:
 diff (-got +want):
 %s
 got:
-  <suppressed because too long, use -v for the full output>
+  <suppressed due to length (15 lines), use -v for full output>
 want:
-  <same as "got">
+  <suppressed due to length (16 lines), use -v for full output>
 `, diff([]interface{}{cmpEqualsWant, cmpEqualsWant}, []interface{}{cmpEqualsWant, cmpEqualsWant, 42})),
 }, {
 	about:   "DeepEquals: different values: long output and verbose",
