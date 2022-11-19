@@ -142,11 +142,6 @@ func (t *testingT) Run(name string, f func(t *testing.T)) bool {
 	return t.subTestResult
 }
 
-// errorString returns the error message.
-func (t *testingT) errorString() string {
-	return t.errorBuf.String()
-}
-
 // fatalString returns the fatal error message.
 func (t *testingT) fatalString() string {
 	return t.fatalBuf.String()
