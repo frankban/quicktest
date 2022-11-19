@@ -29,10 +29,7 @@ func (e errTargetNonPtr) Error() string {
 	return "non ptr: " + e.msg
 }
 
-var (
-	targetErr       = &errTarget{msg: "target"}
-	targetNonPtrErr = &errTargetNonPtr{msg: "target"}
-)
+var targetErr = &errTarget{msg: "target"}
 
 var errorCheckerTests = []struct {
 	about                 string
