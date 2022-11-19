@@ -109,8 +109,7 @@ func TestCmpReportOutput(t *testing.T) {
 	}, {
 		AnInt: 1,
 	}, {}}
-	checker := qt.WithVerbosity(qt.DeepEquals, false)
-	c.Assert(gotExamples, checker, wantExamples)
+	c.Assert(gotExamples, qt.DeepEquals, wantExamples)
 	want := `
 error:
   values are not deep equal
@@ -123,9 +122,24 @@ diff (-got +want):
   -         &{AnInt: 2},
   +         &{},
     }
+got:
+  []*quicktest_test.reportExample{
+      &quicktest_test.reportExample{AnInt:42},
+      &quicktest_test.reportExample{AnInt:47},
+      &quicktest_test.reportExample{AnInt:1},
+      &quicktest_test.reportExample{AnInt:2},
+  }
+want:
+  []*quicktest_test.reportExample{
+      &quicktest_test.reportExample{AnInt:42},
+      &quicktest_test.reportExample{AnInt:47},
+      &quicktest_test.reportExample{AnInt:2},
+      &quicktest_test.reportExample{AnInt:1},
+      &quicktest_test.reportExample{},
+  }
 stack:
-  $file:113
-    c.Assert(gotExamples, checker, wantExamples)
+  $file:112
+    c.Assert(gotExamples, qt.DeepEquals, wantExamples)
 `
 	assertReport(t, tt, want)
 }
@@ -141,7 +155,7 @@ got:
 want:
   int(47)
 stack:
-  $file:135
+  $file:149
     qt.Assert(tt, 42, qt.Equals, 47)
 `
 	assertReport(t, tt, want)

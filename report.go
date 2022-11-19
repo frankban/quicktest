@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"testing"
 )
 
 // reportParams holds parameters for reporting a test error.
@@ -37,6 +38,18 @@ type reportParams struct {
 // provided value to be quoted.
 type Unquoted string
 
+// SuppressedIfLong indicates that the value must be suppressed if verbose
+// testing is off and the pretty printed version of the value is long. This is
+// useful when a checker calls note and does not want the provided value to be
+// printed in non-verbose test runs if the value is too long.
+type SuppressedIfLong struct {
+	// Value holds the original annotated value.
+	Value interface{}
+}
+
+// longValueLines holds the number of lines after which a value is long.
+const longValueLines = 10
+
 // report generates a failure report for the given error, optionally including
 // in the output the checker arguments, comment and notes included in the
 // provided report parameters.
@@ -58,6 +71,13 @@ func writeError(w io.Writer, err error, p reportParams) {
 		var v string
 		if u, ok := value.(Unquoted); ok {
 			v = string(u)
+		} else if s, ok := value.(SuppressedIfLong); ok {
+			v = p.format(s.Value)
+			if !testingVerbose() {
+				if n := strings.Count(v, "\n"); n > longValueLines {
+					v = fmt.Sprintf("<suppressed due to length (%d lines), use -v for full output>", n)
+				}
+			}
 		} else {
 			v = p.format(value)
 		}
@@ -103,6 +123,11 @@ func writeError(w io.Writer, err error, p reportParams) {
 	for i, arg := range append([]interface{}{p.got}, p.args...) {
 		printPair(p.argNames[i], arg)
 	}
+}
+
+// testingVerbose is defined as a variable for testing.
+var testingVerbose = func() bool {
+	return testing.Verbose()
 }
 
 // writeStack writes the traceback information for the current failure into the
