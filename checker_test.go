@@ -537,13 +537,15 @@ want:
 	},
 	expectedCheckFailure: `
 error:
-  cannot handle unexported field at root.answer:
+  bad check: cannot handle unexported field at root.answer:
   	"github.com/frankban/quicktest_test".(struct { answer int })
   consider using a custom Comparer; if you control the implementation of type, you can also consider using an Exporter, AllowUnexported, or cmpopts.IgnoreUnexported
-got:
-  struct { answer int }{answer:42}
-want:
-  <same as "got">
+`,
+	expectedNegateFailure: `
+error:
+  bad check: cannot handle unexported field at root.answer:
+  	"github.com/frankban/quicktest_test".(struct { answer int })
+  consider using a custom Comparer; if you control the implementation of type, you can also consider using an Exporter, AllowUnexported, or cmpopts.IgnoreUnexported
 `,
 }, {
 	about:   "CmpEquals: structs with unexported fields ignored",
