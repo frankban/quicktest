@@ -436,8 +436,6 @@ type satisfiesChecker struct {
 func (c *satisfiesChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) (err error) {
 	// Original code at
 	// <https://github.com/juju/testing/blob/master/checkers/bool.go>.
-	// Copyright 2011 Canonical Ltd.
-	// Licensed under the LGPLv3, see LICENSE file for details.
 	predicate := args[0]
 	f := reflect.ValueOf(predicate)
 	ftype := f.Type()
