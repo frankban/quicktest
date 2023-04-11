@@ -30,6 +30,11 @@ var errBadWolf = &errTest{
 	formatted: true,
 }
 
+var errBadWolfMultiLine = &errTest{
+	msg:       "bad wolf\nfaulty logic",
+	formatted: true,
+}
+
 // errTest is an error type used in tests.
 type errTest struct {
 	msg       string
