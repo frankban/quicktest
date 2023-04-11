@@ -131,7 +131,7 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}, note func(
 		// structs with unexported fields and neither AllowUnexported nor
 		// cmpopts.IgnoreUnexported are provided.
 		if r := recover(); r != nil {
-			err = fmt.Errorf("%s", r)
+			err = BadCheckf("%s", r)
 		}
 	}()
 	want := args[0]
