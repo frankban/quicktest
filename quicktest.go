@@ -13,8 +13,8 @@ import (
 // Check runs the given check using the provided t and continues execution in
 // case of failure. For instance:
 //
-//     qt.Check(t, answer, qt.Equals, 42)
-//     qt.Check(t, got, qt.IsNil, qt.Commentf("iteration %d", i))
+//	qt.Check(t, answer, qt.Equals, 42)
+//	qt.Check(t, got, qt.IsNil, qt.Commentf("iteration %d", i))
 //
 // Additional args (not consumed by the checker), when provided, are included as
 // comments in the failure output when the check fails.
@@ -26,8 +26,8 @@ func Check(t testing.TB, got interface{}, checker Checker, args ...interface{}) 
 // Assert runs the given check using the provided t and stops execution in case
 // of failure. For instance:
 //
-//     qt.Assert(t, got, qt.DeepEquals, []int{42, 47})
-//     qt.Assert(t, got, qt.ErrorMatches, "bad wolf .*", qt.Commentf("a comment"))
+//	qt.Assert(t, got, qt.DeepEquals, []int{42, 47})
+//	qt.Assert(t, got, qt.ErrorMatches, "bad wolf .*", qt.Commentf("a comment"))
 //
 // Additional args (not consumed by the checker), when provided, are included as
 // comments in the failure output when the check fails.
@@ -40,12 +40,12 @@ func Assert(t testing.TB, got interface{}, checker Checker, args ...interface{})
 // fail. It only ever calls the Fatal, Error and (when available) Run methods
 // of t. For instance.
 //
-//     func TestFoo(t *testing.T) {
-//         t.Run("A=42", func(t *testing.T) {
-//             c := qt.New(t)
-//             c.Assert(a, qt.Equals, 42)
-//         })
-//     }
+//	func TestFoo(t *testing.T) {
+//	    t.Run("A=42", func(t *testing.T) {
+//	        c := qt.New(t)
+//	        c.Assert(a, qt.Equals, 42)
+//	    })
+//	}
 //
 // The library already provides some base checkers, and more can be added by
 // implementing the Checker interface.
@@ -54,12 +54,12 @@ func Assert(t testing.TB, got interface{}, checker Checker, args ...interface{})
 // a call to Done should be deferred after calling New.
 // For example:
 //
-//     func TestFoo(t *testing.T) {
-//             c := qt.New(t)
-//             defer c.Done()
-//             c.Setenv("HOME", "/non-existent")
-//             c.Assert(os.Getenv("HOME"), qt.Equals, "/non-existent")
-//     })
+//	func TestFoo(t *testing.T) {
+//	        c := qt.New(t)
+//	        defer c.Done()
+//	        c.Setenv("HOME", "/non-existent")
+//	        c.Assert(os.Getenv("HOME"), qt.Equals, "/non-existent")
+//	})
 //
 // A value of C that's has a non-nil TB field but is otherwise zero is valid.
 // So:
@@ -179,8 +179,8 @@ func (c *C) getFormat() func(interface{}) string {
 // Check runs the given check and continues execution in case of failure.
 // For instance:
 //
-//     c.Check(answer, qt.Equals, 42)
-//     c.Check(got, qt.IsNil, qt.Commentf("iteration %d", i))
+//	c.Check(answer, qt.Equals, 42)
+//	c.Check(got, qt.IsNil, qt.Commentf("iteration %d", i))
 //
 // Additional args (not consumed by the checker), when provided, are included
 // as comments in the failure output when the check fails.
@@ -197,8 +197,8 @@ func (c *C) Check(got interface{}, checker Checker, args ...interface{}) bool {
 // Assert runs the given check and stops execution in case of failure.
 // For instance:
 //
-//     c.Assert(got, qt.DeepEquals, []int{42, 47})
-//     c.Assert(got, qt.ErrorMatches, "bad wolf .*", qt.Commentf("a comment"))
+//	c.Assert(got, qt.DeepEquals, []int{42, 47})
+//	c.Assert(got, qt.ErrorMatches, "bad wolf .*", qt.Commentf("a comment"))
 //
 // Additional args (not consumed by the checker), when provided, are included
 // as comments in the failure output when the check fails.
@@ -233,13 +233,13 @@ var (
 // The TB field in the subtest will hold the value passed
 // by Run to its argument function.
 //
-//     func TestFoo(t *testing.T) {
-//         c := qt.New(t)
-//         c.Run("A=42", func(c *qt.C) {
-//             // This assertion only stops the current subtest.
-//             c.Assert(a, qt.Equals, 42)
-//         })
-//     }
+//	func TestFoo(t *testing.T) {
+//	    c := qt.New(t)
+//	    c.Run("A=42", func(c *qt.C) {
+//	        // This assertion only stops the current subtest.
+//	        c.Assert(a, qt.Equals, 42)
+//	    })
+//	}
 //
 // A panic is raised when Run is called and the embedded concrete type does not
 // implement a Run method with a correct signature.
