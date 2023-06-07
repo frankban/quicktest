@@ -268,10 +268,11 @@ func (c *C) Run(name string, f func(c *C)) bool {
 		// The first argument to the Run function arg isn't right.
 		badType("bad first argument type for Run method")
 	}
+	cFormat := c.getFormat()
 	fv := reflect.MakeFunc(farg, func(args []reflect.Value) []reflect.Value {
 		c2 := New(args[0].Interface().(testing.TB))
 		defer c2.Done()
-		c2.SetFormat(c.getFormat())
+		c2.SetFormat(cFormat)
 		f(c2)
 		return nil
 	})
