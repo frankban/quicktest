@@ -37,6 +37,26 @@ func TestCDeferWithoutDone(t *testing.T) {
 	c.Assert(tc.cleanup, qt.PanicMatches, `Done not called after Defer`)
 }
 
+func TestCDeferFromDefer(t *testing.T) {
+	c := qt.New(t)
+	tc := &testingTWithCleanup{
+		TB:      t,
+		cleanup: func() {},
+	}
+	c1 := qt.New(tc)
+	c1.Defer(func() {
+		c1.Log("defer 1")
+		// This defer is triggered from the first Done().
+		// It should have its own Done() call too.
+		c1.Defer(func() {
+			c1.Log("defer 2")
+		})
+	})
+	c1.Done()
+	// Check that we report the missing second Done().
+	c.Assert(tc.cleanup, qt.PanicMatches, `Done not called after Defer`)
+}
+
 func TestCDeferVsCleanupOrder(t *testing.T) {
 	c := qt.New(t)
 	var defers []int
