@@ -109,22 +109,19 @@ func (c *C) Defer(f func()) {
 		// Use TB.Cleanup when available, but add a check
 		// that Done has been called so that we don't run
 		// into unexpected Go version incompatibilities.
-		if c.doneNeeded {
-			// We've already installed the wrapper func that checks for Done
-			// so we can avoid doing it again.
-			cleaner.Cleanup(f)
-			return
+		if !c.doneNeeded {
+			c.doneNeeded = true
+			cleaner.Cleanup(func() {
+				c.mu.Lock()
+				defer c.mu.Unlock()
+				if c.doneNeeded {
+					panic("Done not called after Defer")
+				}
+			})
 		}
-		c.doneNeeded = true
-		cleaner.Cleanup(func() {
-			c.mu.Lock()
-			doneNeeded := c.doneNeeded
-			c.mu.Unlock()
-			if doneNeeded {
-				panic("Done not called after Defer")
-			}
-			f()
-		})
+
+		cleaner.Cleanup(f)
+
 		return
 	}
 
