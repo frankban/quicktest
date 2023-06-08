@@ -298,7 +298,7 @@ func getRunFuncSignatureCache(t reflect.Type) (reflect.Type, error) {
 // implement a Run method with a correct signature.
 func (c *C) Run(name string, f func(c *C)) bool {
 
-	farg, err := getRunFuncSignature(reflect.TypeOf(c.TB))
+	farg, err := getRunFuncSignatureCache(reflect.TypeOf(c.TB))
 	if err != nil {
 		panic(err.Error())
 	}
