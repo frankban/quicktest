@@ -547,6 +547,28 @@ func TestCRunGetFuncSig(t *testing.T) {
 	}
 }
 
+func BenchmarkCRunGetFuncSig(b *testing.B) {
+	for _, tb := range []testing.TB{
+		(*testing.T)(nil), // *testing.T
+		b,                 // *testing.B
+		qt.New(b),         // *quicktest.C
+	} {
+		tbt := reflect.TypeOf(tb)
+
+		b.Run(tbt.String()+"-no-cache", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_, _ = qt.GetRunFuncSignature(tbt)
+			}
+		})
+
+		b.Run(tbt.String()+"-with-cache", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_, _ = qt.GetRunFuncSignatureCache(tbt)
+			}
+		})
+	}
+}
+
 func TestHelper(t *testing.T) {
 	tt := &testingT{}
 	qt.Assert(tt, true, qt.IsFalse)

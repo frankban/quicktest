@@ -6,5 +6,6 @@ var (
 	Prefixf        = prefixf
 	TestingVerbose = &testingVerbose
 
-	GetRunFuncSignature = getRunFuncSignature
+	GetRunFuncSignature      = getRunFuncSignature
+	GetRunFuncSignatureCache = getRunFuncSignatureCache
 )

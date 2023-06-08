@@ -249,6 +249,11 @@ func getRunFuncSignature(t reflect.Type) (reflect.Type, error) {
 	return farg, nil
 }
 
+func getRunFuncSignatureCache(t reflect.Type) (reflect.Type, error) {
+	// dummy implementation for now
+	return getRunFuncSignature(t)
+}
+
 // Run runs f as a subtest of t called name. It's a wrapper around
 // the Run method of c.TB that provides the quicktest checker to f. When
 // the function completes, c.Done will be called to run any
