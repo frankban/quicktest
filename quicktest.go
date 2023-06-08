@@ -249,8 +249,25 @@ func getRunFuncSignature(t reflect.Type) (reflect.Type, error) {
 	return farg, nil
 }
 
+// Cache of getRunFuncSignature results used by getRunFuncSignatureCache.
+var runFuncSigCache = []struct {
+	T    reflect.Type
+	FArg reflect.Type
+}{
+	// Prefill with common types
+	// Use TestCRunGetFuncSig to generate values
+	{T: reflect.TypeOf((*testing.T)(nil)), FArg: reflect.TypeOf((func(*testing.T))(nil))},
+	{T: reflect.TypeOf((*testing.B)(nil)), FArg: reflect.TypeOf((func(*testing.B))(nil))},
+	{T: reflect.TypeOf((*C)(nil)), FArg: reflect.TypeOf((func(*C))(nil))},
+}
+
 func getRunFuncSignatureCache(t reflect.Type) (reflect.Type, error) {
-	// dummy implementation for now
+	for i := 0; i < len(runFuncSigCache); i++ {
+		if t == runFuncSigCache[i].T {
+			return runFuncSigCache[i].FArg, nil
+		}
+	}
+
 	return getRunFuncSignature(t)
 }
 
