@@ -5,4 +5,6 @@ package quicktest
 var (
 	Prefixf        = prefixf
 	TestingVerbose = &testingVerbose
+
+	GetRunFuncSignature = getRunFuncSignature
 )

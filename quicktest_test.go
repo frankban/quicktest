@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -525,6 +526,25 @@ got:
 want:
   myfmt(<nil>)
 `)
+}
+
+// TestCRunGetFuncSig checks the internal function getRunFuncSignature which is used in Run.
+func TestCRunGetFuncSig(t *testing.T) {
+	for _, tb := range []testing.TB{
+		t,                 // *testing.T
+		(*testing.B)(nil), // *testing.B
+		qt.New(t),         // *quicktest.C
+	} {
+		tbt := reflect.TypeOf(tb)
+		farg, err := qt.GetRunFuncSignature(tbt)
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+		t.Logf("(%s).Run: func(string, %s) bool", tbt, farg)
+		// useful to create a cache
+		t.Logf("{T: reflect.TypeOf((%s)(nil)), FArg: reflect.TypeOf((%s)(nil))}", tbt, farg)
+	}
 }
 
 func TestHelper(t *testing.T) {
