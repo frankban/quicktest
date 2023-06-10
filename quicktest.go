@@ -126,11 +126,13 @@ func (c *C) Defer(f func()) {
 	}
 
 	oldDeferred := c.deferred
-	c.deferred = func() {
-		if oldDeferred != nil {
+	if oldDeferred != nil {
+		c.deferred = func() {
 			defer oldDeferred()
+			f()
 		}
-		f()
+	} else {
+		c.deferred = f
 	}
 }
 
