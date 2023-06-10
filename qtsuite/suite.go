@@ -60,7 +60,9 @@ import (
 
 // Run runs each test method defined on the given value as a separate
 // subtest. A test is a method of the form
+//
 //	func (T) TestXxx(*quicktest.C)
+//
 // where Xxx does not start with a lowercase letter.
 //
 // If suite is a pointer, the value pointed to is copied before any
@@ -69,7 +71,9 @@ import (
 // if desired - it's OK to call c.Parallel().
 //
 // If suite has a method of the form
+//
 //	func (T) Init(*quicktest.C)
+//
 // this method will be invoked before each test run.
 func Run(c *qt.C, suite interface{}) {
 	sv := reflect.ValueOf(suite)
