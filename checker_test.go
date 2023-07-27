@@ -494,6 +494,21 @@ want:
   }
 `, diff([]interface{}{cmpEqualsWant, "extra line 1", "extra line 2"}, []interface{}{cmpEqualsWant, "extra line 1"})),
 }, {
+	about:   "CmpEquals: different values, long output, same number of lines",
+	checker: qt.CmpEquals(),
+	got:     []interface{}{cmpEqualsWant, "extra line 1", "extra line 2", "extra line 3"},
+	args:    []interface{}{[]interface{}{cmpEqualsWant, "extra line 1", "extra line 2", "extra line three"}},
+	expectedCheckFailure: fmt.Sprintf(`
+error:
+  values are not deep equal
+diff (-got +want):
+%s
+got:
+  <suppressed due to length (11 lines), use -v for full output>
+want:
+  <suppressed due to length (11 lines), use -v for full output>
+`, diff([]interface{}{cmpEqualsWant, "extra line 1", "extra line 2", "extra line 3"}, []interface{}{cmpEqualsWant, "extra line 1", "extra line 2", "extra line three"})),
+}, {
 	about:   "CmpEquals: same values with options",
 	checker: qt.CmpEquals(sameInts),
 	got:     []int{1, 2, 3},
