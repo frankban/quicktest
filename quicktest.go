@@ -275,23 +275,61 @@ func getRunFuncSignature(t reflect.Type) (reflect.Type, error) {
 // A panic is raised when Run is called and the embedded concrete type does not
 // implement a Run method with a correct signature.
 func (c *C) Run(name string, f func(c *C)) bool {
-
-	farg, err := getRunFuncSignature(reflect.TypeOf(c.TB))
-	if err != nil {
-		panic(err.Error())
-	}
-
 	cFormat := c.getFormat()
-	fv := reflect.MakeFunc(farg, func(args []reflect.Value) []reflect.Value {
-		c2 := New(args[0].Interface().(testing.TB))
-		defer c2.Done()
-		c2.SetFormat(cFormat)
-		f(c2)
-		return nil
-	})
 
-	m := reflect.ValueOf(c.TB).MethodByName("Run")
-	return m.Call([]reflect.Value{reflect.ValueOf(name), fv})[0].Interface().(bool)
+	// Handle the various signatures of the Run method of c.TB
+	switch tb := c.TB.(type) {
+
+	// *testing.T
+	case interface {
+		Run(string, func(*testing.T)) bool
+	}:
+		return tb.Run(name, func(t *testing.T) {
+			t.Helper()
+			cSub := New(t)
+			defer cSub.Done()
+			cSub.SetFormat(cFormat)
+			f(cSub)
+		})
+
+	// *testing.B
+	case interface {
+		Run(string, func(*testing.B)) bool
+	}:
+		return tb.Run(name, func(b *testing.B) {
+			cSub := New(b)
+			defer cSub.Done()
+			cSub.SetFormat(cFormat)
+			f(cSub)
+		})
+
+	// *quicktest.C
+	case interface{ Run(string, func(*C)) bool }:
+		return tb.Run(name, func(c *C) {
+			cSub := New(c)
+			defer cSub.Done()
+			cSub.SetFormat(cFormat)
+			f(cSub)
+		})
+
+	// any testing.TB, by using reflect
+	default:
+		farg, err := getRunFuncSignature(reflect.TypeOf(c.TB))
+		if err != nil {
+			panic(err.Error())
+		}
+
+		fv := reflect.MakeFunc(farg, func(args []reflect.Value) []reflect.Value {
+			cSub := New(args[0].Interface().(testing.TB))
+			defer cSub.Done()
+			cSub.SetFormat(cFormat)
+			f(cSub)
+			return nil
+		})
+
+		m := reflect.ValueOf(c.TB).MethodByName("Run")
+		return m.Call([]reflect.Value{reflect.ValueOf(name), fv})[0].Interface().(bool)
+	}
 }
 
 // Parallel signals that this test is to be run in parallel with (and only with) other parallel tests.
