@@ -276,6 +276,13 @@ func getRunFuncSignature(t reflect.Type) (reflect.Type, error) {
 // implement a Run method with a correct signature.
 func (c *C) Run(name string, f func(c *C)) bool {
 	cFormat := c.getFormat()
+	// A wrapper for f that prepares its *C for the subtest
+	callF := func(tb testing.TB) {
+		cSub := New(tb)
+		defer cSub.Done()
+		cSub.SetFormat(cFormat)
+		f(cSub)
+	}
 
 	// Handle the various signatures of the Run method of c.TB
 	switch tb := c.TB.(type) {
@@ -286,10 +293,7 @@ func (c *C) Run(name string, f func(c *C)) bool {
 	}:
 		return tb.Run(name, func(t *testing.T) {
 			t.Helper()
-			cSub := New(t)
-			defer cSub.Done()
-			cSub.SetFormat(cFormat)
-			f(cSub)
+			callF(t)
 		})
 
 	// *testing.B
@@ -297,19 +301,13 @@ func (c *C) Run(name string, f func(c *C)) bool {
 		Run(string, func(*testing.B)) bool
 	}:
 		return tb.Run(name, func(b *testing.B) {
-			cSub := New(b)
-			defer cSub.Done()
-			cSub.SetFormat(cFormat)
-			f(cSub)
+			callF(b)
 		})
 
 	// *quicktest.C
 	case interface{ Run(string, func(*C)) bool }:
 		return tb.Run(name, func(c *C) {
-			cSub := New(c)
-			defer cSub.Done()
-			cSub.SetFormat(cFormat)
-			f(cSub)
+			callF(c)
 		})
 
 	// any testing.TB, by using reflect
@@ -320,10 +318,7 @@ func (c *C) Run(name string, f func(c *C)) bool {
 		}
 
 		fv := reflect.MakeFunc(farg, func(args []reflect.Value) []reflect.Value {
-			cSub := New(args[0].Interface().(testing.TB))
-			defer cSub.Done()
-			cSub.SetFormat(cFormat)
-			f(cSub)
+			callF(args[0].Interface().(testing.TB))
 			return nil
 		})
 
