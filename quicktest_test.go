@@ -527,6 +527,27 @@ want:
 `)
 }
 
+func TestCRunFormatWithC(t *testing.T) {
+	tt, innerTT := &testingT{}, &testingT{}
+	// Wrap the C with another C so the C.Run has to call a Run(string, func(*C) bool) instead of Run(string, func(*testing.T) bool)
+	c := qt.New(qt.New(tt))
+	c.SetFormat(func(v interface{}) string {
+		return fmt.Sprintf("myfmt(%v)", v)
+	})
+	c.Run("my test", func(innerC *qt.C) {
+		innerC.TB = innerTT
+		innerC.Check(42, qt.Equals, nil)
+	})
+	assertPrefix(t, innerTT.errorString(), `
+error:
+  values are not equal
+got:
+  myfmt(42)
+want:
+  myfmt(<nil>)
+`)
+}
+
 func TestHelper(t *testing.T) {
 	tt := &testingT{}
 	qt.Assert(tt, true, qt.IsFalse)
