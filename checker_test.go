@@ -2233,7 +2233,7 @@ predicate function:
   func(error) {...}
 `,
 }, {
-	about:   "Satisfies: function returning too many argments",
+	about:   "Satisfies: function returning too many arguments",
 	checker: qt.Satisfies,
 	got:     42,
 	args: []interface{}{
