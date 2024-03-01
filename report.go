@@ -67,6 +67,11 @@ func writeError(w io.Writer, err error, p reportParams) {
 	ptrs := make(map[string]interface{})
 	values := make(map[string]string)
 
+	pc, _, _, _ := runtime.Caller(4)
+	fn := runtime.FuncForPC(pc).Name()
+	pkg := fn[:strings.LastIndexByte(fn, '.')]
+	pkgPrefix := pkg[strings.LastIndexByte(pkg, '/')+1:] + "."
+
 	printPair := func(key string, value interface{}) {
 		fmt.Fprintln(w, key+":")
 		var v string
@@ -98,6 +103,12 @@ func writeError(w io.Writer, err error, p reportParams) {
 			if isPtr {
 				ptrs[key] = value
 			}
+		}
+
+		// Check wether we can remove the package prefix from the output.
+		if pkgPath(value) == pkg && strings.HasPrefix(v, pkgPrefix) {
+			// TODO(frankban): This is best effort and suboptimal.
+			v = strings.ReplaceAll(v[len(pkgPrefix):], ": "+pkgPrefix, ": ")
 		}
 
 		values[v] = key
@@ -246,3 +257,14 @@ type note struct {
 
 // prefix is the string used to indent blocks of output.
 const prefix = "  "
+
+func pkgPath(v interface{}) string {
+	if s, ok := v.(SuppressedIfLong); ok {
+		v = s.Value
+	}
+	t := reflect.TypeOf(v)
+	if t == nil {
+		return ""
+	}
+	return t.PkgPath()
+}
