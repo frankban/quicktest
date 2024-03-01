@@ -95,7 +95,7 @@ func (c *equalsChecker) Check(got interface{}, args []interface{}, note func(key
 			}
 			if isMultiLine(got) || isMultiLine(want) {
 				diff := cmp.Diff(strings.SplitAfter(want, "\n"), strings.SplitAfter(got, "\n"))
-				note("line diff (+got -want)", Unquoted(diff))
+				note("line diff (-want +got)", Unquoted(diff))
 			}
 		}
 	}
@@ -138,7 +138,7 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}, note func(
 	if diff := cmp.Diff(want, got, c.opts...); diff != "" {
 		// Only output values when the verbose flag is set.
 		note("error", Unquoted("values are not deep equal"))
-		note("diff (+got -want)", Unquoted(diff))
+		note("diff (-want +got)", Unquoted(diff))
 		note("got", SuppressedIfLong{got})
 		note("want", SuppressedIfLong{want})
 		return ErrSilent

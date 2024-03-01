@@ -113,7 +113,7 @@ func TestCmpReportOutput(t *testing.T) {
 	want := `
 error:
   values are not deep equal
-diff (+got -want):
+diff (-want +got):
     []*quicktest_test.reportExample{
             &{AnInt: 42},
             &{AnInt: 47},
