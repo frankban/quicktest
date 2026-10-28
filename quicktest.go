@@ -243,6 +243,10 @@ var (
 // A panic is raised when Run is called and the embedded concrete type does not
 // implement a Run method with a correct signature.
 func (c *C) Run(name string, f func(c *C)) bool {
+	r, ok := fastRun(c, name, f)
+	if ok {
+		return r
+	}
 	badType := func(m string) {
 		panic(fmt.Sprintf("cannot execute Run with underlying concrete type %T (%s)", c.TB, m))
 	}
