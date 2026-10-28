@@ -438,10 +438,18 @@ func (c *satisfiesChecker) Check(got interface{}, args []interface{}, note func(
 	// <https://github.com/juju/testing/blob/master/checkers/bool.go>.
 	predicate := args[0]
 	f := reflect.ValueOf(predicate)
-	ftype := f.Type()
-	if ftype.Kind() != reflect.Func || ftype.NumIn() != 1 || ftype.NumOut() != 1 || ftype.Out(0).Kind() != reflect.Bool {
+	if !f.IsValid() || f.Kind() != reflect.Func {
 		note("predicate function", predicate)
 		return BadCheckf("predicate function is not a func(T) bool")
+	}
+	ftype := f.Type()
+	if ftype.NumIn() != 1 || ftype.IsVariadic() || ftype.NumOut() != 1 || ftype.Out(0).Kind() != reflect.Bool {
+		note("predicate function", predicate)
+		return BadCheckf("predicate function is not a func(T) bool")
+	}
+	if f.IsNil() {
+		note("predicate function", predicate)
+		return BadCheckf("predicate function is nil")
 	}
 	v, t := reflect.ValueOf(got), ftype.In(0)
 	if !v.IsValid() {
@@ -455,7 +463,9 @@ func (c *satisfiesChecker) Check(got interface{}, args []interface{}, note func(
 		note("predicate function", predicate)
 		return BadCheckf("cannot use value of type %v as type %v in argument to predicate function", v.Type(), t)
 	}
-	if f.Call([]reflect.Value{v})[0].Interface().(bool) {
+	// Use Bool rather than a type assertion so that predicates returning a
+	// named boolean type are supported.
+	if f.Call([]reflect.Value{v})[0].Bool() {
 		return nil
 	}
 	return fmt.Errorf("value does not satisfy predicate function")
