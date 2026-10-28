@@ -13,6 +13,10 @@ type equalByMod struct{ v int }
 
 func (e equalByMod) Equal(o equalByMod) bool { return e.v%10 == o.v%10 }
 
+type panickingEqual struct{ v int }
+
+func (p *panickingEqual) Equal(o *panickingEqual) bool { return p.v == o.v }
+
 // lenSlice is a slice type whose Equal method only compares lengths.
 type lenSlice []int
 
@@ -75,6 +79,21 @@ func TestContentEqualsSemantics(t *testing.T) {
 		want:  []float64{1.5, 0},
 		equal: true,
 	}, {
+		about: "nested slices with colliding element sums",
+		got:   [][]int{{0, 3}, {1, 2}},
+		want:  [][]int{{1, 2}, {0, 3}},
+		equal: true,
+	}, {
+		about: "nested slices of small integers",
+		got:   [][]int{{0, 3}, {1, 2}, {0, 1, 2, 3}, {6}, {1, 5}, {2, 4}},
+		want:  [][]int{{2, 4}, {6}, {3, 2, 1, 0}, {5, 1}, {2, 1}, {3, 0}},
+		equal: true,
+	}, {
+		about: "nested slices of small integers: not equal",
+		got:   [][]int{{0, 3}, {1, 2}},
+		want:  [][]int{{1, 2}, {1, 2}},
+		equal: false,
+	}, {
 		about: "types with an Equal method",
 		got:   []equalByMod{{2}, {11}},
 		want:  []equalByMod{{11}, {2}},
@@ -126,13 +145,59 @@ func TestContentEqualsCyclic(t *testing.T) {
 	qt.Assert(t, x, qt.Not(qt.ContentEquals), z)
 }
 
+func TestContentEqualsChannels(t *testing.T) {
+	chans := make([]chan int, 10)
+	reversed := make([]chan int, 10)
+	for i := range chans {
+		chans[i] = make(chan int)
+		reversed[len(chans)-1-i] = chans[i]
+	}
+	qt.Assert(t, chans, qt.ContentEquals, reversed)
+	other := append([]chan int(nil), reversed...)
+	other[0] = make(chan int)
+	qt.Assert(t, chans, qt.Not(qt.ContentEquals), other)
+}
+
+type listNode struct {
+	Value int
+	Next  *listNode
+}
+
+func list(n, last int) *listNode {
+	l := &listNode{Value: last}
+	for i := 0; i < n; i++ {
+		l = &listNode{Value: 0, Next: l}
+	}
+	return l
+}
+
+func TestContentEqualsDeepValues(t *testing.T) {
+	// Values differing beyond the depth of the primary hash are still
+	// ordered consistently.
+	const n = 50
+	got := []*listNode{list(n, 1), list(n, 2), list(n, 3)}
+	want := []*listNode{list(n, 3), list(n, 1), list(n, 2)}
+	qt.Assert(t, got, qt.ContentEquals, want)
+	want[0] = list(n, 4)
+	qt.Assert(t, got, qt.Not(qt.ContentEquals), want)
+}
+
 func TestContentEqualsEqualMethodElements(t *testing.T) {
 	// Values of types with an Equal method are ordered by their structure,
 	// and compared with their Equal method once paired. Whether permuted
 	// values that are equal according to Equal but structurally different
 	// are paired depends on hashes: this is a documented limitation, so only
-	// check values in matching order here.
+	// check values in matching order here, which must always succeed.
 	qt.Assert(t, []equalByMod{{1}, {2}}, qt.ContentEquals, []equalByMod{{11}, {12}})
+	qt.Assert(t, []equalByMod{{1}, {2}, {3}, {4}}, qt.ContentEquals, []equalByMod{{41}, {32}, {23}, {14}})
+	// Structurally identical values are paired regardless of the order.
+	qt.Assert(t, []equalByMod{{1}, {2}, {3}}, qt.ContentEquals, []equalByMod{{3}, {1}, {2}})
+
+	// Equal methods panicking are reported by cmp.
+	tt := &testingT{}
+	ok := qt.Check(tt, []*panickingEqual{nil, {}}, qt.ContentEquals, []*panickingEqual{{}, nil})
+	qt.Assert(t, ok, qt.IsFalse)
+	qt.Assert(t, tt.errorString(), qt.Contains, "bad check")
 	qt.Assert(t, []equalByMod{{1}, {2}}, qt.Not(qt.ContentEquals), []equalByMod{{11}, {13}})
 }
 

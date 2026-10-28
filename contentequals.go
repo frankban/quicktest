@@ -25,7 +25,11 @@ import (
 // custom Equal method are ordered by their structure, as their Equal method
 // cannot be used for ordering: if such values are equal according to their
 // Equal method but structurally different (e.g. approximate comparisons, or
-// comparisons ignoring some fields), permuted slices of them may not match.
+// comparisons ignoring some fields), permuted slices of them may not match,
+// although slices of them that are already equal in order always match.
+// Hashes only inspect values up to a bounded depth, so permuted slices of
+// values differing only at a very deep level (e.g. in long linked lists)
+// may not match either.
 var ContentEquals Checker = &contentEqualsChecker{
 	argNames: []string{"got", "want"},
 }
@@ -102,9 +106,37 @@ func (s *contentSorter) filter(x, y interface{}) bool {
 		// Let cmp use the Equal method.
 		return false
 	}
+	if hasEqualMethod(vx.Type().Elem()) && equalByMethod(vx, vy) {
+		// Elements are compared with their Equal method, which cannot be
+		// used for ordering. If they are already equal in order, do not
+		// reorder them, which could pair values that are equal according to
+		// Equal but structurally different with the wrong elements.
+		return false
+	}
 	// Do not transform slices that are already in canonical order: this also
 	// prevents applying the transformation to its own output.
 	return !s.isCanonical(vx) || !s.isCanonical(vy)
+}
+
+// equalByMethod reports whether the slices x and y, whose elements have an
+// Equal method, are equal element by element according to that method.
+func equalByMethod(x, y reflect.Value) (eq bool) {
+	if x.Len() != y.Len() {
+		return false
+	}
+	defer func() {
+		// Equal methods can panic, e.g. when called on nil pointers: let
+		// cmp report the problem.
+		if recover() != nil {
+			eq = false
+		}
+	}()
+	for i := 0; i < x.Len(); i++ {
+		if !x.Index(i).MethodByName("Equal").Call([]reflect.Value{y.Index(i)})[0].Bool() {
+			return false
+		}
+	}
+	return true
 }
 
 // isCanonical reports whether the slice v is already in canonical order.
@@ -197,9 +229,15 @@ func isIdentity(order []int) bool {
 	return true
 }
 
-// maxContentHashDepth bounds the recursion of hash, which also guarantees
-// termination with cyclic data structures.
-const maxContentHashDepth = 10
+// maxContentHashDepth and maxStructuralHashDepth bound the recursion of
+// hash, which also guarantees termination with cyclic data structures.
+// Values differing only beyond these depths have the same hash. The
+// structural hash, only used to break ties, inspects values more deeply.
+// Thanks to memoization, the cost of hashing is linear in these limits.
+const (
+	maxContentHashDepth    = 32
+	maxStructuralHashDepth = 128
+)
 
 // hash returns a hash of v such that values that are equal according to
 // ContentEquals always have the same hash. Unequal values may also share the
@@ -218,7 +256,11 @@ func (s *contentSorter) hash(v reflect.Value, depth int, structural bool) uint64
 	}
 	t := v.Type()
 	h := hashString(t.String())
-	if depth > maxContentHashDepth || (!structural && hasEqualMethod(t)) {
+	maxDepth := maxContentHashDepth
+	if structural {
+		maxDepth = maxStructuralHashDepth
+	}
+	if depth > maxDepth || (!structural && hasEqualMethod(t)) {
 		return h
 	}
 	var key hashKey
@@ -274,8 +316,11 @@ func (s *contentSorter) hash(v reflect.Value, depth int, structural bool) uint64
 			h = mix(h, s.hash(v.Field(i), depth+1, structural))
 		}
 		return h
+	case reflect.Chan, reflect.Func, reflect.UnsafePointer:
+		// These are compared by identity by cmp (non-nil functions are never
+		// equal).
+		return mix(h, uint64(v.Pointer()))
 	}
-	// Functions, channels and unsafe pointers.
 	return h
 }
 
@@ -332,8 +377,15 @@ func hashString(s string) uint64 {
 	return h.Sum64()
 }
 
-// mix combines a hash with a value.
+// mix combines a hash with a value. Its result is fully avalanched, so that
+// order-insensitive sums of hashes are unlikely to collide.
 func mix(h, v uint64) uint64 {
-	h ^= v + 0x9e3779b97f4a7c15 + (h << 6) + (h >> 2)
-	return h * 0x100000001b3
+	return avalanche(h*0x9e3779b97f4a7c15 ^ avalanche(v))
+}
+
+// avalanche is the splitmix64 finalizer.
+func avalanche(z uint64) uint64 {
+	z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9
+	z = (z ^ (z >> 27)) * 0x94d049bb133111eb
+	return z ^ (z >> 31)
 }
