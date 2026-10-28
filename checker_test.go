@@ -2978,14 +2978,14 @@ want:
 	args: []interface{}{
 		jsonErrorMarshaler{},
 	},
-	expectedCheckFailure: `
+	expectedCheckFailure: fmt.Sprintf(`
 error:
-  bad check: cannot marshal expected contents: json: error calling MarshalJSON for type quicktest_test.jsonErrorMarshaler: qt json marshal error
-`,
-	expectedNegateFailure: `
+  bad check: cannot marshal expected contents: %s
+`, mustJSONMarshalErr(jsonErrorMarshaler{})),
+	expectedNegateFailure: fmt.Sprintf(`
 error:
-  bad check: cannot marshal expected contents: json: error calling MarshalJSON for type quicktest_test.jsonErrorMarshaler: qt json marshal error
-`,
+  bad check: cannot marshal expected contents: %s
+`, mustJSONMarshalErr(jsonErrorMarshaler{})),
 }, {
 	about:   "JSONEquals with []byte",
 	checker: qt.JSONEquals,
@@ -3004,14 +3004,14 @@ want:
 	checker: qt.JSONEquals,
 	got:     []byte("null"),
 	args:    []interface{}{json.RawMessage("null")},
-	expectedNegateFailure: `
+	expectedNegateFailure: fmt.Sprintf(`
 error:
   unexpected success
 got:
   []uint8("null")
 want:
-  json.RawMessage("null")
-`,
+  %s
+`, formattedRawMessageNull()),
 }, {
 	about:   "JSONEquals with bad type",
 	checker: qt.JSONEquals,
@@ -3094,6 +3094,29 @@ type jsonErrorMarshaler struct{}
 
 func (jsonErrorMarshaler) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("qt json marshal error")
+}
+
+// mustJSONMarshalErr returns the error produced by json.Marshal(v).
+// The exact message depends on the encoding/json implementation in use:
+// for instance, the jsonv2-based implementation (default since Go 1.27)
+// reports the type as a pointer ("*T" instead of "T").
+func mustJSONMarshalErr(v interface{}) error {
+	_, err := json.Marshal(v)
+	if err == nil {
+		panic("want JSON error, got nil")
+	}
+	return err
+}
+
+// formattedRawMessageNull returns the expected qt.Format output for
+// json.RawMessage("null"). With the jsonv2-based encoding/json (default since
+// Go 1.27), json.RawMessage is an alias for jsontext.Value, which implements
+// fmt.Stringer and is therefore formatted as a Stringer.
+func formattedRawMessageNull() string {
+	if _, ok := interface{}(json.RawMessage(nil)).(fmt.Stringer); ok {
+		return `s"null"`
+	}
+	return `json.RawMessage("null")`
 }
 
 func mustJSONUnmarshalErr(s string) error {
