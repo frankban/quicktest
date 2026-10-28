@@ -89,6 +89,10 @@ var formatTests = []struct {
 	value: myBytes("hello"),
 	want:  `quicktest_test.myBytes("hello")`,
 }, {
+	about: "custom bytes type implementing Stringer",
+	value: stringerBytes("hello"),
+	want:  `s"<hello>"`,
+}, {
 	about: "bytes with backquote",
 	value: []byte(`a "b" c`),
 	want:  "[]uint8(`a \"b\" c`)",
@@ -135,6 +139,14 @@ func TestFormat(t *testing.T) {
 }
 
 type myBytes []byte
+
+// stringerBytes is a byte slice type implementing fmt.Stringer: Format
+// gives precedence to the Stringer implementation over the byte slice one.
+type stringerBytes []byte
+
+func (b stringerBytes) String() string {
+	return "<" + string(b) + ">"
+}
 
 // nilStringer is a stringer not guarding against nil.
 type nilStringer struct {
