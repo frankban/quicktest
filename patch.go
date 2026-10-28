@@ -19,7 +19,8 @@ import (
 //
 // Patch panics if dest is not a non-nil pointer, or if value is not
 // assignable to the element type of dest. A nil value is only accepted when
-// the element type can be nil (e.g. pointers, maps, slices, interfaces).
+// the element type can be nil (e.g. pointers, maps, slices, interfaces,
+// unsafe.Pointer).
 func (c *C) Patch(dest, value interface{}) {
 	destp := reflect.ValueOf(dest)
 	if destp.Kind() != reflect.Ptr || destp.IsNil() {
@@ -29,7 +30,7 @@ func (c *C) Patch(dest, value interface{}) {
 	destType := destv.Type()
 	valuev := reflect.ValueOf(value)
 	if !valuev.IsValid() {
-		if !canBeNil(destType.Kind()) {
+		if k := destType.Kind(); !canBeNil(k) && k != reflect.UnsafePointer {
 			panic(fmt.Sprintf("quicktest: cannot Patch nil into a value of type %s", destType))
 		}
 		valuev = reflect.Zero(destType)

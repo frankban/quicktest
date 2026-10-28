@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"unsafe"
 
 	qt "github.com/frankban/quicktest"
 )
@@ -77,6 +78,18 @@ func TestCPatchPanicsWhenNotPointer(t *testing.T) {
 	c.Assert(func() {
 		c.Patch(nil, 88)
 	}, qt.PanicMatches, `quicktest: Patch destination must be a non-nil pointer, got <nil>`)
+}
+
+func TestCPatchSetUnsafePointerToNil(t *testing.T) {
+	c := qt.New(t)
+	i := 42
+	oldPtr := unsafe.Pointer(&i)
+	p := oldPtr
+	testCleanup(t, func(c *qt.C) {
+		c.Patch(&p, nil)
+		c.Assert(p == nil, qt.IsTrue)
+	})
+	c.Assert(p == oldPtr, qt.IsTrue)
 }
 
 func TestCPatchPanicsWhenNilNotAllowed(t *testing.T) {
