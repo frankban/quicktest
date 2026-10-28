@@ -2513,6 +2513,188 @@ value:
   "bad wolf"
 `,
 }, {
+	about:   "IsLessThan: success",
+	checker: qt.IsLessThan,
+	got:     99,
+	args:    []interface{}{9999},
+	expectedNegateFailure: `
+error:
+  unexpected success
+value:
+  int(99)
+reference:
+  int(9999)
+`,
+}, {
+	about:   "IsLessThan: success (different types)",
+	checker: qt.IsLessThan,
+	got:     99,
+	args:    []interface{}{9999.0},
+	expectedNegateFailure: `
+error:
+  unexpected success
+value:
+  int(99)
+reference:
+  float64(9999)
+`,
+}, {
+	about:   "IsLessThan: failure",
+	checker: qt.IsLessThan,
+	got:     9999,
+	args:    []interface{}{99},
+	expectedCheckFailure: `
+error:
+  value is not less than reference
+value:
+  int(9999)
+reference:
+  int(99)
+`,
+}, {
+	about:   "IsLessThanOrEqual: success (less than)",
+	checker: qt.IsLessThanOrEqual,
+	got:     99,
+	args:    []interface{}{9999},
+	expectedNegateFailure: `
+error:
+  unexpected success
+value:
+  int(99)
+reference:
+  int(9999)
+`,
+}, {
+	about:   "IsLessThanOrEqual: success (equal)",
+	checker: qt.IsLessThanOrEqual,
+	got:     99,
+	args:    []interface{}{99},
+	expectedNegateFailure: `
+error:
+  unexpected success
+value:
+  int(99)
+reference:
+  <same as "value">
+`,
+}, {
+	about:   "IsLessThanOrEqual: success (different types)",
+	checker: qt.IsLessThanOrEqual,
+	got:     99,
+	args:    []interface{}{9999.0},
+	expectedNegateFailure: `
+error:
+  unexpected success
+value:
+  int(99)
+reference:
+  float64(9999)
+`,
+}, {
+	about:   "IsLessThanOrEqual: failure",
+	checker: qt.IsLessThanOrEqual,
+	got:     9999,
+	args:    []interface{}{99},
+	expectedCheckFailure: `
+error:
+  value is not less than or equal reference
+value:
+  int(9999)
+reference:
+  int(99)
+`,
+}, {
+	about:   "IsGreaterThan: success",
+	checker: qt.IsGreaterThan,
+	got:     9999,
+	args:    []interface{}{99},
+	expectedNegateFailure: `
+error:
+  unexpected success
+value:
+  int(9999)
+reference:
+  int(99)
+`,
+}, {
+	about:   "IsGreaterThan: success (different types)",
+	checker: qt.IsGreaterThan,
+	got:     9999,
+	args:    []interface{}{99.0},
+	expectedNegateFailure: `
+error:
+  unexpected success
+value:
+  int(9999)
+reference:
+  float64(99)
+`,
+}, {
+	about:   "IsGreaterThan: failure",
+	checker: qt.IsGreaterThan,
+	got:     99,
+	args:    []interface{}{9999},
+	expectedCheckFailure: `
+error:
+  value is not greater than reference
+value:
+  int(99)
+reference:
+  int(9999)
+`,
+}, {
+	about:   "IsGreaterThanOrEqual: success (greater than)",
+	checker: qt.IsGreaterThanOrEqual,
+	got:     9999,
+	args:    []interface{}{99},
+	expectedNegateFailure: `
+error:
+  unexpected success
+value:
+  int(9999)
+reference:
+  int(99)
+`,
+}, {
+	about:   "IsGreaterThanOrEqual: success (equal)",
+	checker: qt.IsGreaterThanOrEqual,
+	got:     99,
+	args:    []interface{}{99},
+	expectedNegateFailure: `
+error:
+  unexpected success
+value:
+  int(99)
+reference:
+  <same as "value">
+`,
+}, {
+	about:   "IsGreaterThanOrEqual: success (different types)",
+	checker: qt.IsGreaterThanOrEqual,
+	got:     9999,
+	args:    []interface{}{99.0},
+	expectedNegateFailure: `
+error:
+  unexpected success
+value:
+  int(9999)
+reference:
+  float64(99)
+`,
+}, {
+	about:   "IsGreaterThanOrEqual: failure",
+	checker: qt.IsGreaterThanOrEqual,
+	got:     99,
+	args:    []interface{}{9999},
+	expectedCheckFailure: `
+error:
+  value is not greater than or equal reference
+value:
+  int(99)
+reference:
+  int(9999)
+`,
+}, {
 	about:   "Not: success",
 	checker: qt.Not(qt.IsNil),
 	got:     42,

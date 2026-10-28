@@ -3,6 +3,7 @@
 package quicktest
 
 var (
-	Prefixf        = prefixf
-	TestingVerbose = &testingVerbose
+	Prefixf                    = prefixf
+	TestingVerbose             = &testingVerbose
+	NewBinaryArithmeticChecker = newBinaryArithmeticChecker
 )

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"reflect"
 	"regexp"
 	"strings"
@@ -503,6 +504,126 @@ func (c *boolChecker) Check(got interface{}, args []interface{}, note func(key s
 // ArgNames implements Checker.ArgNames.
 func (c *boolChecker) ArgNames() []string {
 	return []string{"got"}
+}
+
+// IsLessThan is a Checker verifying that the provided value is less than the
+// given reference value.
+//
+// For instance:
+//
+//	c.Assert(value, qt.IsLessThan, 0)
+//	c.Assert(value, qt.IsLessThan, 99.99)
+var IsLessThan Checker = newBinaryArithmeticChecker(func(value, reference *big.Float) error {
+	if value.Cmp(reference) != -1 {
+		return errors.New("value is not less than reference")
+	}
+	return nil
+})
+
+// IsLessThanOrEqual is a Checker verifying that the provided value is less than
+// or equal the given reference value.
+//
+// For instance:
+//
+//	c.Assert(value, qt.IsLessThanOrEqual, 0)
+//	c.Assert(value, qt.IsLessThanOrEqual, 99.99)
+var IsLessThanOrEqual Checker = newBinaryArithmeticChecker(func(value, reference *big.Float) error {
+	if value.Cmp(reference) == 1 {
+		return errors.New("value is not less than or equal reference")
+	}
+	return nil
+})
+
+// IsGreaterThan is a Checker verifying that the provided value is greater than
+// the given reference value.
+//
+// For instance:
+//
+//	c.Assert(value, qt.IsGreaterThan, 0)
+//	c.Assert(value, qt.IsGreaterThan, 99.99)
+var IsGreaterThan Checker = newBinaryArithmeticChecker(func(value, reference *big.Float) error {
+	if value.Cmp(reference) != 1 {
+		return errors.New("value is not greater than reference")
+	}
+	return nil
+})
+
+// IsGreaterThanOrEqual is a Checker verifying that the provided value is
+// greater than or equal the given reference value.
+//
+// For instance:
+//
+//	c.Assert(value, qt.IsGreaterThanOrEqual, 0)
+//	c.Assert(value, qt.IsGreaterThanOrEqual, 99.99)
+var IsGreaterThanOrEqual Checker = newBinaryArithmeticChecker(func(value, reference *big.Float) error {
+	if value.Cmp(reference) == -1 {
+		return errors.New("value is not greater than or equal reference")
+	}
+	return nil
+})
+
+// binaryArithmeticChecker is a generic arithmetic binary checker that accepts
+// two numeric operands and a check function. The raw operands (got and want)
+// are first converted to *big.Float and then will be submitted to the check
+// function to perform the assertion/check.
+type binaryArithmeticChecker struct {
+	argNames
+	f func(value, reference *big.Float) error
+}
+
+func newBinaryArithmeticChecker(f func(value, reference *big.Float) error) *binaryArithmeticChecker {
+	return &binaryArithmeticChecker{
+		argNames: []string{"value", "reference"},
+		f:        f,
+	}
+}
+
+// Check implements Checker.Check by checking that args[0](got) == true.
+func (c *binaryArithmeticChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) (err error) {
+	reference := args[0]
+
+	bigReference := valueToBigFloat(reference)
+	if bigReference == nil {
+		return BadCheckf("reference should be of a numeric type but it is %T", reference)
+	}
+
+	bigValue := valueToBigFloat(got)
+	if bigValue == nil {
+		return BadCheckf("value should be of a numeric type but it is %T", got)
+	}
+
+	return c.f(bigValue, bigReference)
+}
+
+func valueToBigFloat(value interface{}) *big.Float {
+	switch v := value.(type) {
+	case int:
+		return big.NewFloat(0).SetInt64(int64(v))
+	case int8:
+		return big.NewFloat(0).SetInt64(int64(v))
+	case int16:
+		return big.NewFloat(0).SetInt64(int64(v))
+	case int32:
+		return big.NewFloat(0).SetInt64(int64(v))
+	case int64:
+		return big.NewFloat(0).SetInt64(int64(v))
+	case uint:
+		return big.NewFloat(0).SetUint64(uint64(v))
+	case uint8:
+		return big.NewFloat(0).SetUint64(uint64(v))
+	case uint16:
+		return big.NewFloat(0).SetUint64(uint64(v))
+	case uint32:
+		return big.NewFloat(0).SetUint64(uint64(v))
+	case uint64:
+		return big.NewFloat(0).SetUint64(uint64(v))
+	case float32:
+		return big.NewFloat(float64(v))
+	case float64:
+		return big.NewFloat(v)
+	default:
+		return nil
+	}
 }
 
 // Not returns a Checker negating the given Checker.
