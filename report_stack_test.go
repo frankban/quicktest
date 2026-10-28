@@ -74,3 +74,18 @@ func TestSourceStatementMissingFile(t *testing.T) {
 	_, err := qt.SourceStatement(filepath.Join(dir, "missing.go"), 1)
 	qt.Assert(t, err, qt.ErrorMatches, `cannot parse source file: .*`)
 }
+
+func TestReportConcurrent(t *testing.T) {
+	// Failure reports share a source cache; run with -race.
+	done := make(chan string)
+	for g := 0; g < 8; g++ {
+		go func() {
+			tt := &testingT{}
+			qt.Check(tt, 42, qt.Equals, 47)
+			done <- tt.errorString()
+		}()
+	}
+	for g := 0; g < 8; g++ {
+		qt.Assert(t, <-done, qt.Contains, "qt.Check(tt, 42, qt.Equals, 47)")
+	}
+}

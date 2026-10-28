@@ -45,3 +45,24 @@ func BenchmarkAllMatches(b *testing.B) {
 		c.Assert(values, qt.All(qt.Matches), `value-\d+`)
 	}
 }
+
+func TestCompileAnchoredConcurrent(t *testing.T) {
+	// Exercise cache hits, misses and evictions concurrently; run with -race.
+	done := make(chan struct{})
+	for g := 0; g < 8; g++ {
+		go func(g int) {
+			defer func() { done <- struct{}{} }()
+			for i := 0; i < qt.MaxRegexpCacheSz*2; i++ {
+				p := fmt.Sprintf("c%d", (i*(g+1))%(qt.MaxRegexpCacheSz+7))
+				re, err := qt.CompileAnchored(p)
+				if err != nil || !re.MatchString(p) {
+					t.Errorf("unexpected result for %q: %v", p, err)
+					return
+				}
+			}
+		}(g)
+	}
+	for g := 0; g < 8; g++ {
+		<-done
+	}
+}
