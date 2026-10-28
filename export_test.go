@@ -3,6 +3,8 @@
 package quicktest
 
 var (
-	Prefixf        = prefixf
-	TestingVerbose = &testingVerbose
+	Prefixf          = prefixf
+	TestingVerbose   = &testingVerbose
+	CompileAnchored  = compileAnchored
+	MaxRegexpCacheSz = maxRegexpCacheSize
 )

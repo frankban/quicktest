@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -807,15 +808,51 @@ func match(got string, pattern interface{}, msg string, note func(key string, va
 		note("regexp", pattern)
 		return BadCheckf("regexp is not a string")
 	}
-	matches, err := regexp.MatchString("^("+regex+")$", got)
+	re, err := compileAnchored(regex)
 	if err != nil {
 		note("regexp", regex)
 		return BadCheckf("cannot compile regexp: %s", err)
 	}
-	if matches {
+	if re.MatchString(got) {
 		return nil
 	}
 	return errors.New(msg)
+}
+
+// maxRegexpCacheSize bounds the number of compiled patterns kept by
+// compileAnchored, so that tests generating many distinct patterns do not
+// grow memory without limit.
+const maxRegexpCacheSize = 256
+
+var regexpCache = struct {
+	sync.Mutex
+	m map[string]*regexp.Regexp
+}{m: make(map[string]*regexp.Regexp)}
+
+// compileAnchored compiles the given pattern so that it must match the whole
+// input. Compiled expressions are cached, so that checks repeated over many
+// values, for instance with All(Matches), only compile a pattern once.
+// A *regexp.Regexp is safe for concurrent use.
+func compileAnchored(pattern string) (*regexp.Regexp, error) {
+	regexpCache.Lock()
+	re, ok := regexpCache.m[pattern]
+	regexpCache.Unlock()
+	if ok {
+		return re, nil
+	}
+	re, err := regexp.Compile("^(" + pattern + ")$")
+	if err != nil {
+		return nil, err
+	}
+	regexpCache.Lock()
+	if len(regexpCache.m) >= maxRegexpCacheSize {
+		// Simple eviction policy: drop everything. Tests rarely use more
+		// distinct patterns than the cache size.
+		regexpCache.m = make(map[string]*regexp.Regexp)
+	}
+	regexpCache.m[pattern] = re
+	regexpCache.Unlock()
+	return re, nil
 }
 
 // canBeNil reports whether a value or type of the given kind can be nil.
