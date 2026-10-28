@@ -3072,7 +3072,77 @@ got:
 want:
   []string{"a", "c", "z", "b"}
 `),
+}, {
+	about:   "Satisfies: nil predicate",
+	checker: qt.Satisfies,
+	got:     42,
+	args:    []interface{}{nil},
+	expectedCheckFailure: `
+error:
+  bad check: predicate function is not a func(T) bool
+predicate function:
+  nil
+`,
+	expectedNegateFailure: `
+error:
+  bad check: predicate function is not a func(T) bool
+predicate function:
+  nil
+`,
+}, {
+	about:   "Satisfies: typed nil predicate",
+	checker: qt.Satisfies,
+	got:     42,
+	args:    []interface{}{(func(int) bool)(nil)},
+	expectedCheckFailure: `
+error:
+  bad check: predicate function is nil
+predicate function:
+  func(int) bool {...}
+`,
+	expectedNegateFailure: `
+error:
+  bad check: predicate function is nil
+predicate function:
+  func(int) bool {...}
+`,
+}, {
+	about:   "Satisfies: variadic predicate",
+	checker: qt.Satisfies,
+	got:     []int{42},
+	args: []interface{}{
+		func(...int) bool { return true },
+	},
+	expectedCheckFailure: `
+error:
+  bad check: predicate function is not a func(T) bool
+predicate function:
+  func(...int) bool {...}
+`,
+	expectedNegateFailure: `
+error:
+  bad check: predicate function is not a func(T) bool
+predicate function:
+  func(...int) bool {...}
+`,
+}, {
+	about:   "Satisfies: predicate returning a named bool",
+	checker: qt.Satisfies,
+	got:     42,
+	args: []interface{}{
+		func(v int) namedBool { return v == 42 },
+	},
+	expectedNegateFailure: `
+error:
+  unexpected success
+arg:
+  int(42)
+predicate function:
+  func(int) quicktest_test.namedBool {...}
+`,
 }}
+
+type namedBool bool
 
 func TestCheckers(t *testing.T) {
 	original := qt.TestingVerbose
