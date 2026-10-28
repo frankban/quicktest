@@ -10,10 +10,13 @@ import (
 	"go/printer"
 	"go/token"
 	"io"
+	"os"
 	"reflect"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
 // reportParams holds parameters for reporting a test error.
@@ -137,24 +140,23 @@ var testingVerbose = func() bool {
 	return testing.Verbose()
 }
 
+// maxStackFrames bounds the number of frames inspected by writeStack.
+const maxStackFrames = 100
+
 // writeStack writes the traceback information for the current failure into the
 // provided writer.
 func writeStack(w io.Writer) {
 	fmt.Fprintln(w, "stack:")
-	pc := make([]uintptr, 8)
-	sg := &stmtGetter{
-		fset:  token.NewFileSet(),
-		files: make(map[string]*ast.File, 8),
-		config: &printer.Config{
-			Mode:     printer.UseSpaces,
-			Tabwidth: 4,
-		},
-	}
-	runtime.Callers(5, pc)
+	pc := make([]uintptr, maxStackFrames)
+	pc = pc[:runtime.Callers(5, pc)]
 	frames := runtime.CallersFrames(pc)
 	thisPackage := reflect.TypeOf(C{}).PkgPath() + "."
 	for {
 		frame, more := frames.Next()
+		if frame.Function == "" && frame.File == "" {
+			// There are no frames at all.
+			break
+		}
 		if strings.HasPrefix(frame.Function, "testing.") {
 			// Stop before getting back to stdlib test runner calls.
 			break
@@ -162,6 +164,9 @@ func writeStack(w io.Writer) {
 		if fname := strings.TrimPrefix(frame.Function, thisPackage); fname != frame.Function {
 			if ast.IsExported(fname) {
 				// Continue without printing frames for quicktest exported API.
+				if !more {
+					break
+				}
 				continue
 			}
 			// Stop when entering quicktest internal calls.
@@ -170,10 +175,13 @@ func writeStack(w io.Writer) {
 		}
 		fmt.Fprint(w, prefixf(prefix, "%s:%d", frame.File, frame.Line))
 		if strings.HasSuffix(frame.File, ".go") {
-			stmt, err := sg.Get(frame.File, frame.Line)
-			if err != nil {
+			stmt, err := sources.statement(frame.File, frame.Line)
+			switch {
+			case err != nil:
 				fmt.Fprint(w, prefixf(prefix+prefix, "<%s>", err))
-			} else {
+			case stmt == "":
+				fmt.Fprint(w, prefixf(prefix+prefix, "<statement not found>"))
+			default:
 				fmt.Fprint(w, prefixf(prefix+prefix, "%s", stmt))
 			}
 		}
@@ -184,45 +192,95 @@ func writeStack(w io.Writer) {
 	}
 }
 
-type stmtGetter struct {
-	fset   *token.FileSet
-	files  map[string]*ast.File
-	config *printer.Config
+// maxCachedSources bounds the number of parsed source files kept in memory.
+const maxCachedSources = 64
+
+// sources caches parsed source files across failure reports, so that
+// repeated failures do not parse the same files again.
+var sources = &sourceCache{
+	files: make(map[string]*sourceFile),
 }
 
-// Get returns the lines of code of the statement at the given file and line.
-func (sg *stmtGetter) Get(file string, line int) (string, error) {
-	f := sg.files[file]
-	if f == nil {
-		var err error
-		f, err = parser.ParseFile(sg.fset, file, nil, parser.ParseComments)
+// sourceCache holds parsed Go source files used to print the statements
+// in failure stack traces. It is safe for concurrent use.
+type sourceCache struct {
+	mu    sync.Mutex
+	files map[string]*sourceFile
+}
+
+// sourceFile holds a parsed source file along with information used to
+// detect changes to the file.
+type sourceFile struct {
+	fset    *token.FileSet
+	file    *ast.File
+	modTime time.Time
+	size    int64
+}
+
+var printerConfig = &printer.Config{
+	Mode:     printer.UseSpaces,
+	Tabwidth: 4,
+}
+
+// statement returns the lines of code of the statement at the given file
+// and line.
+func (c *sourceCache) statement(file string, line int) (string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	info, err := os.Stat(file)
+	if err != nil {
+		return "", fmt.Errorf("cannot parse source file: %s", err)
+	}
+	sf := c.files[file]
+	if sf == nil || !sf.modTime.Equal(info.ModTime()) || sf.size != info.Size() {
+		fset := token.NewFileSet()
+		f, err := parser.ParseFile(fset, file, nil, parser.ParseComments)
 		if err != nil {
 			return "", fmt.Errorf("cannot parse source file: %s", err)
 		}
-		sg.files[file] = f
+		if len(c.files) >= maxCachedSources {
+			// Simple eviction policy: drop everything.
+			c.files = make(map[string]*sourceFile)
+		}
+		sf = &sourceFile{
+			fset:    fset,
+			file:    f,
+			modTime: info.ModTime(),
+			size:    info.Size(),
+		}
+		c.files[file] = sf
 	}
+	return sf.statement(line), nil
+}
+
+// statement returns the lines of code of the statement at the given line.
+func (sf *sourceFile) statement(line int) string {
 	var stmt string
-	ast.Inspect(f, func(n ast.Node) bool {
+	ast.Inspect(sf.file, func(n ast.Node) bool {
 		if n == nil || stmt != "" {
 			return false
 		}
-		pos := sg.fset.Position(n.Pos()).Line
-		end := sg.fset.Position(n.End()).Line
+		if _, ok := n.(*ast.File); ok {
+			// Never print the whole file.
+			return true
+		}
+		pos := sf.fset.Position(n.Pos()).Line
+		end := sf.fset.Position(n.End()).Line
 		// Go < v1.9 reports the line where the statements ends, not the line
 		// where it begins.
 		if line == pos || line == end {
 			var buf bytes.Buffer
 			// TODO: include possible comment after the statement.
-			sg.config.Fprint(&buf, sg.fset, &printer.CommentedNode{
+			printerConfig.Fprint(&buf, sf.fset, &printer.CommentedNode{
 				Node:     n,
-				Comments: f.Comments,
+				Comments: sf.file.Comments,
 			})
 			stmt = buf.String()
 			return false
 		}
 		return pos < line && line <= end
 	})
-	return stmt, nil
+	return stmt
 }
 
 // prefixf formats the given string with the given args. It also inserts the
