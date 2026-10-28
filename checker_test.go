@@ -2989,7 +2989,7 @@ want:
 	args:    []interface{}{nil},
 	expectedCheckFailure: fmt.Sprintf(tilde2bq(`
 error:
-  cannot unmarshal obtained contents: %s; "{\"NotThere\": "
+  cannot unmarshal obtained contents: %s
 got:
   ~{"NotThere": ~
 want:

@@ -777,8 +777,11 @@ func (c *codecEqualChecker) Check(got interface{}, args []interface{}, note func
 		return BadCheckf("cannot unmarshal expected contents: %v", err)
 	}
 	var gotContentVal interface{}
-	if err := c.unmarshal([]byte(gotContent), &gotContentVal); err != nil {
-		return fmt.Errorf("cannot unmarshal obtained contents: %v; %q", err, gotContent)
+	if err := c.unmarshal(gotContent, &gotContentVal); err != nil {
+		// The obtained contents are not included in the error: they are
+		// already reported, formatted with the configured format function,
+		// as the "got" argument.
+		return fmt.Errorf("cannot unmarshal obtained contents: %v", err)
 	}
 	return c.deepEquals.Check(gotContentVal, []interface{}{wantContentVal}, note)
 }

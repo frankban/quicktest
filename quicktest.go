@@ -161,6 +161,12 @@ func (c *C) Done() {
 // By default Format is used.
 // Any subsequent subtests invoked with c.Run will also use this function by
 // default.
+//
+// The format function is applied to the checked values, the checker
+// arguments and the values added as notes. It is not a redaction mechanism:
+// some checkers also report information derived from the values in other
+// forms, for instance the diffs produced by DeepEquals and CmpEquals, so it
+// must not be relied upon to hide sensitive data from test output.
 func (c *C) SetFormat(format func(interface{}) string) {
 	c.mu.Lock()
 	c.format = format
