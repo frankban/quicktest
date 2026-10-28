@@ -93,6 +93,31 @@ func TestJSONEqualsNumbers(t *testing.T) {
 		want:  0,
 		equal: true,
 	}, {
+		about: "exponents around the small exponent limit",
+		got:   `[1e999999999999999999, 1e1000000000000000000, 1e-999999999999999999, 1e-1000000000000000000]`,
+		want:  json.RawMessage(`[10e999999999999999998, 0.1e1000000000000000001, 0.1e-999999999999999998, 10e-1000000000000000001]`),
+		equal: true,
+	}, {
+		about: "big exponent adjusted below the small exponent limit",
+		got:   `100e999999999999999998`,
+		want:  json.RawMessage(`1e1000000000000000000`),
+		equal: true,
+	}, {
+		about: "big exponent adjusted with carries and borrows",
+		got:   `[0.001e1000000000000000000000, 1000e-1000000000000000000000]`,
+		want:  json.RawMessage(`[1e999999999999999999997, 1e-999999999999999999997]`),
+		equal: true,
+	}, {
+		about: "long exponent encodings",
+		got:   "[0e" + strings.Repeat("9", 2000000) + ", 1e" + strings.Repeat("9", 2000000) + "]",
+		want:  json.RawMessage("[0, 10e" + strings.Repeat("9", 1999999) + "8]"),
+		equal: true,
+	}, {
+		about: "long exponent encodings with leading zeros",
+		got:   "1e-" + strings.Repeat("0", 2000000) + "5",
+		want:  json.RawMessage("0.00001"),
+		equal: true,
+	}, {
 		about: "long redundant mantissa",
 		got:   "1." + strings.Repeat("0", 20000),
 		want:  1,
@@ -148,6 +173,8 @@ func TestJSONEqualsPreciseNumberFormat(t *testing.T) {
 		{`1e-330`, `1e-330`},
 		{`1e10001`, `1e10001`},
 		{`-12.5e-400`, `-125e-401`},
+		{`1e1000000000000000000`, `1e1000000000000000000`},
+		{`-25e-1000000000000000000`, `-25e-1000000000000000000`},
 	}
 	for _, test := range tests {
 		tt := &testingT{}
