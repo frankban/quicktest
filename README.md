@@ -268,6 +268,10 @@ value. See CodecEquals for more information.
 It uses DeepEquals to do the comparison. If a more sophisticated comparison is
 required, use CodecEquals directly.
 
+Numbers are compared exactly: large integers such as 9007199254740993 are not
+rounded to the nearest float64. Numbers with the same value but different
+representations, such as 1, 1.0 and 1e0, are still considered equal.
+
 For instance:
 
     c.Assert(`{"First": 47.11}`, qt.JSONEquals, &MyStruct{First: 47.11})

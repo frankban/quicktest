@@ -723,10 +723,15 @@ func (c *allChecker) Check(got interface{}, args []interface{}, notef func(key s
 // It uses DeepEquals to do the comparison. If a more sophisticated
 // comparison is required, use CodecEquals directly.
 //
+// Numbers are compared exactly: unlike a plain json.Unmarshal into an
+// interface{} value, large integers such as 9007199254740993 are not rounded
+// to the nearest float64. Numbers with the same value but different
+// representations, such as 1, 1.0 and 1e0, are still considered equal.
+//
 // For instance:
 //
 //	c.Assert(`{"First": 47.11}`, qt.JSONEquals, &MyStruct{First: 47.11})
-var JSONEquals = CodecEquals(json.Marshal, json.Unmarshal)
+var JSONEquals = CodecEquals(json.Marshal, jsonUnmarshalPrecise)
 
 type codecEqualChecker struct {
 	argNames
