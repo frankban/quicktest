@@ -129,8 +129,8 @@ For example:
 
 ### ContentEquals
 
-ContentEquals is is like DeepEquals but any slices in the compared values will
-be sorted before being compared.
+ContentEquals is like DeepEquals but any slices in the compared values are
+compared regardless of the order of their elements, including nested slices.
 
 For example:
 
@@ -268,6 +268,10 @@ value. See CodecEquals for more information.
 It uses DeepEquals to do the comparison. If a more sophisticated comparison is
 required, use CodecEquals directly.
 
+Numbers are compared exactly: large integers such as 9007199254740993 are not
+rounded to the nearest float64. Numbers with the same value but different
+representations, such as 1, 1.0 and 1e0, are still considered equal.
+
 For instance:
 
     c.Assert(`{"First": 47.11}`, qt.JSONEquals, &MyStruct{First: 47.11})
@@ -276,6 +280,11 @@ For instance:
 
 Matches checks that a string or result of calling the String method (if the
 value implements fmt.Stringer) matches the provided regular expression.
+
+The pattern can be a string or a *regexp.Regexp. A string pattern must match
+the whole value, as if it were anchored at both ends. A *regexp.Regexp is used
+as is, so it matches any part of the value unless it includes its own anchors.
+The same rules apply to ErrorMatches and PanicMatches.
 
 For instance:
 

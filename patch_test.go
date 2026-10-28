@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"unsafe"
 
 	qt "github.com/frankban/quicktest"
 )
@@ -61,7 +62,43 @@ func TestCPatchPanicsWhenNotAssignable(t *testing.T) {
 	type otherInt int
 	c.Assert(func() {
 		c.Patch(&i, otherInt(88))
-	}, qt.PanicMatches, `reflect\.Set: value of type quicktest_test\.otherInt is not assignable to type int`)
+	}, qt.PanicMatches, `quicktest: cannot Patch a value of type quicktest_test\.otherInt into a value of type int`)
+	c.Assert(i, qt.Equals, 99)
+}
+
+func TestCPatchPanicsWhenNotPointer(t *testing.T) {
+	c := qt.New(t)
+	i := 99
+	c.Assert(func() {
+		c.Patch(i, 88)
+	}, qt.PanicMatches, `quicktest: Patch destination must be a non-nil pointer, got int`)
+	c.Assert(func() {
+		c.Patch((*int)(nil), 88)
+	}, qt.PanicMatches, `quicktest: Patch destination must be a non-nil pointer, got \*int`)
+	c.Assert(func() {
+		c.Patch(nil, 88)
+	}, qt.PanicMatches, `quicktest: Patch destination must be a non-nil pointer, got <nil>`)
+}
+
+func TestCPatchSetUnsafePointerToNil(t *testing.T) {
+	c := qt.New(t)
+	i := 42
+	oldPtr := unsafe.Pointer(&i)
+	p := oldPtr
+	testCleanup(t, func(c *qt.C) {
+		c.Patch(&p, nil)
+		c.Assert(p == nil, qt.IsTrue)
+	})
+	c.Assert(p == oldPtr, qt.IsTrue)
+}
+
+func TestCPatchPanicsWhenNilNotAllowed(t *testing.T) {
+	c := qt.New(t)
+	i := 99
+	c.Assert(func() {
+		c.Patch(&i, nil)
+	}, qt.PanicMatches, `quicktest: cannot Patch nil into a value of type int`)
+	c.Assert(i, qt.Equals, 99)
 }
 
 func TestCUnsetenv(t *testing.T) {

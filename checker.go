@@ -9,10 +9,9 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/kr/pretty"
 )
 
 // Checker is implemented by types used as part of Check/Assert invocations.
@@ -59,8 +58,13 @@ type equalsChecker struct {
 func (c *equalsChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) (err error) {
 	defer func() {
 		// A panic is raised when the provided values are not comparable.
+		// Report it as a bad check so that negated checks (Not(Equals)) and
+		// container checks (Any, All, Contains) do not treat it as an
+		// ordinary mismatch.
 		if r := recover(); r != nil {
-			err = fmt.Errorf("%s", r)
+			note("got", got)
+			note("want", args[0])
+			err = BadCheckf("%s", r)
 		}
 	}()
 	want := args[0]
@@ -156,15 +160,13 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}, note func(
 //	c.Assert(got, qt.DeepEquals, []int{42, 47})
 var DeepEquals = CmpEquals()
 
-// ContentEquals is like DeepEquals but any slices in the compared values will
-// be sorted before being compared.
-var ContentEquals = CmpEquals(cmpopts.SortSlices(func(x, y interface{}) bool {
-	// TODO frankban: implement a proper sort function.
-	return pretty.Sprint(x) < pretty.Sprint(y)
-}))
-
 // Matches is a Checker checking that the provided string or fmt.Stringer
 // matches the provided regular expression pattern.
+//
+// The pattern can be provided as a string or as a *regexp.Regexp. A string
+// pattern must match the whole value: it is implicitly anchored at both ends.
+// A *regexp.Regexp is used as is, so it matches if any part of the value
+// matches, unless the expression itself includes anchors.
 //
 // For instance:
 //
@@ -187,7 +189,12 @@ func (c *matchesChecker) Check(got interface{}, args []interface{}, note func(ke
 	case string:
 		return match(v, pattern, "value does not match regexp", note)
 	case fmt.Stringer:
-		return match(v.String(), pattern, "value.String() does not match regexp", note)
+		s, ok := checkStringCall(v, v.String)
+		if !ok {
+			note("value", got)
+			return errors.New("value is a nil pointer and its String method cannot be called")
+		}
+		return match(s, pattern, "value.String() does not match regexp", note)
 	}
 	note("value", got)
 	return BadCheckf("value is not a string or a fmt.Stringer")
@@ -207,6 +214,8 @@ func checkFirstArgIsError(got interface{}, note func(key string, value interface
 
 // ErrorMatches is a Checker checking that the provided value is an error whose
 // message matches the provided regular expression pattern.
+//
+// See Matches for how string and *regexp.Regexp patterns are applied.
 //
 // For instance:
 //
@@ -233,6 +242,8 @@ func (c *errorMatchesChecker) Check(got interface{}, args []interface{}, note fu
 
 // PanicMatches is a Checker checking that the provided function panics with a
 // message matching the provided regular expression pattern.
+//
+// See Matches for how string and *regexp.Regexp patterns are applied.
 //
 // For instance:
 //
@@ -438,10 +449,18 @@ func (c *satisfiesChecker) Check(got interface{}, args []interface{}, note func(
 	// <https://github.com/juju/testing/blob/master/checkers/bool.go>.
 	predicate := args[0]
 	f := reflect.ValueOf(predicate)
-	ftype := f.Type()
-	if ftype.Kind() != reflect.Func || ftype.NumIn() != 1 || ftype.NumOut() != 1 || ftype.Out(0).Kind() != reflect.Bool {
+	if !f.IsValid() || f.Kind() != reflect.Func {
 		note("predicate function", predicate)
 		return BadCheckf("predicate function is not a func(T) bool")
+	}
+	ftype := f.Type()
+	if ftype.NumIn() != 1 || ftype.IsVariadic() || ftype.NumOut() != 1 || ftype.Out(0).Kind() != reflect.Bool {
+		note("predicate function", predicate)
+		return BadCheckf("predicate function is not a func(T) bool")
+	}
+	if f.IsNil() {
+		note("predicate function", predicate)
+		return BadCheckf("predicate function is nil")
 	}
 	v, t := reflect.ValueOf(got), ftype.In(0)
 	if !v.IsValid() {
@@ -455,7 +474,9 @@ func (c *satisfiesChecker) Check(got interface{}, args []interface{}, note func(
 		note("predicate function", predicate)
 		return BadCheckf("cannot use value of type %v as type %v in argument to predicate function", v.Type(), t)
 	}
-	if f.Call([]reflect.Value{v})[0].Interface().(bool) {
+	// Use Bool rather than a type assertion so that predicates returning a
+	// named boolean type are supported.
+	if f.Call([]reflect.Value{v})[0].Bool() {
 		return nil
 	}
 	return fmt.Errorf("value does not satisfy predicate function")
@@ -693,10 +714,15 @@ func (c *allChecker) Check(got interface{}, args []interface{}, notef func(key s
 // It uses DeepEquals to do the comparison. If a more sophisticated
 // comparison is required, use CodecEquals directly.
 //
+// Numbers are compared exactly: unlike a plain json.Unmarshal into an
+// interface{} value, large integers such as 9007199254740993 are not rounded
+// to the nearest float64. Numbers with the same value but different
+// representations, such as 1, 1.0 and 1e0, are still considered equal.
+//
 // For instance:
 //
 //	c.Assert(`{"First": 47.11}`, qt.JSONEquals, &MyStruct{First: 47.11})
-var JSONEquals = CodecEquals(json.Marshal, json.Unmarshal)
+var JSONEquals = CodecEquals(json.Marshal, jsonUnmarshalPrecise)
 
 type codecEqualChecker struct {
 	argNames
@@ -751,8 +777,11 @@ func (c *codecEqualChecker) Check(got interface{}, args []interface{}, note func
 		return BadCheckf("cannot unmarshal expected contents: %v", err)
 	}
 	var gotContentVal interface{}
-	if err := c.unmarshal([]byte(gotContent), &gotContentVal); err != nil {
-		return fmt.Errorf("cannot unmarshal obtained contents: %v; %q", err, gotContent)
+	if err := c.unmarshal(gotContent, &gotContentVal); err != nil {
+		// The obtained contents are not included in the error: they are
+		// already reported, formatted with the configured format function,
+		// as the "got" argument.
+		return fmt.Errorf("cannot unmarshal obtained contents: %v", err)
 	}
 	return c.deepEquals.Check(gotContentVal, []interface{}{wantContentVal}, note)
 }
@@ -766,8 +795,13 @@ func (a argNames) ArgNames() []string {
 }
 
 // match checks that the given error message matches the given pattern.
+// String patterns must match the whole message, while *regexp.Regexp patterns
+// are used as provided.
 func match(got string, pattern interface{}, msg string, note func(key string, value interface{})) error {
 	if actualRegex, ok := pattern.(*regexp.Regexp); ok {
+		if actualRegex == nil {
+			return BadCheckf("regexp is a nil *regexp.Regexp")
+		}
 		if actualRegex.MatchString(got) {
 			return nil
 		}
@@ -778,15 +812,51 @@ func match(got string, pattern interface{}, msg string, note func(key string, va
 		note("regexp", pattern)
 		return BadCheckf("regexp is not a string")
 	}
-	matches, err := regexp.MatchString("^("+regex+")$", got)
+	re, err := compileAnchored(regex)
 	if err != nil {
 		note("regexp", regex)
 		return BadCheckf("cannot compile regexp: %s", err)
 	}
-	if matches {
+	if re.MatchString(got) {
 		return nil
 	}
 	return errors.New(msg)
+}
+
+// maxRegexpCacheSize bounds the number of compiled patterns kept by
+// compileAnchored, so that tests generating many distinct patterns do not
+// grow memory without limit.
+const maxRegexpCacheSize = 256
+
+var regexpCache = struct {
+	sync.Mutex
+	m map[string]*regexp.Regexp
+}{m: make(map[string]*regexp.Regexp)}
+
+// compileAnchored compiles the given pattern so that it must match the whole
+// input. Compiled expressions are cached, so that checks repeated over many
+// values, for instance with All(Matches), only compile a pattern once.
+// A *regexp.Regexp is safe for concurrent use.
+func compileAnchored(pattern string) (*regexp.Regexp, error) {
+	regexpCache.Lock()
+	re, ok := regexpCache.m[pattern]
+	regexpCache.Unlock()
+	if ok {
+		return re, nil
+	}
+	re, err := regexp.Compile("^(" + pattern + ")$")
+	if err != nil {
+		return nil, err
+	}
+	regexpCache.Lock()
+	if len(regexpCache.m) >= maxRegexpCacheSize {
+		// Simple eviction policy: drop everything. Tests rarely use more
+		// distinct patterns than the cache size.
+		regexpCache.m = make(map[string]*regexp.Regexp)
+	}
+	regexpCache.m[pattern] = re
+	regexpCache.Unlock()
+	return re, nil
 }
 
 // canBeNil reports whether a value or type of the given kind can be nil.

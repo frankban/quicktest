@@ -70,14 +70,29 @@ import (
 // means that it is OK for tests to modify fields in suite concurrently
 // if desired - it's OK to call c.Parallel().
 //
+// Note that the copy is shallow: maps, slices, channels and values referenced
+// through pointers are shared between all the tests. When tests run in
+// parallel, such state should not be stored in the suite value passed to Run,
+// but created for each test in Init.
+//
 // If suite has a method of the form
 //
 //	func (T) Init(*quicktest.C)
 //
-// this method will be invoked before each test run.
+// this method will be invoked before each test run. Use a pointer receiver
+// for Init (and pass a pointer to Run) for changes made by Init to be visible
+// to the test: with a value receiver, Init operates on its own copy.
 func Run(c *qt.C, suite interface{}) {
+	if suite == nil {
+		c.Fatal("cannot run a nil suite")
+		return
+	}
 	sv := reflect.ValueOf(suite)
 	st := sv.Type()
+	if st.Kind() == reflect.Ptr && sv.IsNil() {
+		c.Fatal("cannot run a nil suite of type " + st.String())
+		return
+	}
 	init, hasInit := st.MethodByName("Init")
 	if hasInit && !isValidMethod(init) {
 		c.Fatal("wrong signature for Init, must be Init(*quicktest.C)")

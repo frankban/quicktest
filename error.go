@@ -3,6 +3,7 @@
 package quicktest
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -15,11 +16,12 @@ func BadCheckf(format string, a ...interface{}) error {
 	return &e
 }
 
-// IsBadCheck reports whether the given error has been created by BadCheckf.
+// IsBadCheck reports whether the given error has been created by BadCheckf,
+// or wraps an error created by BadCheckf.
 // This helper can be used when implementing checkers.
 func IsBadCheck(err error) bool {
-	_, ok := err.(*badCheck)
-	return ok
+	var bc *badCheck
+	return errors.As(err, &bc)
 }
 
 type badCheck string
@@ -32,4 +34,4 @@ func (e *badCheck) Error() string {
 // ErrSilent is the error used when there is no need to include in the failure
 // output the "error" and "check" keys and all the keys automatically
 // added for args. This helper can be used when implementing checkers.
-var ErrSilent = fmt.Errorf("silent failure")
+var ErrSilent = errors.New("silent failure")
