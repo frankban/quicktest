@@ -322,14 +322,21 @@ func check(c *C, p checkParams) bool {
 		return false
 	}
 
-	// Extract comments if provided.
-	for len(p.args) > 0 {
-		comment, ok := p.args[len(p.args)-1].(Comment)
-		if !ok {
+	// Extract comments if provided. Comments are the trailing arguments of
+	// type Comment: find where they start, then copy them in a single pass.
+	firstComment := len(p.args)
+	for firstComment > 0 {
+		if _, ok := p.args[firstComment-1].(Comment); !ok {
 			break
 		}
-		rp.comments = append([]Comment{comment}, rp.comments...)
-		p.args = p.args[:len(p.args)-1]
+		firstComment--
+	}
+	if n := len(p.args) - firstComment; n > 0 {
+		rp.comments = make([]Comment, n)
+		for i, arg := range p.args[firstComment:] {
+			rp.comments[i] = arg.(Comment)
+		}
+		p.args = p.args[:firstComment]
 	}
 	rp.args = p.args
 
