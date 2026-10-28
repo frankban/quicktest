@@ -12,6 +12,19 @@ type equalByMod struct{ v int }
 
 func (e equalByMod) Equal(o equalByMod) bool { return e.v%10 == o.v%10 }
 
+// lenSlice is a slice type whose Equal method only compares lengths.
+type lenSlice []int
+
+func (s lenSlice) Equal(o lenSlice) bool { return len(s) == len(o) }
+
+// approx is a type with a non-transitive Equal method.
+type approx int
+
+func (a approx) Equal(b approx) bool {
+	d := a - b
+	return d >= -1 && d <= 1
+}
+
 func TestContentEqualsSemantics(t *testing.T) {
 	tests := []struct {
 		about string
@@ -70,8 +83,28 @@ func TestContentEqualsSemantics(t *testing.T) {
 		equal: true,
 	}, {
 		about: "types with an Equal method",
-		got:   []equalByMod{{11}, {2}},
-		want:  []equalByMod{{12}, {1}},
+		got:   []equalByMod{{2}, {11}},
+		want:  []equalByMod{{11}, {2}},
+		equal: true,
+	}, {
+		about: "Equal method is used for elements",
+		got:   []equalByMod{{1}},
+		want:  []equalByMod{{11}},
+		equal: true,
+	}, {
+		about: "slice types with an Equal method use it",
+		got:   lenSlice{1},
+		want:  lenSlice{2},
+		equal: true,
+	}, {
+		about: "slice types with an Equal method use it: not equal",
+		got:   lenSlice{1, 2},
+		want:  lenSlice{2, 1, 3},
+		equal: false,
+	}, {
+		about: "non-transitive Equal methods",
+		got:   []approx{1, 2},
+		want:  []approx{2, 0},
 		equal: true,
 	}, {
 		about: "structs containing permuted slices",
@@ -92,6 +125,33 @@ func TestContentEqualsSemantics(t *testing.T) {
 	}
 }
 
+func TestContentEqualsCyclic(t *testing.T) {
+	x := make([]interface{}, 2)
+	x[0], x[1] = x, 1
+	y := make([]interface{}, 2)
+	y[0], y[1] = 1, y
+	qt.Assert(t, x, qt.ContentEquals, x)
+	qt.Assert(t, x, qt.ContentEquals, y)
+
+	z := make([]interface{}, 2)
+	z[0], z[1] = z, 2
+	qt.Assert(t, x, qt.Not(qt.ContentEquals), z)
+}
+
+func TestContentEqualsDeeplyNested(t *testing.T) {
+	// Note that go-cmp itself is exponential in the nesting depth of
+	// slices of interface values, so keep the depth reasonable.
+	nest := func(depth int) interface{} {
+		var v interface{} = []int{2, 1}
+		for i := 0; i < depth; i++ {
+			v = []interface{}{v, i}
+		}
+		return v
+	}
+	qt.Assert(t, nest(8), qt.ContentEquals, nest(8))
+	qt.Assert(t, nest(8), qt.Not(qt.ContentEquals), nest(7))
+}
+
 func BenchmarkContentEqualsReversedInts(b *testing.B) {
 	benchmarkContentEquals(b, func(i int) interface{} { return i })
 }
@@ -104,8 +164,12 @@ func BenchmarkContentEqualsReversedStructs(b *testing.B) {
 	benchmarkContentEquals(b, func(i int) interface{} { return s{N: i, S: "x"} })
 }
 
+func BenchmarkContentEqualsDuplicates(b *testing.B) {
+	benchmarkContentEquals(b, func(i int) interface{} { return i % 2 })
+}
+
 func benchmarkContentEquals(b *testing.B, mk func(int) interface{}) {
-	const n = 200
+	const n = 2000
 	got := make([]interface{}, n)
 	want := make([]interface{}, n)
 	for i := 0; i < n; i++ {

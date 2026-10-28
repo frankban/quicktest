@@ -6,16 +6,24 @@ import (
 	"hash/fnv"
 	"math"
 	"reflect"
+	"sort"
+	"sync"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/kr/pretty"
 )
 
 // ContentEquals is like DeepEquals but any slices in the compared values will
-// be compared regardless of the order of their elements: two slices are
-// considered equal when each element of one can be paired with a distinct,
-// deeply equal element of the other. This also applies to nested slices.
+// be compared regardless of the order of their elements, including nested
+// slices.
+//
+// Before being compared, slices are put in a canonical order: elements are
+// sorted by an order-insensitive structural hash, which is the same for
+// deeply equal values, and elements with the same hash are sorted by their
+// printed representation. Slice types having an Equal method are compared
+// using that method instead. Elements are paired by position after sorting,
+// so slices containing values compared with custom, non-transitive Equal
+// methods (e.g. approximate comparisons) may not be matched.
 var ContentEquals Checker = &contentEqualsChecker{
 	argNames: []string{"got", "want"},
 }
@@ -24,91 +32,150 @@ type contentEqualsChecker struct {
 	argNames
 }
 
-// Check implements Checker.Check by checking that got == args[0] regardless
-// of the order of slice elements.
-func (c *contentEqualsChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) (err error) {
-	defer func() {
-		// See cmpEqualsChecker.Check.
-		if r := recover(); r != nil {
-			err = BadCheckf("%s", r)
-		}
-	}()
-	want := args[0]
-	if cmp.Equal(want, got, unorderedSlices()) {
-		return nil
+// Check implements Checker.Check by checking that got == args[0] after
+// putting all slices in canonical order.
+func (c *contentEqualsChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) error {
+	// A new sorter is used for each check, so that its memoization does not
+	// outlive the compared values.
+	s := &contentSorter{
+		canonical: make(map[sliceID]bool),
+		sorted:    make(map[sliceID]interface{}),
 	}
-	// Sort slices by their printed representation to produce a readable
-	// diff. This is only used for output: the equality check above does not
-	// rely on printed representations.
-	diff := cmp.Diff(want, got, sortSlicesForDiff)
-	if diff == "" {
-		diff = cmp.Diff(want, got, unorderedSlices())
+	checker := &cmpEqualsChecker{
+		opts: cmp.Options{
+			cmp.FilterValues(s.filter, cmp.Transformer("quicktest.ContentEquals", s.sort)),
+		},
 	}
-	note("error", Unquoted("values are not deep equal"))
-	note("diff (-want +got)", Unquoted(diff))
-	note("got", SuppressedIfLong{got})
-	note("want", SuppressedIfLong{want})
-	return ErrSilent
+	return checker.Check(got, args, note)
 }
 
-// sortSlicesForDiff sorts slices by their printed representation.
-var sortSlicesForDiff = cmpopts.SortSlices(func(x, y interface{}) bool {
-	return pretty.Sprint(x) < pretty.Sprint(y)
-})
-
-// unorderedSlices returns a cmp option comparing slices as multisets.
-func unorderedSlices() cmp.Option {
-	var opt cmp.Option
-	opt = cmp.FilterValues(func(x, y interface{}) bool {
-		vx, vy := reflect.ValueOf(x), reflect.ValueOf(y)
-		return vx.IsValid() && vy.IsValid() && vx.Kind() == reflect.Slice && vx.Type() == vy.Type()
-	}, cmp.Comparer(func(x, y interface{}) bool {
-		return equalUnordered(reflect.ValueOf(x), reflect.ValueOf(y), opt)
-	}))
-	return opt
+// sliceID identifies a slice value.
+type sliceID struct {
+	typ reflect.Type
+	ptr uintptr
+	len int
 }
 
-// equalUnordered reports whether the slices x and y hold the same elements,
-// in any order, comparing elements with cmp.Equal and the given option.
-//
-// Since deep equality is an equivalence relation, greedily pairing each
-// element of x with any equal unpaired element of y is enough. To avoid
-// comparing every pair of elements, candidates are grouped by a structural
-// hash that is guaranteed to be the same for equal values.
-func equalUnordered(x, y reflect.Value, opt cmp.Option) bool {
-	if x.IsNil() != y.IsNil() || x.Len() != y.Len() {
+// contentSorter puts slices in canonical order. It memoizes its results,
+// so it must only be used for a single comparison.
+type contentSorter struct {
+	// mu protects the fields below: go-cmp may call transformers
+	// concurrently to detect races.
+	mu sync.Mutex
+	// canonical records whether slices are already in canonical order.
+	canonical map[sliceID]bool
+	// sorted maps slices to their already computed sorted copies. Returning
+	// the same copy for the same slice allows go-cmp to detect cycles in
+	// the compared values.
+	sorted map[sliceID]interface{}
+}
+
+// filter reports whether the slices x and y must be put in canonical order
+// before being compared.
+func (s *contentSorter) filter(x, y interface{}) bool {
+	vx, vy := reflect.ValueOf(x), reflect.ValueOf(y)
+	if !vx.IsValid() || !vy.IsValid() || vx.Type() != vy.Type() || vx.Kind() != reflect.Slice {
 		return false
 	}
-	n := x.Len()
-	var pending []int
-	// Fast path: pair elements that are already in the same position.
+	if vx.Len() <= 1 && vy.Len() <= 1 {
+		return false
+	}
+	if hasEqualMethod(vx.Type()) {
+		// Let cmp use the Equal method.
+		return false
+	}
+	// Do not transform slices that are already in canonical order: this also
+	// prevents applying the transformation to its own output.
+	return !s.isCanonical(vx) || !s.isCanonical(vy)
+}
+
+// isCanonical reports whether the slice v is already in canonical order.
+func (s *contentSorter) isCanonical(v reflect.Value) bool {
+	id := newSliceID(v)
+	s.mu.Lock()
+	ok, found := s.canonical[id]
+	s.mu.Unlock()
+	if found {
+		return ok
+	}
+	ok = isIdentity(contentOrder(v))
+	s.mu.Lock()
+	s.canonical[id] = ok
+	s.mu.Unlock()
+	return ok
+}
+
+func newSliceID(v reflect.Value) sliceID {
+	return sliceID{typ: v.Type(), ptr: v.Pointer(), len: v.Len()}
+}
+
+// sort returns a copy of the slice x in canonical order.
+func (s *contentSorter) sort(x interface{}) interface{} {
+	src := reflect.ValueOf(x)
+	id := newSliceID(src)
+	s.mu.Lock()
+	sorted, ok := s.sorted[id]
+	s.mu.Unlock()
+	if ok {
+		return sorted
+	}
+	order := contentOrder(src)
+	dst := reflect.MakeSlice(src.Type(), len(order), len(order))
+	for i, j := range order {
+		dst.Index(i).Set(src.Index(j))
+	}
+	sorted = dst.Interface()
+	s.mu.Lock()
+	if prev, ok := s.sorted[id]; ok {
+		sorted = prev
+	} else {
+		s.sorted[id] = sorted
+	}
+	s.mu.Unlock()
+	return sorted
+}
+
+// contentOrder returns the indexes of the elements of the slice v in
+// canonical order. The order is stable: applying it to a slice that is
+// already in canonical order returns the identity permutation.
+func contentOrder(v reflect.Value) []int {
+	n := v.Len()
+	order := make([]int, n)
+	hashes := make([]uint64, n)
 	for i := 0; i < n; i++ {
-		if !cmp.Equal(x.Index(i).Interface(), y.Index(i).Interface(), opt) {
-			pending = append(pending, i)
+		order[i] = i
+		hashes[i] = contentHash(v.Index(i), 0)
+	}
+	sort.SliceStable(order, func(i, j int) bool {
+		return hashes[order[i]] < hashes[order[j]]
+	})
+	// Sort runs of elements with the same hash by their printed
+	// representation, computed only for those elements.
+	for start := 0; start < n; {
+		end := start + 1
+		for end < n && hashes[order[end]] == hashes[order[start]] {
+			end++
 		}
-	}
-	if len(pending) == 0 {
-		return true
-	}
-	buckets := make(map[uint64][]int, len(pending))
-	for _, j := range pending {
-		h := contentHash(y.Index(j), 0)
-		buckets[h] = append(buckets[h], j)
-	}
-outer:
-	for _, i := range pending {
-		xi := x.Index(i)
-		h := contentHash(xi, 0)
-		js := buckets[h]
-		xv := xi.Interface()
-		for k, j := range js {
-			if cmp.Equal(xv, y.Index(j).Interface(), opt) {
-				// Remove j from the bucket, preserving order.
-				buckets[h] = append(js[:k:k], js[k+1:]...)
-				continue outer
+		if end-start > 1 {
+			run := order[start:end]
+			printed := make(map[int]string, len(run))
+			for _, i := range run {
+				printed[i] = pretty.Sprint(v.Index(i).Interface())
 			}
+			sort.SliceStable(run, func(i, j int) bool {
+				return printed[run[i]] < printed[run[j]]
+			})
 		}
-		return false
+		start = end
+	}
+	return order
+}
+
+func isIdentity(order []int) bool {
+	for i, j := range order {
+		if i != j {
+			return false
+		}
 	}
 	return true
 }
@@ -118,7 +185,7 @@ outer:
 const maxContentHashDepth = 10
 
 // contentHash returns a hash of v such that values that are equal according
-// to cmp.Equal with the unorderedSlices option always have the same hash.
+// to ContentEquals always have the same hash.
 // Unequal values may also share the same hash.
 //
 // Slices are hashed in an order-insensitive way. Values of types having an
@@ -184,17 +251,20 @@ func contentHash(v reflect.Value, depth int) uint64 {
 }
 
 // hasEqualMethod reports whether cmp would use an Equal method to compare
-// values of type t.
+// values of type t. This mirrors the rule used by go-cmp: t must have a
+// method of the form Equal(I) bool, where t is assignable to I.
 func hasEqualMethod(t reflect.Type) bool {
-	if _, ok := t.MethodByName("Equal"); ok {
-		return true
+	m, ok := t.MethodByName("Equal")
+	if !ok {
+		return false
 	}
-	if t.Kind() != reflect.Ptr && t.Kind() != reflect.Interface {
-		if _, ok := reflect.PtrTo(t).MethodByName("Equal"); ok {
-			return true
-		}
-	}
-	return false
+	// For non-interface types, the method type includes the receiver.
+	// Methods of interface types never match, as in go-cmp.
+	mt := m.Type
+	return !mt.IsVariadic() &&
+		mt.NumIn() == 2 && mt.NumOut() == 1 &&
+		mt.In(0).AssignableTo(mt.In(1)) &&
+		mt.Out(0) == boolType
 }
 
 func hashFloat(f float64) uint64 {
