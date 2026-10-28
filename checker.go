@@ -60,8 +60,13 @@ type equalsChecker struct {
 func (c *equalsChecker) Check(got interface{}, args []interface{}, note func(key string, value interface{})) (err error) {
 	defer func() {
 		// A panic is raised when the provided values are not comparable.
+		// Report it as a bad check so that negated checks (Not(Equals)) and
+		// container checks (Any, All, Contains) do not treat it as an
+		// ordinary mismatch.
 		if r := recover(); r != nil {
-			err = fmt.Errorf("%s", r)
+			note("got", got)
+			note("want", args[0])
+			err = BadCheckf("%s", r)
 		}
 	}()
 	want := args[0]
