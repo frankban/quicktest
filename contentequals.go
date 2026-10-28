@@ -10,7 +10,6 @@ import (
 	"sync"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/kr/pretty"
 )
 
 // ContentEquals is like DeepEquals but any slices in the compared values will
@@ -19,11 +18,14 @@ import (
 //
 // Before being compared, slices are put in a canonical order: elements are
 // sorted by an order-insensitive structural hash, which is the same for
-// deeply equal values, and elements with the same hash are sorted by their
-// printed representation. Slice types having an Equal method are compared
-// using that method instead. Elements are paired by position after sorting,
-// so slices containing values compared with custom, non-transitive Equal
-// methods (e.g. approximate comparisons) may not be matched.
+// deeply equal values. Slice types having an Equal method are compared using
+// that method instead.
+//
+// Elements are paired by position after sorting. Values of types with a
+// custom Equal method are ordered by their structure, as their Equal method
+// cannot be used for ordering: if such values are equal according to their
+// Equal method but structurally different (e.g. approximate comparisons, or
+// comparisons ignoring some fields), permuted slices of them may not match.
 var ContentEquals Checker = &contentEqualsChecker{
 	argNames: []string{"got", "want"},
 }
@@ -40,6 +42,7 @@ func (c *contentEqualsChecker) Check(got interface{}, args []interface{}, note f
 	s := &contentSorter{
 		canonical: make(map[sliceID]bool),
 		sorted:    make(map[sliceID]interface{}),
+		hashes:    make(map[hashKey]uint64),
 	}
 	checker := &cmpEqualsChecker{
 		opts: cmp.Options{
@@ -56,6 +59,18 @@ type sliceID struct {
 	len int
 }
 
+func newSliceID(v reflect.Value) sliceID {
+	return sliceID{typ: v.Type(), ptr: v.Pointer(), len: v.Len()}
+}
+
+// hashKey identifies a reference value (pointer, slice or map) hashed at a
+// given depth with a given hash mode.
+type hashKey struct {
+	id         sliceID
+	depth      int
+	structural bool
+}
+
 // contentSorter puts slices in canonical order. It memoizes its results,
 // so it must only be used for a single comparison.
 type contentSorter struct {
@@ -68,6 +83,9 @@ type contentSorter struct {
 	// the same copy for the same slice allows go-cmp to detect cycles in
 	// the compared values.
 	sorted map[sliceID]interface{}
+	// hashes memoizes the hashes of reference values, so that shared or
+	// cyclic data is not hashed repeatedly.
+	hashes map[hashKey]uint64
 }
 
 // filter reports whether the slices x and y must be put in canonical order
@@ -98,15 +116,11 @@ func (s *contentSorter) isCanonical(v reflect.Value) bool {
 	if found {
 		return ok
 	}
-	ok = isIdentity(contentOrder(v))
+	ok = isIdentity(s.order(v))
 	s.mu.Lock()
 	s.canonical[id] = ok
 	s.mu.Unlock()
 	return ok
-}
-
-func newSliceID(v reflect.Value) sliceID {
-	return sliceID{typ: v.Type(), ptr: v.Pointer(), len: v.Len()}
 }
 
 // sort returns a copy of the slice x in canonical order.
@@ -119,7 +133,7 @@ func (s *contentSorter) sort(x interface{}) interface{} {
 	if ok {
 		return sorted
 	}
-	order := contentOrder(src)
+	order := s.order(src)
 	dst := reflect.MakeSlice(src.Type(), len(order), len(order))
 	for i, j := range order {
 		dst.Index(i).Set(src.Index(j))
@@ -135,22 +149,25 @@ func (s *contentSorter) sort(x interface{}) interface{} {
 	return sorted
 }
 
-// contentOrder returns the indexes of the elements of the slice v in
-// canonical order. The order is stable: applying it to a slice that is
-// already in canonical order returns the identity permutation.
-func contentOrder(v reflect.Value) []int {
+// order returns the indexes of the elements of the slice v in canonical
+// order. The order is stable: applying it to a slice that is already in
+// canonical order returns the identity permutation.
+//
+// Elements are sorted by their hash, which is the same for values that are
+// equal according to cmp. Ties, which happen for hash collisions and for
+// values whose Equal method prevents inspecting them, are broken using a
+// structural hash which ignores Equal methods.
+func (s *contentSorter) order(v reflect.Value) []int {
 	n := v.Len()
 	order := make([]int, n)
 	hashes := make([]uint64, n)
 	for i := 0; i < n; i++ {
 		order[i] = i
-		hashes[i] = contentHash(v.Index(i), 0)
+		hashes[i] = s.hash(v.Index(i), 0, false)
 	}
 	sort.SliceStable(order, func(i, j int) bool {
 		return hashes[order[i]] < hashes[order[j]]
 	})
-	// Sort runs of elements with the same hash by their printed
-	// representation, computed only for those elements.
 	for start := 0; start < n; {
 		end := start + 1
 		for end < n && hashes[order[end]] == hashes[order[start]] {
@@ -158,12 +175,12 @@ func contentOrder(v reflect.Value) []int {
 		}
 		if end-start > 1 {
 			run := order[start:end]
-			printed := make(map[int]string, len(run))
+			structural := make(map[int]uint64, len(run))
 			for _, i := range run {
-				printed[i] = pretty.Sprint(v.Index(i).Interface())
+				structural[i] = s.hash(v.Index(i), 0, true)
 			}
 			sort.SliceStable(run, func(i, j int) bool {
-				return printed[run[i]] < printed[run[j]]
+				return structural[run[i]] < structural[run[j]]
 			})
 		}
 		start = end
@@ -180,26 +197,52 @@ func isIdentity(order []int) bool {
 	return true
 }
 
-// maxContentHashDepth bounds the recursion of contentHash, which also
-// protects against cyclic data structures.
+// maxContentHashDepth bounds the recursion of hash, which also guarantees
+// termination with cyclic data structures.
 const maxContentHashDepth = 10
 
-// contentHash returns a hash of v such that values that are equal according
-// to ContentEquals always have the same hash.
-// Unequal values may also share the same hash.
+// hash returns a hash of v such that values that are equal according to
+// ContentEquals always have the same hash. Unequal values may also share the
+// same hash. Slices are hashed in an order-insensitive way.
 //
-// Slices are hashed in an order-insensitive way. Values of types having an
-// Equal method, which cmp uses for comparison, are not inspected.
-func contentHash(v reflect.Value, depth int) uint64 {
+// When structural is false, values of types having an Equal method, which
+// cmp uses for comparison, are not inspected. When structural is true, they
+// are inspected as any other value.
+//
+// Hashes of reference values (pointers, slices and maps) are memoized by
+// identity and depth, so that the cost of hashing shared or cyclic data is
+// bounded by the number of distinct references times the maximum depth.
+func (s *contentSorter) hash(v reflect.Value, depth int, structural bool) uint64 {
 	if !v.IsValid() {
 		return 0
 	}
 	t := v.Type()
 	h := hashString(t.String())
-	if depth > maxContentHashDepth || hasEqualMethod(t) {
+	if depth > maxContentHashDepth || (!structural && hasEqualMethod(t)) {
 		return h
 	}
+	var key hashKey
 	switch v.Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Slice:
+		if v.IsNil() {
+			return h
+		}
+		id := sliceID{typ: t, ptr: v.Pointer()}
+		if v.Kind() == reflect.Slice {
+			id.len = v.Len()
+		}
+		key = hashKey{id: id, depth: depth, structural: structural}
+		s.mu.Lock()
+		memo, ok := s.hashes[key]
+		s.mu.Unlock()
+		if ok {
+			return memo
+		}
+		h = s.hashRef(v, h, depth, structural)
+		s.mu.Lock()
+		s.hashes[key] = h
+		s.mu.Unlock()
+		return h
 	case reflect.Bool:
 		if v.Bool() {
 			return mix(h, 1)
@@ -216,38 +259,46 @@ func contentHash(v reflect.Value, depth int) uint64 {
 		return mix(mix(h, hashFloat(real(c))), hashFloat(imag(c)))
 	case reflect.String:
 		return mix(h, hashString(v.String()))
-	case reflect.Interface, reflect.Ptr:
+	case reflect.Interface:
 		if v.IsNil() {
 			return h
 		}
-		return mix(h, contentHash(v.Elem(), depth+1))
+		return mix(h, s.hash(v.Elem(), depth+1, structural))
 	case reflect.Array:
 		for i := 0; i < v.Len(); i++ {
-			h = mix(h, contentHash(v.Index(i), depth+1))
+			h = mix(h, s.hash(v.Index(i), depth+1, structural))
 		}
 		return h
-	case reflect.Slice:
-		// Order-insensitive: combine element hashes with addition.
-		var sum uint64
-		for i := 0; i < v.Len(); i++ {
-			sum += contentHash(v.Index(i), depth+1)
-		}
-		return mix(mix(h, uint64(v.Len())), sum)
-	case reflect.Map:
-		var sum uint64
-		iter := v.MapRange()
-		for iter.Next() {
-			sum += mix(contentHash(iter.Key(), depth+1), contentHash(iter.Value(), depth+1))
-		}
-		return mix(mix(h, uint64(v.Len())), sum)
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
-			h = mix(h, contentHash(v.Field(i), depth+1))
+			h = mix(h, s.hash(v.Field(i), depth+1, structural))
 		}
 		return h
 	}
 	// Functions, channels and unsafe pointers.
 	return h
+}
+
+// hashRef hashes the non-nil pointer, map or slice v, starting from h.
+func (s *contentSorter) hashRef(v reflect.Value, h uint64, depth int, structural bool) uint64 {
+	switch v.Kind() {
+	case reflect.Ptr:
+		return mix(h, s.hash(v.Elem(), depth+1, structural))
+	case reflect.Slice:
+		// Order-insensitive: combine element hashes with addition.
+		var sum uint64
+		for i := 0; i < v.Len(); i++ {
+			sum += s.hash(v.Index(i), depth+1, structural)
+		}
+		return mix(mix(h, uint64(v.Len())), sum)
+	default: // reflect.Map
+		var sum uint64
+		iter := v.MapRange()
+		for iter.Next() {
+			sum += mix(s.hash(iter.Key(), depth+1, structural), s.hash(iter.Value(), depth+1, structural))
+		}
+		return mix(mix(h, uint64(v.Len())), sum)
+	}
 }
 
 // hasEqualMethod reports whether cmp would use an Equal method to compare
