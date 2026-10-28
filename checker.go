@@ -12,8 +12,6 @@ import (
 	"sync"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/kr/pretty"
 )
 
 // Checker is implemented by types used as part of Check/Assert invocations.
@@ -161,13 +159,6 @@ func (c *cmpEqualsChecker) Check(got interface{}, args []interface{}, note func(
 //
 //	c.Assert(got, qt.DeepEquals, []int{42, 47})
 var DeepEquals = CmpEquals()
-
-// ContentEquals is like DeepEquals but any slices in the compared values will
-// be sorted before being compared.
-var ContentEquals = CmpEquals(cmpopts.SortSlices(func(x, y interface{}) bool {
-	// TODO frankban: implement a proper sort function.
-	return pretty.Sprint(x) < pretty.Sprint(y)
-}))
 
 // Matches is a Checker checking that the provided string or fmt.Stringer
 // matches the provided regular expression pattern.

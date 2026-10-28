@@ -129,8 +129,8 @@ For example:
 
 ### ContentEquals
 
-ContentEquals is is like DeepEquals but any slices in the compared values will
-be sorted before being compared.
+ContentEquals is like DeepEquals but any slices in the compared values are
+compared regardless of the order of their elements, including nested slices.
 
 For example:
 
