@@ -353,7 +353,17 @@ want:
 	}},
 	expectedCheckFailure: `
 error:
-  runtime error: comparing uncomparable type struct { Ints []int }
+  bad check: runtime error: comparing uncomparable type struct { Ints []int }
+got:
+  struct { Ints []int }{
+      Ints: {42, 47},
+  }
+want:
+  <same as "got">
+`,
+	expectedNegateFailure: `
+error:
+  bad check: runtime error: comparing uncomparable type struct { Ints []int }
 got:
   struct { Ints []int }{
       Ints: {42, 47},
@@ -3180,6 +3190,19 @@ got value:
   "prefix abc suffix"
 regexp:
   s"abc"
+`,
+}, {
+	about:   "Contains: uncomparable element is a bad check",
+	checker: qt.Contains,
+	got:     []interface{}{[]int{1}},
+	args:    []interface{}{[]int{1}},
+	expectedCheckFailure: `
+error:
+  bad check: at index 0: bad check: runtime error: comparing uncomparable type []int
+`,
+	expectedNegateFailure: `
+error:
+  bad check: at index 0: bad check: runtime error: comparing uncomparable type []int
 `,
 }}
 
