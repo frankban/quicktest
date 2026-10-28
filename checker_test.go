@@ -3140,6 +3140,47 @@ arg:
 predicate function:
   func(int) quicktest_test.namedBool {...}
 `,
+}, {
+	about:   "Matches: nil fmt.Stringer pointer",
+	checker: qt.Matches,
+	got:     (*nilStringer)(nil),
+	args:    []interface{}{"x"},
+	expectedCheckFailure: `
+error:
+  value is a nil pointer and its String method cannot be called
+value:
+  s<nil>
+got value:
+  <same as "value">
+regexp:
+  "x"
+`,
+}, {
+	about:   "Matches: nil *regexp.Regexp",
+	checker: qt.Matches,
+	got:     "x",
+	args:    []interface{}{(*regexp.Regexp)(nil)},
+	expectedCheckFailure: `
+error:
+  bad check: regexp is a nil *regexp.Regexp
+`,
+	expectedNegateFailure: `
+error:
+  bad check: regexp is a nil *regexp.Regexp
+`,
+}, {
+	about:   "Matches: *regexp.Regexp is not anchored",
+	checker: qt.Matches,
+	got:     "prefix abc suffix",
+	args:    []interface{}{regexp.MustCompile("abc")},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got value:
+  "prefix abc suffix"
+regexp:
+  s"abc"
+`,
 }}
 
 type namedBool bool

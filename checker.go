@@ -166,6 +166,11 @@ var ContentEquals = CmpEquals(cmpopts.SortSlices(func(x, y interface{}) bool {
 // Matches is a Checker checking that the provided string or fmt.Stringer
 // matches the provided regular expression pattern.
 //
+// The pattern can be provided as a string or as a *regexp.Regexp. A string
+// pattern must match the whole value: it is implicitly anchored at both ends.
+// A *regexp.Regexp is used as is, so it matches if any part of the value
+// matches, unless the expression itself includes anchors.
+//
 // For instance:
 //
 //	c.Assert("these are the voyages", qt.Matches, "these are .*")
@@ -187,7 +192,12 @@ func (c *matchesChecker) Check(got interface{}, args []interface{}, note func(ke
 	case string:
 		return match(v, pattern, "value does not match regexp", note)
 	case fmt.Stringer:
-		return match(v.String(), pattern, "value.String() does not match regexp", note)
+		s, ok := checkStringCall(v, v.String)
+		if !ok {
+			note("value", got)
+			return errors.New("value is a nil pointer and its String method cannot be called")
+		}
+		return match(s, pattern, "value.String() does not match regexp", note)
 	}
 	note("value", got)
 	return BadCheckf("value is not a string or a fmt.Stringer")
@@ -207,6 +217,8 @@ func checkFirstArgIsError(got interface{}, note func(key string, value interface
 
 // ErrorMatches is a Checker checking that the provided value is an error whose
 // message matches the provided regular expression pattern.
+//
+// See Matches for how string and *regexp.Regexp patterns are applied.
 //
 // For instance:
 //
@@ -233,6 +245,8 @@ func (c *errorMatchesChecker) Check(got interface{}, args []interface{}, note fu
 
 // PanicMatches is a Checker checking that the provided function panics with a
 // message matching the provided regular expression pattern.
+//
+// See Matches for how string and *regexp.Regexp patterns are applied.
 //
 // For instance:
 //
@@ -776,8 +790,13 @@ func (a argNames) ArgNames() []string {
 }
 
 // match checks that the given error message matches the given pattern.
+// String patterns must match the whole message, while *regexp.Regexp patterns
+// are used as provided.
 func match(got string, pattern interface{}, msg string, note func(key string, value interface{})) error {
 	if actualRegex, ok := pattern.(*regexp.Regexp); ok {
+		if actualRegex == nil {
+			return BadCheckf("regexp is a nil *regexp.Regexp")
+		}
 		if actualRegex.MatchString(got) {
 			return nil
 		}
