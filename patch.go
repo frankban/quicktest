@@ -3,6 +3,7 @@
 package quicktest
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -15,16 +16,28 @@ import (
 //
 // At the end of the test (see "Deferred execution" in the package docs), the
 // destination is set back to its original value.
+//
+// Patch panics if dest is not a non-nil pointer, or if value is not
+// assignable to the element type of dest. A nil value is only accepted when
+// the element type can be nil (e.g. pointers, maps, slices, interfaces).
 func (c *C) Patch(dest, value interface{}) {
-	destv := reflect.ValueOf(dest).Elem()
-	oldv := reflect.New(destv.Type()).Elem()
-	oldv.Set(destv)
+	destp := reflect.ValueOf(dest)
+	if destp.Kind() != reflect.Ptr || destp.IsNil() {
+		panic(fmt.Sprintf("quicktest: Patch destination must be a non-nil pointer, got %T", dest))
+	}
+	destv := destp.Elem()
+	destType := destv.Type()
 	valuev := reflect.ValueOf(value)
 	if !valuev.IsValid() {
-		// This isn't quite right when the destination type is not
-		// nilable, but it's better than the complex alternative.
-		valuev = reflect.Zero(destv.Type())
+		if !canBeNil(destType.Kind()) {
+			panic(fmt.Sprintf("quicktest: cannot Patch nil into a value of type %s", destType))
+		}
+		valuev = reflect.Zero(destType)
+	} else if !valuev.Type().AssignableTo(destType) {
+		panic(fmt.Sprintf("quicktest: cannot Patch a value of type %s into a value of type %s", valuev.Type(), destType))
 	}
+	oldv := reflect.New(destType).Elem()
+	oldv.Set(destv)
 	destv.Set(valuev)
 	c.cleanup(func() {
 		destv.Set(oldv)
