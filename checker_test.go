@@ -62,6 +62,7 @@ type OuterJSON struct {
 }
 
 type boolean bool
+type myString string
 
 var checkerTests = []struct {
 	about                 string
@@ -178,6 +179,19 @@ got:
   int(42)
 want:
   "42"
+`,
+}, {
+	about:   "Equals: string and named string type with same value",
+	checker: qt.Equals,
+	got:     "hello",
+	args:    []interface{}{myString("hello")},
+	expectedCheckFailure: `
+error:
+  values are not equal
+got:
+  "hello"
+want:
+  quicktest_test.myString("hello")
 `,
 }, {
 	about:   "Equals: nil and nil",

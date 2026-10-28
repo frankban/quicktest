@@ -46,6 +46,14 @@ func Format(v interface{}) string {
 		// (json.RawMessage for example).
 		return fmt.Sprintf("%T(%s)", v, quoteString(string(bytes)))
 	}
+	// Handle named string types (e.g. type myString string) explicitly so that
+	// the type name is included in the output. Without this they fall through to
+	// pretty.Formatter which renders them as a plain quoted string, identical to
+	// a plain string value, causing the deduplication in the reporter to
+	// incorrectly print "<same as got>" when the types differ.
+	if rv := reflect.ValueOf(v); rv.IsValid() && rv.Kind() == reflect.String {
+		return fmt.Sprintf("%T(%s)", v, quoteString(rv.String()))
+	}
 	// The pretty.Sprint equivalent does not quote string values.
 	return fmt.Sprintf("%# v", pretty.Formatter(v))
 }
