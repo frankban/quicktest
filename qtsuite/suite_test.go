@@ -103,6 +103,17 @@ func TestInvalidInit(t *testing.T) {
 
 type invalidTestSuite struct{}
 
+func TestNilSuite(t *testing.T) {
+	c := qt.New(t)
+	tt := &testingT{}
+	qtsuite.Run(qt.New(tt), nil)
+	c.Assert(tt.fatalString(), qt.Equals, "cannot run a nil suite")
+
+	tt = &testingT{}
+	qtsuite.Run(qt.New(tt), (*testSuite)(nil))
+	c.Assert(tt.fatalString(), qt.Equals, "cannot run a nil suite of type *qtsuite_test.testSuite")
+}
+
 func (invalidTestSuite) Init() {}
 
 // testingT can be passed to qt.New for testing purposes.

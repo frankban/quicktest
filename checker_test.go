@@ -353,7 +353,17 @@ want:
 	}},
 	expectedCheckFailure: `
 error:
-  runtime error: comparing uncomparable type struct { Ints []int }
+  bad check: runtime error: comparing uncomparable type struct { Ints []int }
+got:
+  struct { Ints []int }{
+      Ints: {42, 47},
+  }
+want:
+  <same as "got">
+`,
+	expectedNegateFailure: `
+error:
+  bad check: runtime error: comparing uncomparable type struct { Ints []int }
 got:
   struct { Ints []int }{
       Ints: {42, 47},
@@ -2979,7 +2989,7 @@ want:
 	args:    []interface{}{nil},
 	expectedCheckFailure: fmt.Sprintf(tilde2bq(`
 error:
-  cannot unmarshal obtained contents: %s; "{\"NotThere\": "
+  cannot unmarshal obtained contents: %s
 got:
   ~{"NotThere": ~
 want:
@@ -3072,7 +3082,131 @@ got:
 want:
   []string{"a", "c", "z", "b"}
 `),
+}, {
+	about:   "Satisfies: nil predicate",
+	checker: qt.Satisfies,
+	got:     42,
+	args:    []interface{}{nil},
+	expectedCheckFailure: `
+error:
+  bad check: predicate function is not a func(T) bool
+predicate function:
+  nil
+`,
+	expectedNegateFailure: `
+error:
+  bad check: predicate function is not a func(T) bool
+predicate function:
+  nil
+`,
+}, {
+	about:   "Satisfies: typed nil predicate",
+	checker: qt.Satisfies,
+	got:     42,
+	args:    []interface{}{(func(int) bool)(nil)},
+	expectedCheckFailure: `
+error:
+  bad check: predicate function is nil
+predicate function:
+  func(int) bool {...}
+`,
+	expectedNegateFailure: `
+error:
+  bad check: predicate function is nil
+predicate function:
+  func(int) bool {...}
+`,
+}, {
+	about:   "Satisfies: variadic predicate",
+	checker: qt.Satisfies,
+	got:     []int{42},
+	args: []interface{}{
+		func(...int) bool { return true },
+	},
+	expectedCheckFailure: `
+error:
+  bad check: predicate function is not a func(T) bool
+predicate function:
+  func(...int) bool {...}
+`,
+	expectedNegateFailure: `
+error:
+  bad check: predicate function is not a func(T) bool
+predicate function:
+  func(...int) bool {...}
+`,
+}, {
+	about:   "Satisfies: predicate returning a named bool",
+	checker: qt.Satisfies,
+	got:     42,
+	args: []interface{}{
+		func(v int) namedBool { return v == 42 },
+	},
+	expectedNegateFailure: `
+error:
+  unexpected success
+arg:
+  int(42)
+predicate function:
+  func(int) quicktest_test.namedBool {...}
+`,
+}, {
+	about:   "Matches: nil fmt.Stringer pointer",
+	checker: qt.Matches,
+	got:     (*nilStringer)(nil),
+	args:    []interface{}{"x"},
+	expectedCheckFailure: `
+error:
+  value is a nil pointer and its String method cannot be called
+value:
+  s<nil>
+got value:
+  <same as "value">
+regexp:
+  "x"
+`,
+}, {
+	about:   "Matches: nil *regexp.Regexp",
+	checker: qt.Matches,
+	got:     "x",
+	args:    []interface{}{(*regexp.Regexp)(nil)},
+	expectedCheckFailure: `
+error:
+  bad check: regexp is a nil *regexp.Regexp
+`,
+	expectedNegateFailure: `
+error:
+  bad check: regexp is a nil *regexp.Regexp
+`,
+}, {
+	about:   "Matches: *regexp.Regexp is not anchored",
+	checker: qt.Matches,
+	got:     "prefix abc suffix",
+	args:    []interface{}{regexp.MustCompile("abc")},
+	expectedNegateFailure: `
+error:
+  unexpected success
+got value:
+  "prefix abc suffix"
+regexp:
+  s"abc"
+`,
+}, {
+	about:   "Contains: uncomparable element is a bad check",
+	checker: qt.Contains,
+	got:     []interface{}{[]int{1}},
+	args:    []interface{}{[]int{1}},
+	expectedCheckFailure: `
+error:
+  bad check: at index 0: bad check: runtime error: comparing uncomparable type []int
+`,
+	expectedNegateFailure: `
+error:
+  bad check: at index 0: bad check: runtime error: comparing uncomparable type []int
+`,
 }}
+
+type namedBool bool
 
 func TestCheckers(t *testing.T) {
 	original := qt.TestingVerbose

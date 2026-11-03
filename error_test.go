@@ -21,8 +21,11 @@ func TestBadCheckf(t *testing.T) {
 func TestIsBadCheck(t *testing.T) {
 	err := qt.BadCheckf("bad wolf")
 	assertBool(t, qt.IsBadCheck(err), true)
+	err = fmt.Errorf("wrapped: %w", qt.BadCheckf("bad wolf"))
+	assertBool(t, qt.IsBadCheck(err), true)
 	err = errors.New("bad wolf")
 	assertBool(t, qt.IsBadCheck(err), false)
+	assertBool(t, qt.IsBadCheck(nil), false)
 }
 
 var errBadWolf = &errTest{

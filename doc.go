@@ -271,6 +271,11 @@ For instance:
 Matches checks that a string or result of calling the String method
 (if the value implements fmt.Stringer) matches the provided regular expression.
 
+The pattern can be a string or a *regexp.Regexp. A string pattern must match
+the whole value, as if it were anchored at both ends. A *regexp.Regexp is used
+as is, so it matches any part of the value unless it includes its own anchors.
+The same rules apply to ErrorMatches and PanicMatches.
+
 For instance:
 
 	c.Assert("these are the voyages", qt.Matches, `these are .*`)
