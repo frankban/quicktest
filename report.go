@@ -10,6 +10,8 @@ import (
 	"go/printer"
 	"go/token"
 	"io"
+	"io/ioutil"
+	"log"
 	"reflect"
 	"runtime"
 	"strings"
@@ -170,7 +172,7 @@ func writeStack(w io.Writer) {
 		}
 		fmt.Fprint(w, prefixf(prefix, "%s:%d", frame.File, frame.Line))
 		if strings.HasSuffix(frame.File, ".go") {
-			stmt, err := sg.Get(frame.File, frame.Line)
+			stmt, err := sg.Get(fileToPackage(frame.Function), frame.File, frame.Line)
 			if err != nil {
 				fmt.Fprint(w, prefixf(prefix+prefix, "<%s>", err))
 			} else {
@@ -184,22 +186,50 @@ func writeStack(w io.Writer) {
 	}
 }
 
+func fileToPackage(fn string) string {
+	if i := strings.LastIndex(fn, "."); i >= 0 {
+		return fn[0:i]
+	}
+	return ""
+}
+
 type stmtGetter struct {
 	fset   *token.FileSet
 	files  map[string]*ast.File
 	config *printer.Config
 }
 
-// Get returns the lines of code of the statement at the given file and line.
-func (sg *stmtGetter) Get(file string, line int) (string, error) {
-	f := sg.files[file]
-	if f == nil {
-		var err error
-		f, err = parser.ParseFile(sg.fset, file, nil, parser.ParseComments)
+var registeredSourceForPackage = func(pkg, path string) []byte {
+	return nil
+}
+
+func (sg *stmtGetter) parseFile(pkg, file string) (*ast.File, error) {
+	if f := sg.files[file]; f != nil {
+		return f, nil
+	}
+	data := registeredSourceForPackage(pkg, file)
+	if data == nil {
+		data1, err := ioutil.ReadFile(file)
 		if err != nil {
-			return "", fmt.Errorf("cannot parse source file: %s", err)
+			return nil, err
 		}
-		sg.files[file] = f
+		data = data1
+	} else {
+		log.Printf("got registered source for package %q, file %q", pkg, file)
+	}
+	f, err := parser.ParseFile(sg.fset, file, data, parser.ParseComments)
+	if err != nil {
+		return nil, err
+	}
+	sg.files[file] = f
+	return f, nil
+}
+
+// Get returns the lines of code of the statement at the given file and line.
+func (sg *stmtGetter) Get(pkg string, file string, line int) (string, error) {
+	f, err := sg.parseFile(pkg, file)
+	if err != nil {
+		return "", fmt.Errorf("cannot parse source file: %s", err)
 	}
 	var stmt string
 	ast.Inspect(f, func(n ast.Node) bool {
