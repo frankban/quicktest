@@ -217,12 +217,36 @@ func (sg *stmtGetter) Get(file string, line int) (string, error) {
 				Node:     n,
 				Comments: f.Comments,
 			})
-			stmt = buf.String()
+			stmt = elideInlineFuncs(buf.String())
 			return false
 		}
 		return pos < line && line <= end
 	})
 	return stmt, nil
+}
+
+// elideInlineFuncs shortens a printed statement when it contains a multi-line
+// function literal, such as a closure passed directly to a helper. Without
+// this, the stack trace dumps the entire body of the closure, which can be
+// hundreds of lines long and hides the actual call site.
+func elideInlineFuncs(stmt string) string {
+	if !strings.Contains(stmt, "func(") {
+		return stmt
+	}
+	lines := strings.Split(stmt, "\n")
+	if len(lines) <= 2 {
+		return stmt
+	}
+	for i, line := range lines {
+		if j := strings.Index(line, "func("); j >= 0 {
+			// Keep the call up to the function literal, then mark the
+			// elided body and the rest of the statement.
+			lines = lines[:i+1]
+			lines[i] = line[:j] + "func(...) { ... })"
+			return strings.Join(lines, "\n")
+		}
+	}
+	return stmt
 }
 
 // prefixf formats the given string with the given args. It also inserts the
